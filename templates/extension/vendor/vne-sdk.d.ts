@@ -86,6 +86,8 @@ export interface AudioApi {
 
 /** The running game (editor preview or exported game). */
 export interface GameApi {
+  /** Mouse position (stage pixels), button and held keys (KeyboardEvent.code). */
+  readonly input: InputState;
   readonly mode: 'game' | 'preview';
   readonly project: Project;
   readonly vars: VarStore;
@@ -131,13 +133,25 @@ export interface SceneApi {
   dispatch(e: RuntimeEvent): number;
   shake(intensity: number, seconds: number): Promise<void>;
   flash(color: string, seconds: number): Promise<void>;
+  /** Sensing. Elements are given by id (or name). Points are stage pixels; default: the mouse. */
+  contains(layer: string, x?: number, y?: number): boolean;
+  touching(layer: string, other: string): boolean;
+  isVisible(layer: string): boolean;
+  bounds(layer: string): { x: number; y: number; width: number; height: number } | null;
+  /** Seconds since the scene started or the timer was reset. */
+  readonly timer: number;
+  resetTimer(): void;
 }
+
+/** Pointer and keyboard state (runtime.input in blocks: ctx.runtime.input). */
+export interface InputState { readonly x: number; readonly y: number; readonly down: boolean; readonly keys: ReadonlySet<string> }
 
 /** Given to visual-scripting blocks. */
 export interface ScriptContext {
   readonly project: Project;
   readonly vars: VarStore;
   readonly scene: SceneApi | null;
+  /** The game; `ctx.runtime.input` has the mouse position, button and held keys. */
   readonly runtime: GameApi;
   readonly cancelled: boolean;
   /** The event that started this script (hat), if any. */
@@ -247,6 +261,11 @@ export interface LayerTypeDef {
   size?(layer: Layer, props: Record<string, any>, rc: SizeContext): { width: number; height: number };
   draw?(rc: RenderContext, layer: Layer, props: Record<string, any>): void;
   createInstance?(layer: Layer, rt: { mode: 'edit' | 'play'; emit(e: RuntimeEvent): void; requestRender(): void; assets: any; audio: any }): LayerInstance;
+  /**
+   * Precise hit test in local coordinates (0..width, 0..height). Used for clicks, hover,
+   * the "mouse inside" block and scene.contains(). Default: the whole rectangle.
+   */
+  hitTest?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }): boolean;
 }
 
 export interface PropertyExtensionDef {
@@ -267,18 +286,34 @@ export interface BlockArgDef {
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';
+  /** `layer` arguments: element types the slot accepts (default: any). */
+  layerTypes?: string[];
 }
 
+/**
+ * hat: starts a script · statement / c / c-else / cap: script steps ·
+ * reporter (round) / boolean (pointed): values dropped into other blocks' slots.
+ * Categories: elements, events, control, looks, sound, sensing, operators, variables, story, or your own.
+ */
 export interface BlockDef {
   id: string;
   category: string;
-  shape: 'hat' | 'statement' | 'c' | 'c-else' | 'cap';
+  shape: 'hat' | 'statement' | 'c' | 'c-else' | 'cap' | 'reporter' | 'boolean';
   /** Template with {argId} placeholders, e.g. "Shake {layer} for {seconds} s". Plain text or i18n key. */
   label: string;
   args: BlockArgDef[];
   color?: string;
   context?: 'scene' | 'story' | 'both';
   run?(ctx: ScriptContext, args: Record<string, any>, block: Block): void | Promise<void>;
+  /** Reporter / boolean blocks: return the value (synchronously). Arguments arrive already evaluated, nested blocks included. */
+  report?(ctx: ScriptContext, args: Record<string, any>, block: Block): any;
+  /**
+   * Blocks with a `layer` argument are listed under each element in the Interactions
+   * palette, pre-filled with it. Limit that to some element types (your module's layer
+   * types, 'core.audio', …) or use ['*'] for every element including non-visual ones.
+   * Default: every visible element.
+   */
+  layerTypes?: string[];
   /** Hats: the event type that triggers this script. */
   event?: string;
   matches?(event: RuntimeEvent, args: Record<string, any>): boolean;

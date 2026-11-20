@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layer, LayerInstance, SceneData, Engine, Project } from '@vne/core';
 import { sceneLines } from '@vne/core';
-import { Stage, NarrativeUI, createEditView, drawScene, hitTest, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
+import { Stage, NarrativeUI, createEditView, drawScene, hitTest, regionPoints, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
-import { setLayerProps, addLayer, deleteLayers, duplicateLayers, sceneOf } from './sceneOps';
+import { setLayerProps, addLayer, deleteLayers, duplicateLayers, sceneOf, updateScene } from './sceneOps';
 import { IconButton, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu } from '../ui/Menu';
+import { importFiles } from '../sidebar/AssetLibrary';
 
 interface Guide { x?: number; y?: number }
 
@@ -204,6 +205,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
       if (!ids.includes(hit.id)) return;
     }
     const mode = handle?.dataset.mode || 'move';
+    if (mode === 'point') { dragRegionPoint(e, Number(handle!.dataset.index)); return; }
     const layers = ids.map((id) => scene.layers.find((l) => l.id === id)!).filter((l) => l && !l.locked);
     if (!layers.length) return;
     const starts = layers.map((l) => ({ l, props: { ...view.props(l) } }));
@@ -291,11 +293,88 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
       for (const id of selected) { const l = scene.layers.find((x) => x.id === id)!; if (l.locked) continue; const p = view.props(l); setLayerProps(session, nodeId, id, { x: (p.x ?? 0) + dx, y: (p.y ?? 0) + dy }, { mergeKey: 'nudge', label: t('layer.move') }); }
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) { e.preventDefault(); deleteLayers(session, nodeId, selected); }
     else if (mod && e.key.toLowerCase() === 'd' && selected.length) { e.preventDefault(); duplicateLayers(session, nodeId, selected); }
-    else if (mod && e.key.toLowerCase() === 'c' && selected.length) { e.preventDefault(); store.clipboard = { kind: 'layers', data: scene.layers.filter((l) => selected.includes(l.id)) }; store.toast(t('layer.copied', { n: selected.length })); }
-    else if (mod && e.key.toLowerCase() === 'v' && store.clipboard?.kind === 'layers') { e.preventDefault(); pasteLayers(session, nodeId, store.clipboard.data); }
     else if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); session.setSceneUI(nodeId, { selectedLayers: scene.layers.filter(selectable).map((l) => l.id) }); }
     else if (e.key === 'Escape') session.setSceneUI(nodeId, { selectedLayers: [] });
     else if (e.key === '0' && mod) { e.preventDefault(); fit(); }
+  };
+
+  /* Polygon detection areas: drag a corner, double-click an edge to add one, double-click a corner to remove it. */
+  const regionLayer = () => { const l = scene.layers.find((x) => x.id === selected[0]); return l && l.type === 'core.hotspot' ? l : null; };
+  const toLocalUnit = (layerId: string, clientX: number, clientY: number) => {
+    const st = stageRef.current!;
+    const view = buildView();
+    const l = scene.layers.find((x) => x.id === layerId)!;
+    const inv = invert(worldMatrix(view, layerId));
+    const s = layerSize(view, l, view.props(l));
+    const q = st.toStage(clientX, clientY);
+    const lp = inv ? apply(inv, q.x, q.y) : q;
+    return [Math.round(Math.max(0, Math.min(1, lp.x / (s.width || 1))) * 1000) / 1000, Math.round(Math.max(0, Math.min(1, lp.y / (s.height || 1))) * 1000) / 1000] as [number, number];
+  };
+  const pointsOf = (l: Layer): [number, number][] => (Array.isArray(l.props.points) ? l.props.points.map((p: any) => [Number(p[0]) || 0, Number(p[1]) || 0]) : []);
+  const dragRegionPoint = (e: React.PointerEvent, index: number) => {
+    const l = regionLayer();
+    if (!l) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const mergeKey = `pt-${Date.now()}`;
+    const base = pointsOf(l);
+    const move = (ev: PointerEvent) => {
+      const pts = base.map((p) => [...p] as [number, number]);
+      pts[index] = toLocalUnit(l.id, ev.clientX, ev.clientY);
+      setLayerProps(session, nodeId, l.id, { points: pts }, { mergeKey, label: t('region.editPoints') });
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const insertRegionPoint = (layerId: string, e: React.MouseEvent) => {
+    const l = scene.layers.find((x) => x.id === layerId);
+    if (!l) return;
+    e.stopPropagation();
+    const p = toLocalUnit(layerId, e.clientX, e.clientY);
+    const pts = pointsOf(l);
+    // Insert after the corner whose edge is nearest to the click.
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const vx = b[0] - a[0], vy = b[1] - a[1];
+      const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / (vx * vx + vy * vy || 1)));
+      const d = Math.hypot(a[0] + u * vx - p[0], a[1] + u * vy - p[1]);
+      if (d < bd) { bd = d; best = i; }
+    }
+    pts.splice(best + 1, 0, p);
+    setLayerProps(session, nodeId, layerId, { points: pts }, { label: t('region.addPoint') });
+  };
+  const removeRegionPoint = (layerId: string, index: number) => {
+    const l = scene.layers.find((x) => x.id === layerId);
+    if (!l) return;
+    const pts = pointsOf(l);
+    if (pts.length <= 3) { store.toast(t('region.minPoints')); return; }
+    pts.splice(index, 1);
+    setLayerProps(session, nodeId, layerId, { points: pts }, { label: t('region.removePoint') });
+  };
+
+  // Cmd/Ctrl+C, X and V arrive as copy / cut / paste events (also from the desktop Edit menu).
+  const onCopy = (e: React.ClipboardEvent, cut = false) => {
+    if ((e.target as HTMLElement).closest('input, textarea, select') || !selected.length) return;
+    const data = scene.layers.filter((l) => selected.includes(l.id));
+    store.clipboard = { kind: 'layers', data };
+    const json = JSON.stringify({ kind: 'vne.layers', layers: data });
+    e.clipboardData.setData('text/plain', json);
+    e.clipboardData.setData('application/x-vne-layers', json);
+    e.preventDefault();
+    if (cut) deleteLayers(session, nodeId, selected);
+    else store.toast(t('layer.copied', { n: data.length }));
+  };
+  const onPaste = (e: React.ClipboardEvent) => {
+    if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+    let layers: Layer[] | null = null;
+    const text = e.clipboardData.getData('application/x-vne-layers') || e.clipboardData.getData('text/plain');
+    try { const v = JSON.parse(text); if (v?.kind === 'vne.layers' && Array.isArray(v.layers)) layers = v.layers; } catch { /* not ours */ }
+    if (!layers && store.clipboard?.kind === 'layers') layers = store.clipboard.data;
+    if (!layers?.length) return;
+    e.preventDefault();
+    pasteLayers(session, nodeId, layers);
   };
 
   const onDrop = (e: React.DragEvent) => {
@@ -333,13 +412,16 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     const len = Math.hypot(dir.x, dir.y) || 1;
     const rot = { x: topMid.x + (dir.x / len) * 28, y: topMid.y + (dir.y / len) * 28 };
     const mid = (a: any, b: any) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-    return { l, c, anchor, topMid, rot, sides: [mid(c[1], c[2]), mid(c[3], c[0]), mid(c[2], c[3])] };
+    // Polygon detection areas: their corners are edited on the canvas.
+    const pts = l.type === 'core.hotspot' && props.shape === 'polygon' && selected.length === 1 && !l.locked
+      ? regionPoints(props, size.width, size.height).map(([x, y]) => toScreen(apply(m, x, y))) : null;
+    return { l, c, anchor, topMid, rot, sides: [mid(c[1], c[2]), mid(c[3], c[0]), mid(c[2], c[3])], pts };
   }).filter(Boolean) as any[] : [];
   const frame = st ? { x: st.offsetX, y: st.offsetY, w: W * st.scale, h: H * st.scale } : null;
 
   return (
     <div className="comp-wrap">
-      <div ref={hostRef} className={cx('comp-canvas', spaceDown && 'pan-ready')} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown}
+      <div ref={hostRef} className={cx('comp-canvas', spaceDown && 'pan-ready')} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onCopy={(e) => onCopy(e)} onCut={(e) => onCopy(e, true)} onPaste={onPaste}
         onContextMenu={(e) => {
           e.preventDefault();
           const stg = stageRef.current;
@@ -381,6 +463,11 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
               <rect x={g.sides[1].x - 4} y={g.sides[1].y - 4} width={8} height={8} className="gizmo-handle side" data-mode="scale-x" />
               <rect x={g.sides[2].x - 4} y={g.sides[2].y - 4} width={8} height={8} className="gizmo-handle side" data-mode="scale-y" />
               <circle cx={g.anchor.x} cy={g.anchor.y} r={4} className="gizmo-anchor" />
+              {g.pts && <>
+                <polygon points={g.pts.map((p: any) => `${p.x},${p.y}`).join(' ')} className="gizmo-region" onDoubleClick={(e) => insertRegionPoint(g.l.id, e)} />
+                {g.pts.map((p: any, i: number) => <circle key={`p${i}`} cx={p.x} cy={p.y} r={5.5} className="gizmo-handle point" data-mode="point" data-index={i}
+                  onDoubleClick={(e) => { e.stopPropagation(); removeRegionPoint(g.l.id, i); }} />)}
+              </>}
               {g.l.locked && <text x={g.c[0].x + 4} y={g.c[0].y - 6} className="gizmo-label">🔒</text>}
             </g>
           ))}
@@ -402,21 +489,76 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   );
 }
 
-export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: string, p?: any) => string, at: { x: number; y: number }) {
+/**
+ * The "Add element" menu (Layers panel, canvas and Interactions): media (from the
+ * library or a new file), shapes, text, choice, button, detection areas, then the rest.
+ * `fromScripts`: elements made in Interactions start hidden and do not autoplay, so
+ * scripts decide when they appear (the "Start" block shows and plays them).
+ */
+export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: string, p?: any) => string, at: { x: number; y: number }, opts: { fromScripts?: boolean } = {}) {
   const defs = session.engine.layerTypes.list();
-  const cats = ['media', 'text', 'ui', 'interactive', 'effect', 'structure', 'module'];
-  const items: any[] = [];
+  const has = (id: string) => !!session.engine.layerTypes.get(id);
+  const pos = { x: Math.round(at.x), y: Math.round(at.y) };
+  const hidden = opts.fromScripts ? { visible: false } : undefined;
+  const add = (type: string, extra: Record<string, any> = {}, name?: string, f?: { visible?: boolean }) => addLayer(session, nodeId, type, extra, name, f);
+  const nameOf = (a: { name: string }) => a.name.replace(/\.[^.]+$/, '');
+  const fromAsset = (a: any) => {
+    if (a.kind === 'image') return add('core.image', { assetId: a.id, ...pos }, nameOf(a), hidden);
+    if (a.kind === 'video') return add('core.video', { assetId: a.id, ...pos, ...(opts.fromScripts ? { autoplay: false } : {}) }, nameOf(a), hidden);
+    if (a.kind === 'audio') return add('core.audio', { assetId: a.id, ...(opts.fromScripts ? { autoplay: false } : {}) }, nameOf(a));
+    return null;
+  };
+  const assetItems = (kind: 'image' | 'video' | 'audio', type: string) => {
+    const list = session.project.assets.filter((a) => a.kind === kind);
+    return [
+      ...list.map((a) => ({ label: nameOf(a), icon: kind === 'image' ? 'image' : kind === 'video' ? 'film' : 'music', onClick: () => fromAsset(a) })),
+      ...(list.length ? [{ separator: true }] : []),
+      { label: t('element.importFile'), icon: 'upload', onClick: () => importAndAdd(session, kind, fromAsset) },
+      { label: t('element.empty', { kind: t(`layer.${kind === 'image' ? 'image' : kind}`) }), icon: 'plus', onClick: () => add(type, type === 'core.audio' ? {} : pos, undefined, type === 'core.audio' ? undefined : hidden) },
+    ];
+  };
+  const shapeOpts: { value: string; label: string }[] = (session.engine.layerTypes.get('core.shape')?.props.find((p) => p.key === 'shape')?.options as any) || [];
+  const regionOpts: { value: string; label: string }[] = (session.engine.layerTypes.get('core.hotspot')?.props.find((p) => p.key === 'shape')?.options as any) || [];
+  const items: any[] = [
+    { header: true, label: t('element.group.media') },
+    { label: t('layer.image'), icon: 'image', submenu: assetItems('image', 'core.image') },
+    { label: t('layer.video'), icon: 'film', submenu: assetItems('video', 'core.video') },
+    { label: t('layer.audio'), icon: 'music', submenu: assetItems('audio', 'core.audio') },
+    ...(has('core.character') ? [{ label: t('layer.character'), icon: 'user', onClick: () => add('core.character', pos, undefined, hidden) }] : []),
+    ...(!opts.fromScripts && has('core.background') ? [{ label: t('layer.background'), icon: 'image', onClick: () => add('core.background', {}) }] : []),
+    { header: true, label: t('element.group.shapes') },
+    ...shapeOpts.map((o) => ({ label: t(o.label), icon: 'square', onClick: () => add('core.shape', { ...pos, shape: o.value }, t(o.label), hidden) })),
+    { header: true, label: t('element.group.text') },
+    { label: t('layer.text'), icon: 'type', onClick: () => add('core.text', pos, undefined, hidden) },
+    ...(has('core.dialogue') ? [{ label: t('layer.dialogue'), icon: 'message', onClick: () => add('core.dialogue', {}) }] : []),
+    { header: true, label: t('element.group.interactive') },
+    { label: t('layer.choice'), icon: 'choice', onClick: () => add('core.choice', {}) },
+    { label: t('layer.button'), icon: 'button', onClick: () => add('core.button', pos, undefined, hidden) },
+    { label: t('layer.hotspot'), icon: 'target', submenu: regionOpts.map((o) => ({ label: t(o.label), onClick: () => add('core.hotspot', { ...pos, shape: o.value }, `${t('layer.hotspot')}`) })) },
+  ];
+  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition']);
+  const rest = defs.filter((d) => !shown.has(d.id));
+  const cats = ['effect', 'structure', 'module'];
   for (const c of cats) {
-    const list = defs.filter((d) => (d.owner && d.owner !== 'core' ? 'module' : d.category) === c && d.id !== 'core.composition');
+    const list = rest.filter((d) => (d.owner && d.owner !== 'core' ? 'module' : d.category === 'effect' || d.category === 'structure' ? d.category : 'module') === c);
     if (!list.length) continue;
     items.push({ header: true, label: t(`layercat.${c}`) });
-    for (const d of list) items.push({ label: t(d.label), icon: d.icon || 'layers', onClick: () => addLayer(session, nodeId, d.id, d.visual && d.id !== 'core.background' && d.id !== 'core.particles' && d.id !== 'core.group' ? { x: at.x, y: at.y } : {}) });
+    for (const d of list) items.push({ label: t(d.label), icon: d.icon || 'layers', onClick: () => add(d.id, d.visual && d.id !== 'core.particles' && d.id !== 'core.group' ? pos : {}, undefined, d.visual ? hidden : undefined) });
   }
   if (session.project.compositions.length) {
     items.push({ header: true, label: t('layer.compositions') });
-    for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => addLayer(session, nodeId, 'core.composition', { compositionId: c.id, x: at.x, y: at.y }, c.name) });
+    for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => add('core.composition', { compositionId: c.id, ...pos }, c.name, hidden) });
   }
   return items;
+}
+
+/** Import media files into the library and add each as an element. */
+async function importAndAdd(session: ProjectSession, kind: 'image' | 'video' | 'audio', addOne: (a: any) => any): Promise<void> {
+  const ext = kind === 'image' ? ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'avif'] : kind === 'video' ? ['mp4', 'webm', 'mov', 'm4v'] : ['mp3', 'ogg', 'wav', 'm4a', 'flac', 'aac', 'opus'];
+  const paths = await store.pickFiles(session.i18n.t('element.importFile'), [{ name: session.i18n.t(`layer.${kind}`), extensions: ext }]);
+  if (!paths?.length) return;
+  const assets = await importFiles(session, paths);
+  for (const a of assets.filter((x) => x.kind === kind)) addOne(a);
 }
 
 export function reorder(session: ProjectSession, nodeId: string, ids: string[], where: 'front' | 'back' | 'up' | 'down'): void {
@@ -446,8 +588,8 @@ export function reorder(session: ProjectSession, nodeId: string, ids: string[], 
 export function pasteLayers(session: ProjectSession, nodeId: string, layers: Layer[]): void {
   const t = session.i18n.t;
   const created: string[] = [];
-  session.update(t('common.paste'), (d) => {
-    const s = d.nodes[nodeId].data as SceneData;
+  // updateScene keeps the node's outputs in step with pasted choice elements.
+  updateScene(session, nodeId, t('common.paste'), (s) => {
     const ids = new Set(s.layers.map((l) => l.id));
     const map = new Map<string, string>();
     for (const l of layers) map.set(l.id, `lyr_${Math.random().toString(36).slice(2, 14)}`);

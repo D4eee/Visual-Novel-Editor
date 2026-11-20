@@ -1,1 +1,8 @@
-{ "my.hello": "Say hello to {name}", "my.helloToast": "Hello, {name}!", "my.panel": "My Module", "my.panelIntro": "Settings saved in the project file.", "my.greeting": "Greeting" }
+{
+  "my.hello": "Say hello to {name}",
+  "my.helloToast": "Hello, {name}!",
+  "my.panel": "My Module",
+  "my.panelIntro": "Settings saved in the project file.",
+  "my.greeting": "Greeting",
+  "my.distance": "distance from mouse to {layer}"
+}

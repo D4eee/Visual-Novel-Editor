@@ -153,24 +153,52 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
     session.setUI({ selection: { nodes: [], edges: [] }, tabs: session.ui.tabs.filter((tb) => tb.kind !== 'node' || !nodes.includes(tb.nodeId)), active: 0 });
   };
 
-  const copy = () => {
-    if (!ui.selection.nodes.length) return;
-    store.clipboard = { kind: 'nodes', data: copyNodes(project, ui.selection.nodes) };
-    try { navigator.clipboard?.writeText(JSON.stringify(store.clipboard.data)).catch(() => {}); } catch { /* ignore */ }
-    store.toast(t('graph.copied', { n: ui.selection.nodes.length }));
+  /** Copy the selected nodes (with their scenes, layers, choices, scripts and the edges between them). */
+  const copy = (e?: React.ClipboardEvent): boolean => {
+    if (!ui.selection.nodes.length) return false;
+    const data = copyNodes(project, ui.selection.nodes);
+    if (!data.nodes.length) return false;
+    store.clipboard = { kind: 'nodes', data };
+    const json = JSON.stringify(data);
+    // The system clipboard lets nodes be pasted into another project or window.
+    if (e) { e.clipboardData.setData('text/plain', json); e.clipboardData.setData('application/x-vne-nodes', json); e.preventDefault(); }
+    else { try { navigator.clipboard?.writeText(json).catch(() => {}); } catch { /* ignore */ } }
+    store.toast(t('graph.copied', { n: data.nodes.length }));
+    return true;
   };
 
-  const paste = (at?: { x: number; y: number }) => {
-    const clip = store.clipboard?.kind === 'nodes' ? store.clipboard.data : null;
+  /** Nodes on the clipboard: this editor's own clipboard, or nodes copied in another window / project. */
+  const clipFrom = (e?: React.ClipboardEvent): any => {
+    const text = e?.clipboardData.getData('application/x-vne-nodes') || e?.clipboardData.getData('text/plain') || '';
+    if (text) {
+      try { const v = JSON.parse(text); if (v?.kind === 'vne.nodes' && Array.isArray(v.nodes)) return v; } catch { /* not ours */ }
+    }
+    return store.clipboard?.kind === 'nodes' ? store.clipboard.data : null;
+  };
+
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+
+  const paste = (at?: { x: number; y: number }, e?: React.ClipboardEvent) => {
+    const clip = clipFrom(e);
     if (!clip?.nodes?.length) return;
+    e?.preventDefault();
     const minX = Math.min(...clip.nodes.map((n: StoryNode) => n.x)), minY = Math.min(...clip.nodes.map((n: StoryNode) => n.y));
-    const target = at || { x: minX + 48, y: minY + 48 };
+    // Paste under the pointer (keyboard / menu), or next to the originals.
+    const target = at || (pointer.current ? { x: pointer.current.x - NODE_WIDTH / 2, y: pointer.current.y - 20 } : { x: minX + 48, y: minY + 48 });
     let ids: string[] = [];
     session.update(t('graph.paste'), (d) => { ids = pasteNodes(d, clip, chapter.id, { x: target.x - minX, y: target.y - minY }); });
     session.setUI({ selection: { nodes: ids, edges: [] } });
   };
 
-  const duplicate = () => { copy(); paste(); };
+  const duplicate = () => {
+    const data = ui.selection.nodes.length ? copyNodes(project, ui.selection.nodes) : null;
+    if (!data?.nodes.length) return;
+    const minX = Math.min(...data.nodes.map((n: StoryNode) => n.x)), minY = Math.min(...data.nodes.map((n: StoryNode) => n.y));
+    let ids: string[] = [];
+    session.update(t('common.duplicate'), (d) => { ids = pasteNodes(d, data, chapter.id, { x: 48, y: 48 }); });
+    session.setUI({ selection: { nodes: ids, edges: [] } });
+    void minX; void minY;
+  };
 
   const nodeMenu = (id: string, e: { clientX: number; clientY: number }) => {
     const n = project.nodes[id];
@@ -185,7 +213,7 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
     }
     items.push({ separator: true });
     items.push({ label: t('common.duplicate'), icon: 'duplicate', shortcut: shortcut('Mod+D'), onClick: duplicate });
-    items.push({ label: t('common.copy'), icon: 'copy', shortcut: shortcut('Mod+C'), onClick: copy });
+    items.push({ label: t('common.copy'), icon: 'copy', shortcut: shortcut('Mod+C'), onClick: () => { copy(); } });
     items.push({ label: t('graph.moveToChapter'), icon: 'book', submenu: project.chapters.filter((c) => c.id !== n.chapterId).map((c) => ({ label: c.name, onClick: () => {
       const ids = ui.selection.nodes.length ? ui.selection.nodes : [id];
       session.update(t('graph.moveToChapter'), (d) => { for (const nid of ids) if (d.nodes[nid]) d.nodes[nid].chapterId = c.id; });
@@ -222,8 +250,7 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
   const onKeyDown = (e: React.KeyboardEvent) => {
     const mod = e.metaKey || e.ctrlKey;
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelection(); }
-    else if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); copy(); }
-    else if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); paste(); }
+    // Cmd/Ctrl+C, X and V arrive as copy / cut / paste events (also from the Edit menu).
     else if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); duplicate(); }
     else if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); session.setUI({ selection: { nodes: shownNodes.map((n) => n.id), edges: [] } }); }
     else if (e.key === 'Enter' && ui.selection.nodes.length === 1) { e.preventDefault(); session.openNode(ui.selection.nodes[0]); }
@@ -271,6 +298,10 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
           ]);
         }}
         onKeyDown={onKeyDown}
+        onCopy={(e) => { if (!inField(e)) copy(e); }}
+        onCut={(e) => { if (!inField(e) && copy(e)) deleteSelection(); }}
+        onPaste={(e) => { if (!inField(e)) paste(undefined, e); }}
+        onPointerWorld={(p) => { pointer.current = p; }}
         portsCompatible={portsCompatible}
         ariaLabel={t('graph.aria')}
         emptyHint={<div className="graph-empty-card"><Icon name="workflow" size={28} /><div className="empty-title">{t('graph.emptyTitle')}</div><div>{t('graph.emptyText')}</div><Button kind="primary" icon="plus" onClick={() => addNode('core.scene', center())}>{t('graph.addScene')}</Button></div>}
@@ -302,5 +333,8 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
     </div>
   );
 }
+
+/** Clipboard events from text fields inside nodes keep their normal behaviour. */
+const inField = (e: React.ClipboardEvent) => !!(e.target as HTMLElement).closest?.('input, textarea, select, [contenteditable="true"]');
 
 export { createSceneData, nextSceneNumber };

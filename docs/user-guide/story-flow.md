@@ -60,3 +60,8 @@ Each chapter has an **entry**: its Start node, a chosen node, or automatically t
 ## Validation
 
 The Problems list (status bar) is updated as you edit. It reports, among others: outputs that lead nowhere, unreachable nodes, Jump In without a matching Jump Out, empty conditions, missing assets, references to deleted variables, layers or choices, and nodes or blocks from missing modules. Errors block export; warnings do not.
+
+## Copy, paste and peek
+
+- **Copy and paste nodes** with **Ctrl/⌘+C** and **Ctrl/⌘+V** (also *Edit → Copy / Paste* in the desktop app, and **Ctrl/⌘+X** to cut). Pasted nodes land under the pointer and are complete copies — a scene keeps its elements, lines, choices, animations and scripts, with new ids; connections between the copied nodes are copied too. The clipboard works across chapters, projects and windows. **Ctrl/⌘+D** duplicates the selection in place.
+- **Peek at a scene**: rest the pointer on a node for a second to see its first line of dialogue (speaker and text — choice text is not shown). Other nodes show their text, if they have any.

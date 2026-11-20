@@ -40,3 +40,12 @@ Only the runtime entry (`runtime`), locales and declared assets are copied into 
 
 - `draw()`, `evaluate()` and `frame()` run every frame: allocate nothing per frame, reuse canvases from `ctx.pool`, cache measurements.
 - Prefer reading `project` once in `create()`/`sceneEnter()` over scanning it every frame.
+
+## API history
+
+| API | Engine | Added |
+| --- | --- | --- |
+| 1.1.0 | 0.2.2 | Reporter and condition blocks (`shape: 'reporter' | 'boolean'`, `report()`), per-element blocks (`BlockDef.layerTypes`, `BlockArgDef.layerTypes`), `LayerTypeDef.hitTest`, scene sensing (`contains`, `touching`, `isVisible`, `bounds`, `timer`), `runtime.input` |
+| 1.0.0 | 0.1.0 | First public API |
+
+Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1 features should declare `"api": "^1.1.0"` so older editors refuse it with a clear message instead of failing.

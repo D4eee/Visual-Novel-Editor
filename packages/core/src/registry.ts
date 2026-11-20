@@ -156,6 +156,11 @@ export interface LayerTypeDef extends Registrable {
   draw?(rc: any, layer: Layer, props: Record<string, any>): void;
   /** Create a per-scene runtime instance (media elements, particle state...). */
   createInstance?(layer: Layer, rt: any): LayerInstance;
+  /**
+   * Precise hit test in the layer's local coordinates (0..width, 0..height), for
+   * clicks, hover and the "mouse inside" block. Default: the layer's rectangle.
+   */
+  hitTest?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }): boolean;
 }
 
 export interface LayerInstance {
@@ -190,8 +195,12 @@ export interface InterpolatorDef extends Registrable {
 /* Visual scripting                                                     */
 /* ------------------------------------------------------------------ */
 
-export type BlockShape = 'hat' | 'statement' | 'c' | 'c-else' | 'cap';
-export type BlockCategory = 'events' | 'control' | 'looks' | 'sound' | 'variables' | 'story' | 'operators' | 'module';
+/**
+ * hat: starts a script; statement/c/c-else/cap: steps of a script;
+ * reporter (round) and boolean (pointed): values that go into other blocks' slots.
+ */
+export type BlockShape = 'hat' | 'statement' | 'c' | 'c-else' | 'cap' | 'reporter' | 'boolean';
+export type BlockCategory = 'elements' | 'events' | 'control' | 'looks' | 'sound' | 'sensing' | 'variables' | 'story' | 'operators' | 'module';
 
 export interface BlockArgDef {
   id: string;
@@ -200,6 +209,8 @@ export interface BlockArgDef {
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';
+  /** `layer` arguments: element types this slot accepts (default: any element). */
+  layerTypes?: string[];
 }
 
 export interface BlockDef extends Registrable {
@@ -213,6 +224,15 @@ export interface BlockDef extends Registrable {
   context?: 'scene' | 'story' | 'both';
   /** Statement execution. May return a promise to wait. */
   run?(ctx: any, args: Record<string, any>, block: Block): void | Promise<void>;
+  /** Reporter / boolean blocks: compute the value (synchronously). */
+  report?(ctx: any, args: Record<string, any>, block: Block): any;
+  /**
+   * Blocks with an element (`layer`) argument are offered under each element in the
+   * Interactions palette, pre-filled with it. `layerTypes` limits that to these
+   * element types (e.g. media blocks: core.audio, core.video); without it, every
+   * visible element gets the block. Module layer types get their blocks this way.
+   */
+  layerTypes?: string[];
   /** Hats: return true when the runtime event matches this hat's arguments. */
   matches?(event: { type: string; [k: string]: any }, args: Record<string, any>): boolean;
   /** Hat event type (e.g. "layer.click"). */

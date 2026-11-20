@@ -21,5 +21,7 @@
   "bubble.preset.classic": "经典",
   "bubble.preset.night": "夜间",
   "bubble.preset.thought": "心想",
-  "bubble.preset.shout": "大喊"
+  "bubble.preset.shout": "大喊",
+  "bubble.block.say": "{layer} 说 {text} {seconds} 秒",
+  "bubble.block.textOf": "{layer} 的文字"
 }

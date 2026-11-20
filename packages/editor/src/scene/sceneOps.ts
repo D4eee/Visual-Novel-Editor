@@ -1,7 +1,8 @@
-import type { SceneData, Layer, Project, Track, AnimationClip } from '@vne/core';
-import { newId, createAnimation, createLayer, remapIds, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE } from '@vne/core';
+import type { SceneData, Layer, Project, Track, AnimationClip, Block, Engine, ScriptStack } from '@vne/core';
+import { newId, createAnimation, createLayer, remapIds, isBlockRef, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE } from '@vne/core';
 import { normalizeTrack, sampleTrack, propKind, animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
+import { store } from '../state/store';
 
 export function sceneOf(session: ProjectSession, nodeId: string): SceneData | null {
   const n = session.project.nodes[nodeId];
@@ -108,7 +109,7 @@ export function valueAt(session: ProjectSession, track: Track, time: number): an
   return sampleTrack(session.engine, track, time, propKind(undefined, track.keyframes[0]?.v));
 }
 
-export function addLayer(session: ProjectSession, nodeId: string, type: string, extra: Record<string, any> = {}, name?: string): string | null {
+export function addLayer(session: ProjectSession, nodeId: string, type: string, extra: Record<string, any> = {}, name?: string, fields?: { visible?: boolean }): string | null {
   const t = session.i18n.t;
   const scene = sceneOf(session, nodeId);
   if (!scene) return null;
@@ -125,6 +126,7 @@ export function addLayer(session: ProjectSession, nodeId: string, type: string, 
   let n = 1;
   while (scene.layers.some((l) => l.name === (n === 1 ? base : `${base} ${n}`))) n++;
   const layer = createLayer(session.engine, session.project, type, n === 1 ? base : `${base} ${n}`, extra);
+  if (fields?.visible !== undefined) layer.visible = fields.visible;
   // New layers go above the selection (or on top).
   const sel = session.sceneUI(nodeId).selectedLayers[0];
   updateScene(session, nodeId, t('layer.add'), (s) => {
@@ -137,17 +139,65 @@ export function addLayer(session: ProjectSession, nodeId: string, type: string, 
   return layer.id;
 }
 
-/** Remove layers and everything that references them inside the scene (tracks, media clips, children). */
-export function deleteLayers(session: ProjectSession, nodeId: string, ids: string[]): void {
+/**
+ * Remove layers and everything that references them inside the scene (tracks, media
+ * clips, children). Elements are bound to Interactions: if scripts use them, ask first;
+ * scripts started by a deleted element are removed and other blocks lose the reference.
+ */
+export async function deleteLayers(session: ProjectSession, nodeId: string, ids: string[]): Promise<void> {
   const t = session.i18n.t;
+  const scene = sceneOf(session, nodeId);
+  if (!scene) return;
+  const all = new Set(ids);
+  let grew = true;
+  while (grew) { grew = false; for (const l of scene.layers) if (l.parentId && all.has(l.parentId) && !all.has(l.id)) { all.add(l.id); grew = true; } }
+  const usage = elementUsage(session.engine, scene.scripts, all);
+  if (usage.scripts) {
+    const names = scene.layers.filter((l) => all.has(l.id)).map((l) => l.name).slice(0, 3).join(', ');
+    const ok = await store.confirm(t('layer.deleteUsedTitle'), t('layer.deleteUsedText', { names, n: usage.scripts, hats: usage.hatScripts.size }), t('common.delete'), true);
+    if (!ok) return;
+  }
   updateScene(session, nodeId, t('layer.delete'), (s) => {
-    const all = new Set(ids);
-    let grew = true;
-    while (grew) { grew = false; for (const l of s.layers) if (l.parentId && all.has(l.parentId) && !all.has(l.id)) { all.add(l.id); grew = true; } }
     s.layers = s.layers.filter((l) => !all.has(l.id));
     for (const a of s.animations) { a.tracks = a.tracks.filter((tr) => !all.has(tr.layerId)); a.media = a.media.filter((m) => !all.has(m.layerId)); }
+    s.scripts = s.scripts.filter((st) => !usage.hatScripts.has(st.id));
+    for (const st of s.scripts) forEachBlock([st.hat, ...st.body], (b) => {
+      const def = session.engine.blocks.get(b.type);
+      for (const arg of def?.args || []) if (arg.type === 'layer' && all.has(b.args[arg.id] as string)) b.args[arg.id] = null;
+    });
   });
   session.setSceneUI(nodeId, { selectedLayers: [] });
+}
+
+/** Visit every block, including blocks inside C blocks and inside other blocks' slots. */
+export function forEachBlock(blocks: (Block | null | undefined)[], fn: (b: Block) => void): void {
+  for (const b of blocks) {
+    if (!b) continue;
+    fn(b);
+    for (const v of Object.values(b.args || {})) if (isBlockRef(v)) forEachBlock([v.block], fn);
+    if (b.body) forEachBlock(b.body, fn);
+    if (b.else) forEachBlock(b.else, fn);
+  }
+}
+
+/** How a scene's scripts use some elements: scripts that mention them, and scripts whose trigger is one of them. */
+export function elementUsage(engine: Engine, scripts: ScriptStack[], ids: Set<string>): { scripts: number; hatScripts: Set<string>; byElement: Map<string, number> } {
+  const hatScripts = new Set<string>();
+  const byElement = new Map<string, number>();
+  let n = 0;
+  for (const st of scripts) {
+    const used = new Set<string>();
+    forEachBlock([st.hat, ...st.body], (b) => {
+      const def = engine.blocks.get(b.type);
+      for (const arg of def?.args || []) {
+        const v = b.args[arg.id];
+        if (arg.type === 'layer' && typeof v === 'string' && ids.has(v)) { used.add(v); if (b === st.hat) hatScripts.add(st.id); }
+      }
+    });
+    if (used.size) n++;
+    for (const id of used) byElement.set(id, (byElement.get(id) || 0) + 1);
+  }
+  return { scripts: n, hatScripts, byElement };
 }
 
 export function duplicateLayers(session: ProjectSession, nodeId: string, ids: string[]): void {

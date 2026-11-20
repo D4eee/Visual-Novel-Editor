@@ -93,8 +93,25 @@ export function toGNode(engine: Engine, project: Project, n: StoryNode, t: (k: s
     status,
     badge: modulesBadge,
     className: `type-${n.type.replace(/[^a-z0-9]/gi, '-')}${!def ? ' unknown' : ''}`,
-    tooltip: own.length ? own.map((i) => t(i.message, i.params)).join('\n') : undefined,
+    tooltip: [nodeText(project, n), ...own.map((i) => t(i.message, i.params))].filter(Boolean).join('\n\n') || undefined,
   };
+}
+
+/**
+ * The text shown when the pointer rests on a node: a scene's first line of
+ * dialogue (speaker: text) — never choice text — or a comment/other node's text.
+ */
+export function nodeText(project: Project, n: StoryNode): string {
+  if (n.type === 'core.scene') {
+    const line = sceneLines(n.data as SceneData).find((l) => (l.text || '').trim());
+    if (!line) return '';
+    const who = line.speakerName || (line.speakerId ? project.characters.find((c) => c.id === line.speakerId)?.name : '');
+    const text = line.text.trim();
+    return `${who ? `${who}: ` : ''}${text.length > 280 ? `${text.slice(0, 280)}…` : text}`;
+  }
+  const d = n.data as any;
+  for (const k of ['text', 'message', 'note', 'description']) if (typeof d?.[k] === 'string' && d[k].trim()) return d[k].trim().slice(0, 280);
+  return '';
 }
 
 export function toGEdges(engine: Engine, project: Project, nodeIds: Set<string>): GEdge[] {
