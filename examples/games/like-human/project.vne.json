@@ -165,7 +165,7 @@
             "effect": null
           },
           {
-            "id": "lyr_00c",
+            "id": "lyr_00b",
             "type": "com.example.speech-bubble/bubble",
             "name": "Hint bubble",
             "parentId": null,
@@ -226,36 +226,7 @@
             "effect": null
           },
           {
-            "id": "lyr_00b",
-            "type": "core.shape",
-            "name": "Eyelids",
-            "parentId": null,
-            "visible": true,
-            "locked": false,
-            "props": {
-              "x": 640,
-              "y": 360,
-              "scaleX": 1,
-              "scaleY": 1,
-              "rotation": 0,
-              "anchorX": 0.5,
-              "anchorY": 0.5,
-              "opacity": 1,
-              "shape": "rect",
-              "width": 1280,
-              "height": 720,
-              "fill": "#000000",
-              "gradient": "none",
-              "fill2": "rgba(20,20,40,0.9)",
-              "gradientAngle": 90,
-              "stroke": "rgba(255,255,255,0.0)",
-              "strokeWidth": 0,
-              "radius": 12
-            },
-            "effect": null
-          },
-          {
-            "id": "lyr_00d",
+            "id": "lyr_00c",
             "type": "core.audio",
             "name": "Lab music",
             "parentId": null,
@@ -274,64 +245,26 @@
         ],
         "animations": [
           {
-            "id": "anm_00e",
-            "name": "Open eyes",
+            "id": "anm_00d",
+            "name": "Boot",
             "duration": 3,
             "loop": false,
             "autoplay": true,
             "media": [],
             "tracks": [
               {
-                "id": "trk_00f",
-                "layerId": "lyr_00b",
-                "prop": "opacity",
-                "keyframes": [
-                  {
-                    "id": "key_00g",
-                    "t": 0,
-                    "v": 1,
-                    "ease": "easeOut"
-                  },
-                  {
-                    "id": "key_00h",
-                    "t": 2.2,
-                    "v": 0,
-                    "ease": "easeInOut"
-                  }
-                ]
-              },
-              {
-                "id": "trk_00i",
-                "layerId": "lyr_00b",
-                "prop": "scaleY",
-                "keyframes": [
-                  {
-                    "id": "key_00j",
-                    "t": 0,
-                    "v": 1,
-                    "ease": "easeIn"
-                  },
-                  {
-                    "id": "key_00k",
-                    "t": 2.2,
-                    "v": 0.15,
-                    "ease": "easeInOut"
-                  }
-                ]
-              },
-              {
-                "id": "trk_00l",
+                "id": "trk_00e",
                 "layerId": "lyr_00a",
                 "prop": "reveal",
                 "keyframes": [
                   {
-                    "id": "key_00m",
+                    "id": "key_00f",
                     "t": 0.8,
                     "v": 0,
                     "ease": "linear"
                   },
                   {
-                    "id": "key_00n",
+                    "id": "key_00g",
                     "t": 2.4,
                     "v": 1,
                     "ease": "easeInOut"
@@ -339,39 +272,20 @@
                 ]
               },
               {
-                "id": "trk_00o",
+                "id": "trk_00h",
                 "layerId": "lyr_009",
                 "prop": "x",
                 "keyframes": [
                   {
-                    "id": "key_00p",
-                    "t": 1,
+                    "id": "key_00i",
+                    "t": 0.6,
                     "v": 1040,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_00q",
+                    "id": "key_00j",
                     "t": 2.6,
                     "v": 900,
-                    "ease": "easeInOut"
-                  }
-                ]
-              },
-              {
-                "id": "trk_00r",
-                "layerId": "lyr_009",
-                "prop": "opacity",
-                "keyframes": [
-                  {
-                    "id": "key_00s",
-                    "t": 1,
-                    "v": 0,
-                    "ease": "easeOut"
-                  },
-                  {
-                    "id": "key_00t",
-                    "t": 2.2,
-                    "v": 1,
                     "ease": "easeInOut"
                   }
                 ]
@@ -379,7 +293,7 @@
             ]
           },
           {
-            "id": "anm_00u",
+            "id": "anm_00k",
             "name": "Mika waves",
             "duration": 1.2,
             "loop": false,
@@ -387,24 +301,24 @@
             "media": [],
             "tracks": [
               {
-                "id": "trk_00v",
+                "id": "trk_00l",
                 "layerId": "lyr_009",
                 "prop": "wobble",
                 "keyframes": [
                   {
-                    "id": "key_00w",
+                    "id": "key_00m",
                     "t": 0,
                     "v": 0,
                     "ease": "com.example.wobble/smoothstep"
                   },
                   {
-                    "id": "key_00x",
+                    "id": "key_00n",
                     "t": 0.3,
                     "v": 1,
                     "ease": "com.example.wobble/smoothstep"
                   },
                   {
-                    "id": "key_00y",
+                    "id": "key_00o",
                     "t": 1.2,
                     "v": 0,
                     "ease": "easeInOut"
@@ -412,30 +326,30 @@
                 ]
               },
               {
-                "id": "trk_00z",
+                "id": "trk_00p",
                 "layerId": "lyr_009",
                 "prop": "rotation",
                 "keyframes": [
                   {
-                    "id": "key_010",
+                    "id": "key_00q",
                     "t": 0,
                     "v": 0,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_011",
+                    "id": "key_00r",
                     "t": 0.25,
                     "v": -3,
                     "ease": "easeInOut"
                   },
                   {
-                    "id": "key_012",
+                    "id": "key_00s",
                     "t": 0.6,
                     "v": 3,
                     "ease": "easeInOut"
                   },
                   {
-                    "id": "key_013",
+                    "id": "key_00t",
                     "t": 1.2,
                     "v": 0,
                     "ease": "easeInOut"
@@ -447,26 +361,26 @@
         ],
         "dialogue": [
           {
-            "id": "ln_014",
+            "id": "ln_00u",
             "speakerId": null,
             "portraitId": null,
             "text": "…Signal detected. Visual input online.",
             "speakerName": "SYSTEM"
           },
           {
-            "id": "ln_015",
+            "id": "ln_00v",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_surprised",
             "text": "Oh! You’re awake. Can you hear me?"
           },
           {
-            "id": "ln_016",
+            "id": "ln_00w",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "I’m Mika. I built you — well, most of you."
           },
           {
-            "id": "ln_017",
+            "id": "ln_00x",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "Try something for me. Say anything. Or… do anything."
@@ -515,12 +429,12 @@
         ],
         "scripts": [
           {
-            "id": "stk_01g",
+            "id": "stk_016",
             "x": 40,
             "y": 40,
             "enabled": true,
             "hat": {
-              "id": "blk_018",
+              "id": "blk_00y",
               "type": "core.whenLayerClicked",
               "args": {
                 "layer": "lyr_009"
@@ -528,15 +442,15 @@
             },
             "body": [
               {
-                "id": "blk_019",
+                "id": "blk_00z",
                 "type": "core.playAnimation",
                 "args": {
-                  "anim": "anm_00u",
+                  "anim": "anm_00k",
                   "wait": true
                 }
               },
               {
-                "id": "blk_01a",
+                "id": "blk_010",
                 "type": "com.example.relationships/change",
                 "args": {
                   "character": "chr_mika",
@@ -544,7 +458,7 @@
                 }
               },
               {
-                "id": "blk_01b",
+                "id": "blk_011",
                 "type": "core.playSound",
                 "args": {
                   "asset": "ast_sfx_beep",
@@ -552,28 +466,28 @@
                 }
               },
               {
-                "id": "blk_01c",
+                "id": "blk_012",
                 "type": "core.wait",
                 "args": {
                   "seconds": 0.4
                 }
               },
               {
-                "id": "blk_01d",
+                "id": "blk_013",
                 "type": "core.showChoice",
                 "args": {
                   "choice": "cho_hand"
                 }
               },
               {
-                "id": "blk_01e",
+                "id": "blk_014",
                 "type": "core.hide",
                 "args": {
-                  "layer": "lyr_00c"
+                  "layer": "lyr_00b"
                 }
               },
               {
-                "id": "blk_01f",
+                "id": "blk_015",
                 "type": "com.example.extra-blocks/notify",
                 "args": {
                   "text": "New option: Take her hand",
@@ -583,35 +497,35 @@
             ]
           },
           {
-            "id": "stk_01l",
+            "id": "stk_01b",
             "x": 460,
             "y": 40,
             "enabled": true,
             "hat": {
-              "id": "blk_01h",
+              "id": "blk_017",
               "type": "core.whenDialogueEnds",
               "args": {}
             },
             "body": [
               {
-                "id": "blk_01i",
+                "id": "blk_018",
                 "type": "core.wait",
                 "args": {
                   "seconds": 1.5
                 }
               },
               {
-                "id": "blk_01j",
+                "id": "blk_019",
                 "type": "core.show",
                 "args": {
-                  "layer": "lyr_00c"
+                  "layer": "lyr_00b"
                 }
               },
               {
-                "id": "blk_01k",
+                "id": "blk_01a",
                 "type": "core.tweenProp",
                 "args": {
-                  "layer": "lyr_00c",
+                  "layer": "lyr_00b",
                   "prop": "pop",
                   "value": 1,
                   "seconds": 0.5,
@@ -623,7 +537,10 @@
           }
         ],
         "localVariables": [],
-        "transition": null,
+        "transition": {
+          "type": "fade",
+          "duration": 2.2
+        },
         "hideTextbox": false,
         "holdSeconds": 0
       },
@@ -641,7 +558,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_01n",
+            "id": "lyr_01d",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -663,7 +580,7 @@
             "effect": null
           },
           {
-            "id": "lyr_01o",
+            "id": "lyr_01e",
             "type": "core.particles",
             "name": "Dust",
             "parentId": null,
@@ -690,7 +607,7 @@
             "effect": null
           },
           {
-            "id": "lyr_01m",
+            "id": "lyr_01c",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -717,20 +634,20 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_01p",
+            "id": "ln_01f",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "You did it! Your voice module works."
           },
           {
-            "id": "ln_01q",
+            "id": "ln_01g",
             "speakerId": null,
             "portraitId": null,
             "text": "Empathy calibration: {empathy}.",
             "speakerName": "SYSTEM"
           },
           {
-            "id": "ln_01r",
+            "id": "ln_01h",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "Come on. There’s something I want to show you."
@@ -757,7 +674,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_022",
+            "id": "lyr_01s",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -779,7 +696,7 @@
             "effect": null
           },
           {
-            "id": "lyr_01s",
+            "id": "lyr_01i",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -803,7 +720,7 @@
             "effect": null
           },
           {
-            "id": "lyr_01t",
+            "id": "lyr_01j",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -827,19 +744,19 @@
             "effect": {
               "kind": "inline",
               "graph": {
-                "id": "fxg_01y",
+                "id": "fxg_01o",
                 "name": "Glitch scanlines",
                 "params": [],
                 "nodes": [
                   {
-                    "id": "fxn_01u",
+                    "id": "fxn_01k",
                     "type": "fx.input",
                     "x": 40,
                     "y": 80,
                     "values": {}
                   },
                   {
-                    "id": "fxn_01v",
+                    "id": "fxn_01l",
                     "type": "fx.chromatic",
                     "x": 260,
                     "y": 80,
@@ -848,7 +765,7 @@
                     }
                   },
                   {
-                    "id": "fxn_01w",
+                    "id": "fxn_01m",
                     "type": "com.example.retro-fx/scanlines",
                     "x": 500,
                     "y": 80,
@@ -859,7 +776,7 @@
                     }
                   },
                   {
-                    "id": "fxn_01x",
+                    "id": "fxn_01n",
                     "type": "fx.output",
                     "x": 760,
                     "y": 80,
@@ -868,35 +785,35 @@
                 ],
                 "edges": [
                   {
-                    "id": "fxe_01z",
+                    "id": "fxe_01p",
                     "from": {
-                      "node": "fxn_01u",
+                      "node": "fxn_01k",
                       "port": "image"
                     },
                     "to": {
-                      "node": "fxn_01v",
+                      "node": "fxn_01l",
                       "port": "image"
                     }
                   },
                   {
-                    "id": "fxe_020",
+                    "id": "fxe_01q",
                     "from": {
-                      "node": "fxn_01v",
+                      "node": "fxn_01l",
                       "port": "image"
                     },
                     "to": {
-                      "node": "fxn_01w",
+                      "node": "fxn_01m",
                       "port": "image"
                     }
                   },
                   {
-                    "id": "fxe_021",
+                    "id": "fxe_01r",
                     "from": {
-                      "node": "fxn_01w",
+                      "node": "fxn_01m",
                       "port": "image"
                     },
                     "to": {
-                      "node": "fxn_01x",
+                      "node": "fxn_01n",
                       "port": "image"
                     }
                   }
@@ -908,19 +825,19 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_023",
+            "id": "ln_01t",
             "speakerId": "chr_seven",
             "portraitId": "por_seven_glitch",
             "text": "[ERROR] Response buffer empty."
           },
           {
-            "id": "ln_024",
+            "id": "ln_01u",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_sad",
             "text": "Nothing? …That’s okay. Silence is an answer too."
           },
           {
-            "id": "ln_025",
+            "id": "ln_01v",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "Let’s run the calibration anyway."
@@ -929,25 +846,25 @@
         "choices": [],
         "scripts": [
           {
-            "id": "stk_029",
+            "id": "stk_01z",
             "x": 40,
             "y": 40,
             "enabled": true,
             "hat": {
-              "id": "blk_026",
+              "id": "blk_01w",
               "type": "core.whenSceneStarts",
               "args": {}
             },
             "body": [
               {
-                "id": "blk_027",
+                "id": "blk_01x",
                 "type": "core.wait",
                 "args": {
                   "seconds": 0.3
                 }
               },
               {
-                "id": "blk_028",
+                "id": "blk_01y",
                 "type": "core.runBehavior",
                 "args": {
                   "behavior": "bhv_glitch"
@@ -973,7 +890,7 @@
       "data": {
         "actions": [
           {
-            "id": "blk_02a",
+            "id": "blk_020",
             "type": "core.setVar",
             "args": {
               "variable": "var_met",
@@ -981,7 +898,7 @@
             }
           },
           {
-            "id": "blk_02b",
+            "id": "blk_021",
             "type": "core.log",
             "args": {
               "value": {
@@ -1068,7 +985,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_02d",
+            "id": "lyr_023",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -1090,7 +1007,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02e",
+            "id": "lyr_024",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -1114,7 +1031,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02c",
+            "id": "lyr_022",
             "type": "core.shape",
             "name": "Fade",
             "parentId": null,
@@ -1145,7 +1062,7 @@
         ],
         "animations": [
           {
-            "id": "anm_02f",
+            "id": "anm_025",
             "name": "Fade out",
             "duration": 4,
             "loop": false,
@@ -1153,18 +1070,18 @@
             "media": [],
             "tracks": [
               {
-                "id": "trk_02g",
-                "layerId": "lyr_02c",
+                "id": "trk_026",
+                "layerId": "lyr_022",
                 "prop": "opacity",
                 "keyframes": [
                   {
-                    "id": "key_02h",
+                    "id": "key_027",
                     "t": 1.5,
                     "v": 0,
                     "ease": "easeIn"
                   },
                   {
-                    "id": "key_02i",
+                    "id": "key_028",
                     "t": 4,
                     "v": 1,
                     "ease": "easeInOut"
@@ -1176,14 +1093,14 @@
         ],
         "dialogue": [
           {
-            "id": "ln_02j",
+            "id": "ln_029",
             "speakerId": null,
             "portraitId": null,
             "text": "Calibration failed. Entering sleep mode.",
             "speakerName": "SYSTEM"
           },
           {
-            "id": "ln_02k",
+            "id": "ln_02a",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_sad",
             "text": "Goodnight, Seven. We’ll try again."
@@ -1251,7 +1168,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_02p",
+            "id": "lyr_02f",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -1273,7 +1190,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02l",
+            "id": "lyr_02b",
             "type": "core.particles",
             "name": "Rain",
             "parentId": null,
@@ -1300,7 +1217,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02m",
+            "id": "lyr_02c",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -1324,7 +1241,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02n",
+            "id": "lyr_02d",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -1349,7 +1266,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02o",
+            "id": "lyr_02e",
             "type": "core.composition",
             "name": "Title card",
             "parentId": null,
@@ -1369,7 +1286,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02q",
+            "id": "lyr_02g",
             "type": "core.audio",
             "name": "Rain",
             "parentId": null,
@@ -1386,7 +1303,7 @@
             "effect": null
           },
           {
-            "id": "lyr_02r",
+            "id": "lyr_02h",
             "type": "core.audio",
             "name": "City music",
             "parentId": null,
@@ -1405,7 +1322,7 @@
         ],
         "animations": [
           {
-            "id": "anm_02s",
+            "id": "anm_02i",
             "name": "Title card",
             "duration": 4.5,
             "loop": false,
@@ -1413,30 +1330,30 @@
             "media": [],
             "tracks": [
               {
-                "id": "trk_02t",
-                "layerId": "lyr_02o",
+                "id": "trk_02j",
+                "layerId": "lyr_02e",
                 "prop": "opacity",
                 "keyframes": [
                   {
-                    "id": "key_02u",
+                    "id": "key_02k",
                     "t": 0.3,
                     "v": 0,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_02v",
+                    "id": "key_02l",
                     "t": 1.2,
                     "v": 1,
                     "ease": "linear"
                   },
                   {
-                    "id": "key_02w",
+                    "id": "key_02m",
                     "t": 3.4,
                     "v": 1,
                     "ease": "easeIn"
                   },
                   {
-                    "id": "key_02x",
+                    "id": "key_02n",
                     "t": 4.4,
                     "v": 0,
                     "ease": "easeInOut"
@@ -1444,18 +1361,18 @@
                 ]
               },
               {
-                "id": "trk_02y",
-                "layerId": "lyr_02o",
+                "id": "trk_02o",
+                "layerId": "lyr_02e",
                 "prop": "x",
                 "keyframes": [
                   {
-                    "id": "key_02z",
+                    "id": "key_02p",
                     "t": 0.3,
                     "v": 40,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_030",
+                    "id": "key_02q",
                     "t": 1.4,
                     "v": 80,
                     "ease": "easeInOut"
@@ -1467,19 +1384,19 @@
         ],
         "dialogue": [
           {
-            "id": "ln_031",
+            "id": "ln_02r",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "This is the city I grew up in."
           },
           {
-            "id": "ln_032",
+            "id": "ln_02s",
             "speakerId": "chr_seven",
             "portraitId": "por_seven_neutral",
             "text": "It is very loud. And very bright. And wet."
           },
           {
-            "id": "ln_033",
+            "id": "ln_02t",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "Ha! That’s the rain. Do you like it?"
@@ -1537,7 +1454,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_034",
+            "id": "lyr_02u",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -1559,7 +1476,7 @@
             "effect": null
           },
           {
-            "id": "lyr_035",
+            "id": "lyr_02v",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -1583,7 +1500,7 @@
             "effect": null
           },
           {
-            "id": "lyr_036",
+            "id": "lyr_02w",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -1608,7 +1525,7 @@
             "effect": null
           },
           {
-            "id": "lyr_037",
+            "id": "lyr_02x",
             "type": "core.particles",
             "name": "Sparkles",
             "parentId": null,
@@ -1638,13 +1555,13 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_038",
+            "id": "ln_02y",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_surprised",
             "text": "…Oh."
           },
           {
-            "id": "ln_039",
+            "id": "ln_02z",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "Where did you learn to say things like that?"
@@ -1682,7 +1599,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_03a",
+            "id": "lyr_030",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -1704,7 +1621,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03b",
+            "id": "lyr_031",
             "type": "core.particles",
             "name": "Rain",
             "parentId": null,
@@ -1731,7 +1648,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03c",
+            "id": "lyr_032",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -1755,7 +1672,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03d",
+            "id": "lyr_033",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -1783,13 +1700,13 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_03e",
+            "id": "ln_034",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "That’s fine. Nobody really does."
           },
           {
-            "id": "ln_03f",
+            "id": "ln_035",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "You learn it by noticing what you miss when it’s gone."
@@ -1816,7 +1733,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_03g",
+            "id": "lyr_036",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -1842,7 +1759,7 @@
             }
           },
           {
-            "id": "lyr_03h",
+            "id": "lyr_037",
             "type": "core.video",
             "name": "Old TV",
             "parentId": null,
@@ -1868,7 +1785,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03i",
+            "id": "lyr_038",
             "type": "core.shape",
             "name": "TV frame",
             "parentId": null,
@@ -1897,7 +1814,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03j",
+            "id": "lyr_039",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -1921,7 +1838,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03k",
+            "id": "lyr_03a",
             "type": "core.particles",
             "name": "Dust",
             "parentId": null,
@@ -1951,25 +1868,25 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_03l",
+            "id": "ln_03b",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_neutral",
             "text": "When I was little, my father repaired old TVs in this room."
           },
           {
-            "id": "ln_03m",
+            "id": "ln_03c",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "He said every machine has a little bit of its maker inside."
           },
           {
-            "id": "ln_03n",
+            "id": "ln_03d",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_sad",
             "text": "Then he got sick. And the room got very quiet."
           },
           {
-            "id": "ln_03o",
+            "id": "ln_03e",
             "speakerId": null,
             "portraitId": null,
             "text": "She is reaching for your hand.",
@@ -2004,12 +1921,12 @@
         ],
         "scripts": [
           {
-            "id": "stk_03r",
+            "id": "stk_03h",
             "x": 40,
             "y": 40,
             "enabled": true,
             "hat": {
-              "id": "blk_03p",
+              "id": "blk_03f",
               "type": "core.whenChoiceSelected",
               "args": {
                 "choice": "cho_hold"
@@ -2017,7 +1934,7 @@
             },
             "body": [
               {
-                "id": "blk_03q",
+                "id": "blk_03g",
                 "type": "com.example.relationships/change",
                 "args": {
                   "character": "chr_mika",
@@ -2071,7 +1988,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_03v",
+            "id": "lyr_03l",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -2093,7 +2010,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03u",
+            "id": "lyr_03k",
             "type": "core.shape",
             "name": "Sun glow",
             "parentId": null,
@@ -2122,7 +2039,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03w",
+            "id": "lyr_03m",
             "type": "core.particles",
             "name": "Petals",
             "parentId": null,
@@ -2149,7 +2066,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03s",
+            "id": "lyr_03i",
             "type": "core.character",
             "name": "Mika",
             "parentId": null,
@@ -2173,7 +2090,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03t",
+            "id": "lyr_03j",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -2197,7 +2114,7 @@
             "effect": null
           },
           {
-            "id": "lyr_03x",
+            "id": "lyr_03n",
             "type": "core.audio",
             "name": "Ending music",
             "parentId": null,
@@ -2216,7 +2133,7 @@
         ],
         "animations": [
           {
-            "id": "anm_03y",
+            "id": "anm_03o",
             "name": "Sunrise",
             "duration": 6,
             "loop": false,
@@ -2224,18 +2141,18 @@
             "media": [],
             "tracks": [
               {
-                "id": "trk_03z",
-                "layerId": "lyr_03u",
+                "id": "trk_03p",
+                "layerId": "lyr_03k",
                 "prop": "opacity",
                 "keyframes": [
                   {
-                    "id": "key_040",
+                    "id": "key_03q",
                     "t": 0,
                     "v": 0.2,
                     "ease": "easeInOut"
                   },
                   {
-                    "id": "key_041",
+                    "id": "key_03r",
                     "t": 6,
                     "v": 0.6,
                     "ease": "easeInOut"
@@ -2243,18 +2160,18 @@
                 ]
               },
               {
-                "id": "trk_042",
-                "layerId": "lyr_03u",
+                "id": "trk_03s",
+                "layerId": "lyr_03k",
                 "prop": "scaleX",
                 "keyframes": [
                   {
-                    "id": "key_043",
+                    "id": "key_03t",
                     "t": 0,
                     "v": 0.8,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_044",
+                    "id": "key_03u",
                     "t": 6,
                     "v": 1.1,
                     "ease": "easeInOut"
@@ -2262,18 +2179,18 @@
                 ]
               },
               {
-                "id": "trk_045",
-                "layerId": "lyr_03u",
+                "id": "trk_03v",
+                "layerId": "lyr_03k",
                 "prop": "scaleY",
                 "keyframes": [
                   {
-                    "id": "key_046",
+                    "id": "key_03w",
                     "t": 0,
                     "v": 0.8,
                     "ease": "easeOut"
                   },
                   {
-                    "id": "key_047",
+                    "id": "key_03x",
                     "t": 6,
                     "v": 1.1,
                     "ease": "easeInOut"
@@ -2285,20 +2202,20 @@
         ],
         "dialogue": [
           {
-            "id": "ln_048",
+            "id": "ln_03y",
             "speakerId": null,
             "portraitId": null,
             "text": "We stayed until the sun came up.",
             "speakerName": ""
           },
           {
-            "id": "ln_049",
+            "id": "ln_03z",
             "speakerId": "chr_seven",
             "portraitId": "por_seven_smile",
             "text": "Mika. I think this is what you call “happy”."
           },
           {
-            "id": "ln_04a",
+            "id": "ln_040",
             "speakerId": "chr_mika",
             "portraitId": "por_mika_smile",
             "text": "Yeah. I think it is."
@@ -2307,20 +2224,20 @@
         "choices": [],
         "scripts": [
           {
-            "id": "stk_04d",
+            "id": "stk_043",
             "x": 40,
             "y": 40,
             "enabled": true,
             "hat": {
-              "id": "blk_04b",
+              "id": "blk_041",
               "type": "core.whenLineShown",
               "args": {
-                "line": "ln_049"
+                "line": "ln_03z"
               }
             },
             "body": [
               {
-                "id": "blk_04c",
+                "id": "blk_042",
                 "type": "core.playSound",
                 "args": {
                   "asset": "ast_sfx_chime",
@@ -2352,7 +2269,7 @@
         "background": "#1b1d2a",
         "layers": [
           {
-            "id": "lyr_04e",
+            "id": "lyr_044",
             "type": "core.background",
             "name": "Background",
             "parentId": null,
@@ -2374,7 +2291,7 @@
             "effect": null
           },
           {
-            "id": "lyr_04f",
+            "id": "lyr_045",
             "type": "core.particles",
             "name": "Rain",
             "parentId": null,
@@ -2401,7 +2318,7 @@
             "effect": null
           },
           {
-            "id": "lyr_04g",
+            "id": "lyr_046",
             "type": "core.character",
             "name": "Seven",
             "parentId": null,
@@ -2428,14 +2345,14 @@
         "animations": [],
         "dialogue": [
           {
-            "id": "ln_04h",
+            "id": "ln_047",
             "speakerId": null,
             "portraitId": null,
             "text": "Mika went home early.",
             "speakerName": ""
           },
           {
-            "id": "ln_04i",
+            "id": "ln_048",
             "speakerId": "chr_seven",
             "portraitId": "por_seven_neutral",
             "text": "Rain: 100%. Understanding: 12%. Logging for tomorrow."
@@ -3299,14 +3216,14 @@
       "name": "Old film",
       "nodes": [
         {
-          "id": "fxn_aiywo8n2qsxm",
+          "id": "fxn_h210ztfixt1b",
           "type": "fx.input",
           "x": 40,
           "y": 80,
           "values": {}
         },
         {
-          "id": "fxn_bik0582pmhb0",
+          "id": "fxn_rwbs6xdwvfst",
           "type": "fx.sepia",
           "x": 260,
           "y": 80,
@@ -3315,7 +3232,7 @@
           }
         },
         {
-          "id": "fxn_7exjig118mzd",
+          "id": "fxn_tfi683btx3ts",
           "type": "fx.noise",
           "x": 260,
           "y": 260,
@@ -3327,7 +3244,7 @@
           }
         },
         {
-          "id": "fxn_fz9ojaehs9xb",
+          "id": "fxn_58vx81a983qt",
           "type": "fx.blend",
           "x": 500,
           "y": 80,
@@ -3337,7 +3254,7 @@
           }
         },
         {
-          "id": "fxn_tbxf649564ii",
+          "id": "fxn_hnju4hcwl0r0",
           "type": "fx.vignette",
           "x": 740,
           "y": 80,
@@ -3347,7 +3264,7 @@
           }
         },
         {
-          "id": "fxn_bd8leso4tdv8",
+          "id": "fxn_q0uey0o92n36",
           "type": "fx.output",
           "x": 980,
           "y": 80,
@@ -3356,57 +3273,57 @@
       ],
       "edges": [
         {
-          "id": "fxe_7a5k3y2bt4ka",
+          "id": "fxe_4gox04hazlyd",
           "from": {
-            "node": "fxn_aiywo8n2qsxm",
+            "node": "fxn_h210ztfixt1b",
             "port": "image"
           },
           "to": {
-            "node": "fxn_bik0582pmhb0",
+            "node": "fxn_rwbs6xdwvfst",
             "port": "image"
           }
         },
         {
-          "id": "fxe_s24z8l0sdr3n",
+          "id": "fxe_tu502xx2s7nk",
           "from": {
-            "node": "fxn_bik0582pmhb0",
+            "node": "fxn_rwbs6xdwvfst",
             "port": "image"
           },
           "to": {
-            "node": "fxn_fz9ojaehs9xb",
+            "node": "fxn_58vx81a983qt",
             "port": "a"
           }
         },
         {
-          "id": "fxe_61w5ugsa5xlz",
+          "id": "fxe_t1047a98x0hb",
           "from": {
-            "node": "fxn_7exjig118mzd",
+            "node": "fxn_tfi683btx3ts",
             "port": "image"
           },
           "to": {
-            "node": "fxn_fz9ojaehs9xb",
+            "node": "fxn_58vx81a983qt",
             "port": "b"
           }
         },
         {
-          "id": "fxe_271du6z34gqb",
+          "id": "fxe_69n44iyqo6hb",
           "from": {
-            "node": "fxn_fz9ojaehs9xb",
+            "node": "fxn_58vx81a983qt",
             "port": "image"
           },
           "to": {
-            "node": "fxn_tbxf649564ii",
+            "node": "fxn_hnju4hcwl0r0",
             "port": "image"
           }
         },
         {
-          "id": "fxe_5abl6y5z4lw0",
+          "id": "fxe_qubgiqvbk96x",
           "from": {
-            "node": "fxn_tbxf649564ii",
+            "node": "fxn_hnju4hcwl0r0",
             "port": "image"
           },
           "to": {
-            "node": "fxn_bd8leso4tdv8",
+            "node": "fxn_q0uey0o92n36",
             "port": "image"
           }
         }

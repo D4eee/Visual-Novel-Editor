@@ -284,8 +284,8 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
           {QUICK.filter((q) => engine.nodeTypes.has(q)).map((q) => {
             const def = engine.nodeTypes.get(q)!;
             return (
-              <button key={q} type="button" className="quick-node" style={{ ['--node-color' as any]: def.color }} onClick={() => addNode(q, center())} title={def.description ? t(def.description) : t(def.label)} draggable={false}>
-                <Icon name={def.icon || 'module'} size={14} /><span>{t(def.label)}</span>
+              <button key={q} type="button" className="quick-node" aria-label={t(def.label)} style={{ ['--node-color' as any]: def.color }} onClick={() => addNode(q, center())} title={def.description ? t(def.description) : t(def.label)} draggable={false}>
+                <Icon name={def.icon || 'module'} size={14} /><span className="quick-label">{t(def.label)}</span>
               </button>
             );
           })}

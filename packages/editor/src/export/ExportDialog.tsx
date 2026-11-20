@@ -121,8 +121,10 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
             <div className="field-pair">
               <Field label={t('export.windowSize')}><div className="row-inline"><NumberInput value={s.window.width} min={320} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.width = Math.round(v); })} /><NumberInput value={s.window.height} min={240} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.height = Math.round(v); })} /></div></Field>
             </div>
-            <Toggle value={s.window.resizable} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.resizable = v; })} label={t('export.resizable')} />
-            <Toggle value={s.window.allowFullscreenToggle} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.allowFullscreenToggle = v; })} label={t('export.allowFullscreen')} />
+            <div className="toggle-stack">
+              <Toggle value={s.window.resizable} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.resizable = v; })} label={t('export.resizable')} />
+              <Toggle value={s.window.allowFullscreenToggle} onChange={(v) => upd(t('settings.edit'), (x) => { x.window.allowFullscreenToggle = v; })} label={t('export.allowFullscreen')} />
+            </div>
           </Section>
         </div>
         <div>

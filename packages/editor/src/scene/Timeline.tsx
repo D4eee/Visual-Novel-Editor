@@ -371,7 +371,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
                           return (
                             <span key={k.id}>
                               {next && <span className={cx('key-span', k.ease === 'step' && 'step')} style={{ left: k.t * pps, width: (next.t - k.t) * pps }} />}
-                              <span className={cx('key', `ease-${k.ease}`, selectedKeys.has(`${tr.id}:${k.id}`) && 'selected')} style={{ left: k.t * pps }}
+                              <span className={cx('tl-key', `ease-${k.ease}`, selectedKeys.has(`${tr.id}:${k.id}`) && 'selected')} style={{ left: k.t * pps }}
                                 onPointerDown={(e) => dragKeys(e, tr, k)} onContextMenu={(e) => keyMenu(e, tr, k)} onDoubleClick={(e) => { e.stopPropagation(); setCurve({ track: tr.id, key: k.id }); }}
                                 title={`${k.t.toFixed(2)}s · ${typeof k.v === 'number' ? Math.round(k.v * 100) / 100 : k.v} · ${t(session.engine.interpolators.get(k.ease)?.label || k.ease)}`} />
                             </span>

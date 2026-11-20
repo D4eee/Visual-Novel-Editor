@@ -22,7 +22,7 @@ export const en: Record<string, string> = {
   'project.openFailed': 'Could not open the project: {error}', 'project.createFailed': 'Could not create the project: {error}',
   'project.invalidJson': 'The project file is not valid JSON.', 'project.notProject': 'This is not a visual novel project.', 'project.tooNew': 'This project was saved by a newer version of the editor.',
   'defaults.firstScene': 'Opening',
-  'recover.title': 'Recover unsaved work?', 'recover.message': 'An autosave from {time} is newer than the saved project. Do you want to restore it?', 'recover.use': 'Restore autosave', 'recover.done': 'Recovered the autosave. Save to keep it.',
+  'recover.title': 'Recover unsaved work?', 'recover.message': 'An autosave from {time} is newer than the saved project. Restore it, or open the last saved version (the autosave is kept until you save).', 'recover.use': 'Restore autosave', 'recover.done': 'Recovered the autosave. Save to keep it.',
   'close.unsavedTitle': 'Close without saving?', 'close.unsavedMessage': '“{name}” has unsaved changes. They will be lost (the latest autosave is deleted too).', 'close.discard': 'Close without saving',
   'save.saved': 'Saved', 'save.unsaved': 'Unsaved changes', 'save.saving': 'Saving…', 'save.failed': 'Save failed: {error}', 'save.saveNow': 'Save now', 'save.autosaved': 'autosaved {time}',
   'history.undo': 'Undo', 'history.redo': 'Redo', 'history.undid': 'Undid: {label}', 'history.redid': 'Redid: {label}', 'history.nothingUndo': 'Nothing to undo', 'history.nothingRedo': 'Nothing to redo',
@@ -310,4 +310,7 @@ export const en: Record<string, string> = {
   'provides.inspectors': "Inspectors",
   'provides.nodeWorkspaces': "Node interfaces",
   'provides.toolbar': "Toolbar buttons",
+  'recover.keepSaved': "Open saved version",
+  'dialogue.speakerName': "Name shown",
+  'modules.noneAvailable': "Every installed module is already used by this project.",
 };

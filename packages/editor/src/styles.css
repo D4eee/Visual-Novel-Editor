@@ -586,7 +586,7 @@ body.dragging-block .blk-gap { height: 12px; }
 .timeline { display: flex; flex-direction: column; height: 100%; min-height: 0; outline: none; }
 .empty-tl { align-items: center; justify-content: center; }
 .tl-head { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-bottom: 1px solid var(--line); flex: none; flex-wrap: wrap; }
-.tl-head > .select { max-width: 190px; }
+.tl-head > .select { max-width: 190px; min-width: 120px; flex: none; }
 .tl-head .num-input { max-width: 150px; flex: none; }
 .tl-time { font: 600 12px var(--mono); color: var(--text); min-width: 64px; }
 .tl-zoom { width: 110px; accent-color: var(--accent); }
@@ -610,11 +610,12 @@ body.dragging-block .blk-gap { height: 12px; }
 .tl-left .icon-btn { width: 20px; height: 20px; }
 .tl-lane { position: relative; height: 100%; }
 .tl-lane.summary .sum-key { position: absolute; top: 9px; width: 7px; height: 7px; margin-left: -3.5px; transform: rotate(45deg); background: rgba(125,139,255,.5); }
-.key { position: absolute; top: 6px; width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg); background: #c9cdf9; border: 1px solid #5b64c9; cursor: grab; z-index: 2; }
-.key:hover { background: #fff; }
-.key.selected { background: #ffd38a; border-color: #b07d2c; }
-.key.ease-step { border-radius: 0; background: #9aa0b4; }
-.key.ease-linear { background: #a8d6ff; }
+.tl-key { position: absolute; top: 6px; width: 12px; height: 12px; margin-left: -6px; transform: rotate(45deg); background: #c9cdf9; border: 1px solid #5b64c9; cursor: grab; z-index: 2; }
+/* keyframes on a lane */
+.tl-key:hover { background: #fff; }
+.tl-key.selected { background: #ffd38a; border-color: #b07d2c; }
+.tl-key.ease-step { border-radius: 0; background: #9aa0b4; }
+.tl-key.ease-linear { background: #a8d6ff; }
 .key-span { position: absolute; top: 11px; height: 3px; background: rgba(125,139,255,.35); }
 .key-span.step { background: repeating-linear-gradient(90deg, rgba(154,160,180,.5) 0 4px, transparent 4px 8px); }
 .tl-playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #ff5f6d; z-index: 5; pointer-events: none; }
@@ -779,3 +780,30 @@ body.dragging-block .blk-gap { height: 12px; }
 .shortcut-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
 .shortcut-row { display: flex; align-items: center; gap: 10px; }
 .shortcut-row .kbd { min-width: 98px; text-align: center; }
+
+/* Dialogue lines adapt to narrow docks: speaker above the text. */
+.dialogue-lines { container-type: inline-size; }
+@container (max-width: 560px) {
+  .line-row { grid-template-columns: 16px 22px 1fr 28px; }
+  .line-row > .line-speaker { grid-column: 3; grid-row: 1; }
+  .line-row > .icon-btn { grid-column: 4; grid-row: 1; }
+  .line-row > .line-text { grid-column: 3 / 5; grid-row: 2; }
+  .line-row > .line-extra { grid-column: 3 / -1; }
+  .add-line, .markup-help { margin-left: 38px; }
+}
+@container (max-width: 520px) { .dialogue-lines .hint-keys { display: none; } }
+.panel-head { min-width: 0; }
+.panel-head .hint-keys { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Choices: let long choice text wrap instead of being cut. */
+.choice-main textarea.input, .choice-main .choice-text { white-space: normal; }
+/* Graph quick-add: never break labels; hide labels when space is short. */
+.quick-node { white-space: nowrap; }
+.graph-toolbar { container-type: inline-size; }
+@container (max-width: 720px) { .quick-node .quick-label { display: none; } .quick-node { padding: 0 7px; } }
+/* Timeline toolbar: keep the key hint from wrapping onto its own line. */
+.tl-head .hint-keys { white-space: nowrap; }
+.timeline { container-type: inline-size; }
+@container (max-width: 760px) { .tl-head .hint-keys { display: none; } }
+.toggle-stack { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.line-extra { flex-wrap: wrap; }
+.line-extra .speaker-name { max-width: 140px; height: 28px; }

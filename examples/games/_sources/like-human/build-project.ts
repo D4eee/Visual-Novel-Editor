@@ -179,17 +179,15 @@ const S1 = scene(ch1.id, 'scn_boot', 'Boot sequence', '1', 300, 200, (d) => {
   const dust = layer('core.particles', 'Dust', { kind: 'dust', count: 60, speed: 0.4, color: '#bff8ff' });
   const mika = charLayer(MIKA, 'por_mika_surprised', 900, 'Mika', { wobble: 0, float: 0 });
   const hud = layer('core.text', 'Boot text', { x: 40, y: 36, anchorX: 0, anchorY: 0, text: 'UNIT 7 // VISUAL INPUT ONLINE', fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 22, color: '#7ff3ff', width: 700, reveal: 0 });
-  const lids = layer('core.shape', 'Eyelids', { x: W / 2, y: H / 2, width: W, height: H, fill: '#000000' });
   const bubble = modLayer('com.example.speech-bubble/bubble', 'Hint bubble', { x: 1010, y: 150, anchorX: 0.2, anchorY: 1, text: 'Psst… click me!', width: 240, fontSize: 24, tail: 'bottomLeft', style: 'speech', pop: 0, fill: '#ffffff', textColor: '#1d1d27' });
   const music = layer('core.audio', 'Lab music', { assetId: A.bgm_lab, category: 'bgm', autoplay: true, loop: true, volume: 0.6, persist: true });
-  d.layers.push(back, dust, mika, bubble, hud, lids, music);
+  d.layers.push(back, dust, mika, bubble, hud, music);
+  // "Opening the eyes": a slow fade in from black.
+  d.transition = { type: 'fade', duration: 2.2 };
   bubble.visible = false;
-  const open = clip('Open eyes', 3, [
-    [lids.id, 'opacity', [[0, 1, 'easeOut'], [2.2, 0]]],
-    [lids.id, 'scaleY', [[0, 1, 'easeIn'], [2.2, 0.15]]],
+  const open = clip('Boot', 3, [
     [hud.id, 'reveal', [[0.8, 0, 'linear'], [2.4, 1]]],
-    [mika.id, 'x', [[1, 1040, 'easeOut'], [2.6, 900]]],
-    [mika.id, 'opacity', [[1, 0, 'easeOut'], [2.2, 1]]],
+    [mika.id, 'x', [[0.6, 1040, 'easeOut'], [2.6, 900]]],
   ], { autoplay: true });
   const wave = clip('Mika waves', 1.2, [
     [mika.id, 'wobble', [[0, 0, 'com.example.wobble/smoothstep'], [0.3, 1, 'com.example.wobble/smoothstep'], [1.2, 0]]],

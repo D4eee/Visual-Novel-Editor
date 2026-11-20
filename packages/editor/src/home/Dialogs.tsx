@@ -23,10 +23,10 @@ export function DialogHost() {
   }
 }
 
-function ConfirmDialog({ title, message, confirm, danger, resolve }: { title: string; message: string; confirm: string; danger?: boolean; resolve: (ok: boolean) => void }) {
+function ConfirmDialog({ title, message, confirm, cancel, danger, resolve }: { title: string; message: string; confirm: string; cancel?: string; danger?: boolean; resolve: (ok: boolean) => void }) {
   const t = useT();
   return (
-    <Modal title={title} onClose={() => resolve(false)} width={440} footer={<><div className="grow" /><Button onClick={() => resolve(false)}>{t('common.cancel')}</Button><Button kind={danger ? 'danger' : 'primary'} onClick={() => resolve(true)} autoFocus>{confirm}</Button></>}>
+    <Modal title={title} onClose={() => resolve(false)} width={440} footer={<><div className="grow" /><Button onClick={() => resolve(false)}>{cancel || t('common.cancel')}</Button><Button kind={danger ? 'danger' : 'primary'} onClick={() => resolve(true)} autoFocus>{confirm}</Button></>}>
       <p className="pre-line">{message}</p>
     </Modal>
   );

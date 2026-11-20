@@ -58,7 +58,7 @@ export function DialoguePanel({ session, nodeId }: { session: ProjectSession; no
                 <span className="line-num">{i + 1}</span>
                 <div className="line-speaker">
                   <span className="char-dot" style={{ background: ch?.color || 'var(--muted)' }} />
-                  <Select value={l.speakerId || ''} options={speakers} onChange={(v) => upd(t('dialogue.speaker'), (s) => { const x = s.dialogue.find((y) => y.id === l.id)!; x.speakerId = v || null; x.portraitId = null; })} title={t('dialogue.speaker')} />
+                  <Select value={l.speakerId || ''} options={l.speakerId || !l.speakerName ? speakers : [{ value: '', label: l.speakerName }, ...speakers.slice(1)]} onChange={(v) => upd(t('dialogue.speaker'), (s) => { const x = s.dialogue.find((y) => y.id === l.id)!; x.speakerId = v || null; x.portraitId = null; })} title={t('dialogue.speaker')} />
                   {ch && ch.portraits.length > 1 && <Select value={l.portraitId || ''} options={[{ value: '', label: t('prop.portrait.default') }, ...ch.portraits.map((p) => ({ value: p.id, label: p.name }))]} onChange={(v) => upd(t('dialogue.portrait'), (s) => { s.dialogue.find((y) => y.id === l.id)!.portraitId = v || null; })} title={t('dialogue.portrait')} />}
                 </div>
                 <LineText value={l.text} focus={focusId === l.id} onFocused={() => { setFocusId(null); session.setSceneUI(nodeId, { selectedLine: l.id }); }}
@@ -83,6 +83,11 @@ export function DialoguePanel({ session, nodeId }: { session: ProjectSession; no
                 ])} />
                 {ui.selectedLine === l.id && (
                   <div className="line-extra" onClick={(e) => e.stopPropagation()}>
+                    {!l.speakerId && <>
+                      <span className="muted small">{t('dialogue.speakerName')}</span>
+                      <input className="input speaker-name" value={l.speakerName || ''} placeholder={t('dialogue.narrator')} aria-label={t('dialogue.speakerName')}
+                        onChange={(e) => upd(t('dialogue.edit'), (s) => { s.dialogue.find((y) => y.id === l.id)!.speakerName = e.target.value || undefined; }, `name-${l.id}`)} />
+                    </>}
                     <span className="muted small">{t('dialogue.voice')}</span>
                     <AssetPicker project={project} kind="audio" value={l.voiceAssetId || null} t={t} assetUrl={(id) => { const a = project.assets.find((x) => x.id === id); return a ? session.assetUrl(a) : null; }} onChange={(v) => upd(t('dialogue.voice'), (s) => { s.dialogue.find((y) => y.id === l.id)!.voiceAssetId = v; })} />
                     <span className="muted small">{t('dialogue.auto')}</span>

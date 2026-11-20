@@ -114,6 +114,7 @@ export function ModuleManager({ session, onClose }: { session: ProjectSession; o
           {!deps.length && <div className="muted small pad">{t('modules.noneInProject')}</div>}
           <div className="side-head"><span>{t('modules.available')}</span></div>
           {ids.filter((id) => !deps.some((d) => d.id === id)).map((id) => <ModRow key={id} id={id} session={session} active={selected === id} status={statusOf(id)} onClick={() => setSelected(id)} />)}
+          {!ids.some((id) => !deps.some((d) => d.id === id)) && <div className="muted small pad">{t('modules.noneAvailable')}</div>}
         </div>
         <div className="mm-detail">
           {!selected || !sel ? <Empty icon="module" title={t('modules.selectOne')} /> : (

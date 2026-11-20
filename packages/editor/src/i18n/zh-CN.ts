@@ -20,7 +20,7 @@ export const zhCN: Record<string, string> = {
   'project.openFailed': '无法打开项目：{error}', 'project.createFailed': '无法创建项目：{error}',
   'project.invalidJson': '项目文件不是有效的 JSON。', 'project.notProject': '这不是视觉小说项目。', 'project.tooNew': '这个项目由更新版本的编辑器保存。',
   'defaults.firstScene': '序章',
-  'recover.title': '恢复未保存的内容？', 'recover.message': '发现一份 {time} 的自动保存，比已保存的项目更新。要恢复吗？', 'recover.use': '恢复自动保存', 'recover.done': '已恢复自动保存，记得保存项目。',
+  'recover.title': '恢复未保存的内容？', 'recover.message': '发现一份 {time} 的自动保存，比已保存的项目更新。可以恢复它，或打开上次保存的版本（自动保存会保留到你下次保存）。', 'recover.use': '恢复自动保存', 'recover.done': '已恢复自动保存，记得保存项目。',
   'close.unsavedTitle': '不保存就关闭？', 'close.unsavedMessage': '「{name}」有未保存的修改，关闭后会丢失（自动保存也会删除）。', 'close.discard': '不保存并关闭',
   'save.saved': '已保存', 'save.unsaved': '有未保存的修改', 'save.saving': '正在保存…', 'save.failed': '保存失败：{error}', 'save.saveNow': '立即保存', 'save.autosaved': '{time} 已自动保存',
   'history.undo': '撤销', 'history.redo': '重做', 'history.undid': '已撤销：{label}', 'history.redid': '已重做：{label}', 'history.nothingUndo': '没有可撤销的操作', 'history.nothingRedo': '没有可重做的操作',
@@ -292,4 +292,7 @@ export const zhCN: Record<string, string> = {
   'provides.inspectors': "检查器",
   'provides.nodeWorkspaces': "节点界面",
   'provides.toolbar': "工具栏按钮",
+  'recover.keepSaved': "打开已保存的版本",
+  'dialogue.speakerName': "显示名称",
+  'modules.noneAvailable': "本机已安装的模块都已在此项目中使用。",
 };

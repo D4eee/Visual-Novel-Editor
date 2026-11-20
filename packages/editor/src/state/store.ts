@@ -13,7 +13,7 @@ export type Dialog =
   | { kind: 'modules' }
   | { kind: 'quickOpen' }
   | { kind: 'shortcuts' }
-  | { kind: 'confirm'; title: string; message: string; confirm: string; danger?: boolean; resolve: (ok: boolean) => void }
+  | { kind: 'confirm'; title: string; message: string; confirm: string; cancel?: string; danger?: boolean; resolve: (ok: boolean) => void }
   | { kind: 'prompt'; title: string; label: string; value: string; resolve: (v: string | null) => void }
   | { kind: 'pickPath'; title: string; mode: 'folder' | 'files' | 'project'; start?: string; resolve: (p: string[] | null) => void };
 
@@ -84,8 +84,8 @@ export class EditorStore {
     this.bump();
   }
 
-  confirm(title: string, message: string, confirm: string, danger = false): Promise<boolean> {
-    return new Promise((resolve) => this.open({ kind: 'confirm', title, message, confirm, danger, resolve: (ok) => { this.open(null); resolve(ok); } }));
+  confirm(title: string, message: string, confirm: string, danger = false, cancel?: string): Promise<boolean> {
+    return new Promise((resolve) => this.open({ kind: 'confirm', title, message, confirm, cancel, danger, resolve: (ok) => { this.open(null); resolve(ok); } }));
   }
 
   prompt(title: string, label: string, value = ''): Promise<string | null> {
@@ -126,7 +126,7 @@ export class EditorStore {
     if (existing >= 0) { this.active = existing; this.bump(); return this.sessions[existing]; }
     try {
       const { session, migrated, recovered } = await ProjectSession.open(path, this.i18n, (time) =>
-        this.confirm(this.t('recover.title'), this.t('recover.message', { time: new Date(time).toLocaleString() }), this.t('recover.use')));
+        this.confirm(this.t('recover.title'), this.t('recover.message', { time: new Date(time).toLocaleString() }), this.t('recover.use'), false, this.t('recover.keepSaved')));
       session.subscribe(() => this.bump());
       this.sessions = [...this.sessions, session];
       this.active = this.sessions.length - 1;
