@@ -1,0 +1,1 @@
+{ "wobble.prop": "摇晃", "wobble.prop.desc": "果冻般的挤压拉伸，0 为关闭。", "float.prop": "漂浮", "float.prop.desc": "轻轻上下浮动，单位为像素。", "wobble.ease": "更平滑", "group.wobble": "附加动态" }

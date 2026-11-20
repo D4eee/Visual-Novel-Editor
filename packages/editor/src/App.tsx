@@ -1,0 +1,253 @@
+import { useEffect } from 'react';
+import { useStore, useSession, useT, store } from './state/store';
+import type { ProjectSession } from './state/session';
+import { Home } from './home/Home';
+import { DialogHost } from './home/Dialogs';
+import { StoryGraph } from './story/StoryGraph';
+import { StoryInspector } from './story/StoryInspector';
+import { SceneEditor, ModulePanelHost } from './scene/SceneEditor';
+import { SceneInspector } from './scene/SceneInspector';
+import { LogicWorkspace, BehaviorWorkspace } from './logic/LogicWorkspace';
+import { StoryOutline } from './sidebar/StoryOutline';
+import { AssetLibrary } from './sidebar/AssetLibrary';
+import { DataPanel } from './sidebar/DataPanel';
+import { PreviewPanel } from './preview/PreviewPanel';
+import { ExportDialog } from './export/ExportDialog';
+import { ProjectSettingsDialog } from './settings/ProjectSettings';
+import { ModuleManager } from './modules/ModuleManager';
+import { ProblemsPanel } from './problems/Problems';
+import { MenuHost, openMenu, openMenuBelow } from './ui/Menu';
+import { IconButton, Button, cx, shortcut, useResizable } from './ui/controls';
+import { Icon } from './ui/Icon';
+import { makeMountContext } from './modules/editorApi';
+import { call } from './host';
+
+export function App() {
+  const st = useStore();
+  const t = useT();
+  const s = st.session;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      const inText = !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable="true"]');
+      const k = e.key.toLowerCase();
+      if (mod && k === 's') { e.preventDefault(); store.session?.save().then((ok) => ok && store.toast(t('save.saved'), 'success')); return; }
+      if (mod && k === 'k') { e.preventDefault(); if (store.session) store.open({ kind: 'quickOpen' }); return; }
+      if (mod && k === 'p') { e.preventDefault(); const ss = store.session; if (ss) ss.setUI({ preview: ss.ui.preview ? null : { scope: 'scene', nodeId: ss.currentNodeId, key: Date.now() } }); return; }
+      if (mod && k === 'e') { e.preventDefault(); if (store.session) store.open({ kind: 'export' }); return; }
+      if (mod && k === 'n' && !e.shiftKey) { e.preventDefault(); store.open({ kind: 'newProject' }); return; }
+      if (mod && k === 'o') { e.preventDefault(); store.pickProject(t('home.openTitle')).then((p) => { if (p) store.openProject(p); }); return; }
+      if (inText || store.dialog) return;
+      if (mod && k === 'z' && !e.shiftKey) { e.preventDefault(); const l = store.session?.history.undo(); if (l) store.toast(t('history.undid', { label: l })); return; }
+      if ((mod && k === 'z' && e.shiftKey) || (mod && k === 'y')) { e.preventDefault(); const l = store.session?.history.redo(); if (l) store.toast(t('history.redid', { label: l })); return; }
+      if (e.key === 'F1' || (e.key === '?' && e.shiftKey)) { e.preventDefault(); store.open({ kind: 'shortcuts' }); }
+    };
+    window.addEventListener('keydown', onKey);
+    const off = window.vneHost?.onCommand((cmd) => {
+      if (cmd === 'project.save') store.session?.save();
+      if (cmd === 'project.new') store.open({ kind: 'newProject' });
+      if (cmd === 'project.open') store.pickProject(t('home.openTitle')).then((p) => { if (p) store.openProject(p); });
+      if (cmd === 'export.open' && store.session) store.open({ kind: 'export' });
+    });
+    const beforeUnload = (e: BeforeUnloadEvent) => { if (!window.vneHost && store.sessions.some((x) => x.dirty)) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => { window.removeEventListener('keydown', onKey); off?.(); window.removeEventListener('beforeunload', beforeUnload); };
+  }, []);
+
+  return (
+    <div className="app">
+      <TopBar />
+      {s ? <SessionView key={s.id} session={s} /> : <Home />}
+      <DialogHost />
+      {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'settings' && s && <ProjectSettingsDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'modules' && s && <ModuleManager session={s} onClose={() => st.open(null)} />}
+      <MenuHost />
+      <div className="toasts" aria-live="polite">
+        {st.toasts.map((x) => (
+          <div key={x.id} className={cx('toast', x.kind)}>
+            <Icon name={x.kind === 'error' ? 'error' : x.kind === 'success' ? 'check' : 'info'} size={15} />
+            <span className="pre-line">{x.text}</span>
+            {x.action && <button type="button" className="link" onClick={x.action.run}>{x.action.label}</button>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopBar() {
+  const st = useStore();
+  const t = useT();
+  const s = st.session;
+  return (
+    <header className="topbar">
+      <button type="button" className={cx('brand', !s && 'active')} onClick={() => st.activate(-1)} title={t('home.title')}><Icon name="logo" size={18} /></button>
+      <div className="project-tabs" role="tablist">
+        {st.sessions.map((x, i) => (
+          <div key={x.id} className={cx('ptab', i === st.active && 'active')} role="tab" aria-selected={i === st.active} onClick={() => st.activate(i)} title={x.path}>
+            <span className="ptab-name">{x.project.name}</span>
+            {x.dirty && <span className="dirty-dot" title={t('save.unsaved')} />}
+            <button type="button" className="ptab-close" onClick={(e) => { e.stopPropagation(); st.closeSession(i); }} aria-label={t('common.close')}><Icon name="close" size={12} /></button>
+          </div>
+        ))}
+        <IconButton icon="plus" size={14} title={t('home.newOrOpen')} onClick={(e) => openMenu(e, [
+          { label: t('home.new'), icon: 'plus', shortcut: shortcut('Mod+N'), onClick: () => st.open({ kind: 'newProject' }) },
+          { label: t('home.open'), icon: 'folderOpen', shortcut: shortcut('Mod+O'), onClick: async () => { const p = await st.pickProject(t('home.openTitle')); if (p) await st.openProject(p); } },
+          ...(window.vneHost ? [{ label: t('home.newWindow'), icon: 'external', onClick: () => window.vneHost!.newWindow() }] : []),
+          { label: t('home.title'), icon: 'home', onClick: () => st.activate(-1) },
+        ])} />
+      </div>
+      <div className="grow" />
+      {s && <SessionActions session={s} />}
+      <IconButton icon="keyboard" title={`${t('shortcuts.title')} (F1)`} onClick={() => st.open({ kind: 'shortcuts' })} />
+      <button type="button" className="lang" onClick={() => st.setLocale(st.i18n.locale === 'zh-CN' ? 'en' : 'zh-CN')} title={t('app.language')}>
+        <Icon name="globe" size={14} />{st.i18n.locale === 'zh-CN' ? '中' : 'EN'}
+      </button>
+    </header>
+  );
+}
+
+function SessionActions({ session }: { session: ProjectSession }) {
+  useSession(session);
+  const t = useT();
+  const h = session.history;
+  const previewMenu = (e: React.MouseEvent) => openMenuBelow(e.currentTarget as HTMLElement, [
+    { label: t('preview.scope.scene'), icon: 'scene', hint: t('preview.scope.sceneHint'), onClick: () => session.setUI({ preview: { scope: 'scene', nodeId: session.currentNodeId, key: Date.now() } }) },
+    { label: t('preview.scope.chapter'), icon: 'book', onClick: () => session.setUI({ preview: { scope: 'chapter', nodeId: session.currentNodeId, key: Date.now() } }) },
+    { label: t('preview.scope.game'), icon: 'flag', onClick: () => session.setUI({ preview: { scope: 'game', nodeId: null, key: Date.now() } }) },
+  ]);
+  return (
+    <div className="session-actions">
+      <IconButton icon="undo" title={h.undoLabel ? `${t('history.undo')}: ${h.undoLabel} (${shortcut('Mod+Z')})` : t('history.nothingUndo')} disabled={!h.canUndo} onClick={() => h.undo()} />
+      <IconButton icon="redo" title={h.redoLabel ? `${t('history.redo')}: ${h.redoLabel} (${shortcut('Mod+Shift+Z')})` : t('history.nothingRedo')} disabled={!h.canRedo} onClick={() => h.redo()} />
+      <span className="sep" />
+      {session.ext.toolbar.map((tb) => <Button key={tb.id} small kind="ghost" icon={tb.icon || 'module'} onClick={() => { try { tb.run(makeMountContext(session, tb.moduleId)); } catch (err) { session.moduleError(tb.moduleId, err, 'toolbar'); } }}>{t(tb.label)}</Button>)}
+      <div className="split-btn">
+        <Button kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId: session.currentNodeId, key: Date.now() } })} title={`${t('preview.title')} (${shortcut('Mod+P')})`}>{t('preview.button')}</Button>
+        <button type="button" className="btn btn-primary split-caret" onClick={previewMenu} aria-label={t('preview.scope')}><Icon name="chevronDown" size={14} /></button>
+      </div>
+      <Button icon="export" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
+      <IconButton icon="module" title={t('modules.manage')} onClick={() => store.open({ kind: 'modules' })} />
+      <IconButton icon="settings" title={t('settings.title')} onClick={() => store.open({ kind: 'settings' })} />
+    </div>
+  );
+}
+
+function SessionView({ session }: { session: ProjectSession }) {
+  useSession(session);
+  const t = useT();
+  const ui = session.ui;
+  const [sideW, startSide] = useResizable('sidebar', 268, 200, 460);
+  const [inspW, startInsp] = useResizable('inspector', 312, 240, 520);
+  const tab = session.activeTab;
+  const sidePanels = session.ext.panels.filter((p) => p.location === 'sidebar');
+  const activities: { id: string; icon: string; label: string; badge?: number | null }[] = [
+    { id: 'story', icon: 'book', label: t('side.story') },
+    { id: 'assets', icon: 'image', label: t('side.assets'), badge: session.project.assets.filter((a) => session.missingAssets.has(a.id)).length || null },
+    { id: 'data', icon: 'database', label: t('side.data') },
+    ...sidePanels.map((p) => ({ id: p.id, icon: p.icon || 'module', label: t(p.title) })),
+  ];
+  const node = tab.kind === 'node' ? session.project.nodes[tab.nodeId] : null;
+  const custom = tab.kind === 'custom' ? tab.id : null;
+
+  return (
+    <div className="session">
+      <nav className="activity" aria-label={t('side.aria')}>
+        {activities.map((a) => (
+          <button key={a.id} type="button" className={cx('act', ui.sidebar === a.id && 'active')} onClick={() => session.setUI({ sidebar: ui.sidebar === a.id ? '' : a.id })} title={a.label} aria-label={a.label}>
+            <Icon name={a.icon} size={19} />
+            {a.badge ? <span className="act-badge">{a.badge}</span> : null}
+          </button>
+        ))}
+        <div className="grow" />
+        <button type="button" className={cx('act', ui.problemsOpen && 'active')} onClick={() => session.setUI({ problemsOpen: !ui.problemsOpen })} title={t('problems.title')}>
+          <Icon name="warning" size={19} />
+          {session.issues.filter((i) => i.severity === 'error').length > 0 && <span className="act-badge err">{session.issues.filter((i) => i.severity === 'error').length}</span>}
+        </button>
+      </nav>
+      {ui.sidebar && (
+        <>
+          <aside className="sidebar" style={{ width: sideW }}>
+            <div className="sidebar-title">{activities.find((a) => a.id === ui.sidebar)?.label}</div>
+            <div className="sidebar-body">
+              {ui.sidebar === 'story' && <StoryOutline session={session} />}
+              {ui.sidebar === 'assets' && <AssetLibrary session={session} />}
+              {ui.sidebar === 'data' && <DataPanel session={session} />}
+              {sidePanels.filter((p) => p.id === ui.sidebar).map((p) => <ModulePanelHost key={p.id} session={session} panel={p} />)}
+            </div>
+          </aside>
+          <div className="resizer-x" onPointerDown={(e) => startSide(e, 1)} role="separator" aria-orientation="vertical" />
+        </>
+      )}
+      <main className="center">
+        <div className="ws-tabs" role="tablist">
+          {ui.tabs.map((tb, i) => {
+            const n = tb.kind === 'node' ? session.project.nodes[tb.nodeId] : null;
+            const def = n ? session.engine.nodeTypes.get(n.type) : null;
+            const beh = tb.kind === 'custom' && tb.id.startsWith('behavior:') ? session.project.behaviors.find((b) => `behavior:${b.id}` === tb.id) : null;
+            const ws = tb.kind === 'custom' ? session.ext.workspaces.find((w) => w.id === tb.id) : null;
+            const label = tb.kind === 'graph' ? (ui.overview ? t('graph.overview') : session.project.chapters.find((c) => c.id === ui.chapterId)?.name || t('side.story')) : n ? n.name : beh ? beh.name : ws ? t(ws.title) : '?';
+            const icon = tb.kind === 'graph' ? 'workflow' : def?.icon || (beh ? 'script' : ws?.icon || 'module');
+            return (
+              <div key={i} role="tab" aria-selected={ui.active === i} className={cx('ws-tab', ui.active === i && 'active', tb.kind === 'graph' && 'pinned')} onClick={() => session.setUI({ active: i })}
+                onAuxClick={(e) => { if (e.button === 1) session.closeTab(i); }} style={{ ['--node-color' as any]: def?.color }}>
+                <Icon name={icon} size={14} />
+                <span>{label}</span>
+                {tb.kind !== 'graph' && <button type="button" className="ws-close" onClick={(e) => { e.stopPropagation(); session.closeTab(i); }} aria-label={t('common.close')}><Icon name="close" size={12} /></button>}
+              </div>
+            );
+          })}
+          <div className="grow" />
+          {session.ext.workspaces.length > 0 && <IconButton icon="module" size={14} title={t('modules.workspaces')} onClick={(e) => openMenu(e, session.ext.workspaces.map((w) => ({ label: t(w.title), icon: w.icon || 'module', onClick: () => session.openCustom(w.id) })))} />}
+          <IconButton icon={ui.inspectorOpen ? 'panel' : 'panelLeft'} size={15} title={t('inspector.toggle')} onClick={() => session.setUI({ inspectorOpen: !ui.inspectorOpen })} />
+        </div>
+        <div className="ws-body">
+          {tab.kind === 'graph' && <StoryGraph session={session} />}
+          {node?.type === 'core.scene' && <SceneEditor key={node.id} session={session} nodeId={node.id} />}
+          {node && node.type !== 'core.scene' && <LogicWorkspace key={node.id} session={session} nodeId={node.id} />}
+          {tab.kind === 'node' && !node && <div className="pad muted">{t('workspace.nodeGone')}</div>}
+          {custom?.startsWith('behavior:') && <BehaviorWorkspace session={session} behaviorId={custom.slice(9)} />}
+          {custom && !custom.startsWith('behavior:') && session.ext.workspaces.filter((w) => w.id === custom).map((w) => <ModulePanelHost key={w.id} session={session} panel={{ ...w, location: 'bottom' } as any} />)}
+          {ui.preview && <PreviewPanel key={ui.preview.key} session={session} />}
+        </div>
+      </main>
+      {ui.inspectorOpen && (
+        <>
+          <div className="resizer-x" onPointerDown={(e) => startInsp(e, -1)} role="separator" aria-orientation="vertical" />
+          <aside className="inspector" style={{ width: inspW }} aria-label={t('inspector.title')}>
+            {node?.type === 'core.scene' ? <SceneInspector session={session} nodeId={node.id} /> : <StoryInspector session={session} />}
+          </aside>
+        </>
+      )}
+      {ui.problemsOpen && <ProblemsPanel session={session} />}
+      <StatusBar session={session} />
+    </div>
+  );
+}
+
+function StatusBar({ session }: { session: ProjectSession }) {
+  useSession(session);
+  const t = useT();
+  const errors = session.issues.filter((i) => i.severity === 'error').length;
+  const warnings = session.issues.filter((i) => i.severity === 'warning').length;
+  const modErr = session.moduleRecords.filter((r) => r.status !== 'active' && r.status !== 'disabled').length;
+  return (
+    <footer className="statusbar">
+      <span className={cx('save-state', session.dirty ? 'dirty' : 'clean')}>
+        {session.saving ? <><Icon name="refresh" size={12} /> {t('save.saving')}</> : session.saveError ? <><Icon name="error" size={12} /> {t('save.failed', { error: session.saveError })}</>
+          : session.dirty ? <><span className="dirty-dot" /> {t('save.unsaved')}{session.lastAutosave ? ` · ${t('save.autosaved', { time: new Date(session.lastAutosave).toLocaleTimeString() })}` : ''}</>
+            : <><Icon name="check" size={12} /> {t('save.saved')}</>}
+      </span>
+      {session.dirty && <button type="button" className="link" onClick={() => session.save()}>{t('save.saveNow')} ({shortcut('Mod+S')})</button>}
+      <button type="button" className={cx('status-btn', errors ? 'err' : warnings ? 'warn' : 'ok')} onClick={() => session.setUI({ problemsOpen: !session.ui.problemsOpen })}>
+        <Icon name={errors ? 'error' : warnings ? 'warning' : 'check'} size={12} /> {t('problems.summary', { e: errors, w: warnings })}
+      </button>
+      {modErr > 0 && <button type="button" className="status-btn err" onClick={() => store.open({ kind: 'modules' })}><Icon name="module" size={12} /> {t('modules.problems', { n: modErr })}</button>}
+      <span className="grow" />
+      <span className="muted" title={session.path}>{session.path}</span>
+      {window.vneHost && <button type="button" className="link" onClick={() => call('shell.reveal', { path: session.path })}>{t('common.reveal')}</button>}
+    </footer>
+  );
+}

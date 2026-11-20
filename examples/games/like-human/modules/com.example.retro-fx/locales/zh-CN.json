@@ -1,0 +1,2 @@
+{ "retro.scanlines": "CRT 扫描线", "retro.posterize": "色阶分离", "retro.image": "图像", "retro.result": "结果", "retro.spacing": "间距", "retro.darkness": "暗度", "retro.roll": "滚动速度",
+  "retro.levels": "色阶数", "retro.mix": "混合", "retro.transition": "像素溶解", "retro.block": "方块大小" }

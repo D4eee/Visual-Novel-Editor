@@ -1,0 +1,1 @@
+{ "xb.chance": "以 {percent}% 的概率", "xb.notify": "显示提示 {text}，持续 {seconds} 秒", "xb.whenReaches": "当 {variable} 达到 {value}" }

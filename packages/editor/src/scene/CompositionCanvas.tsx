@@ -1,0 +1,472 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Layer, LayerInstance, SceneData } from '@vne/core';
+import { Stage, NarrativeUI, createEditView, drawScene, hitTest, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
+import type { ProjectSession } from '../state/session';
+import { useSession, useT, store } from '../state/store';
+import { setLayerProps, addLayer, deleteLayers, duplicateLayers, sceneOf } from './sceneOps';
+import { IconButton, cx } from '../ui/controls';
+import { Icon } from '../ui/Icon';
+import { openMenu } from '../ui/Menu';
+
+interface Guide { x?: number; y?: number }
+
+export function CompositionCanvas({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
+  useSession(session);
+  const t = useT();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<Stage | null>(null);
+  const narrRef = useRef<NarrativeUI | null>(null);
+  const poolRef = useRef(new CanvasPool());
+  const shadersRef = useRef(new ShaderRunner());
+  const instancesRef = useRef(new Map<string, { key: string; inst: LayerInstance }>());
+  const [, force] = useState(0);
+  const [guides, setGuides] = useState<Guide[]>([]);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const project = session.project;
+  const scene = sceneOf(session, nodeId)!;
+  const ui = session.sceneUI(nodeId);
+  const { width: W, height: H } = project.settings.resolution;
+  const varsRef = useRef<VarStore | null>(null);
+  if (!varsRef.current) varsRef.current = new VarStore(() => session.project, null);
+
+  // Create the stage once; it is the same presentation surface the game uses.
+  useEffect(() => {
+    const host = hostRef.current!;
+    const stage = new Stage(host, W, H, { fit: 'manual', background: 'transparent' });
+    stage.wrap.classList.add('edit-stage');
+    stageRef.current = stage;
+    narrRef.current = new NarrativeUI(stage.overlay);
+    stage.overlay.style.pointerEvents = 'none';
+    stage.onResize = () => force((x) => x + 1);
+    const v = session.sceneUI(nodeId).view;
+    if (v) stage.setView(v.zoom, v.x, v.y);
+    else { const f = stage.fitScale(); stage.setView(f.scale * 0.92, f.offsetX + (stage.width * f.scale * 0.04), f.offsetY + (stage.height * f.scale * 0.04)); }
+    session.assets.onLoad = () => force((x) => x + 1);
+    return () => {
+      for (const { inst } of instancesRef.current.values()) inst.dispose?.();
+      instancesRef.current.clear();
+      narrRef.current?.dispose();
+      stage.dispose();
+      stageRef.current = null;
+    };
+  }, [nodeId]);
+
+  useEffect(() => { stageRef.current?.setResolution(W, H); }, [W, H]);
+
+  // Media instances for video previews in the editor.
+  useEffect(() => {
+    const map = instancesRef.current;
+    const keep = new Set<string>();
+    for (const l of scene.layers) {
+      if (l.type !== 'core.video') continue;
+      const key = `${l.props.assetId}`;
+      keep.add(l.id);
+      const cur = map.get(l.id);
+      if (cur && cur.key === key) continue;
+      cur?.inst.dispose?.();
+      const def = session.engine.layerTypes.get(l.type);
+      const inst = def?.createInstance?.(l, { assets: session.assets, audio: { track: () => ({ setBase() {}, untrack() {} }), playMusic() {}, stopMusic() {} }, mode: 'edit', emit() {}, requestRender: () => force((x) => x + 1) });
+      if (inst) map.set(l.id, { key, inst });
+    }
+    for (const [id, v] of map) if (!keep.has(id)) { v.inst.dispose?.(); map.delete(id); }
+  }, [scene.layers]);
+
+  // Read live: instances are created in an effect after the first render.
+  const liveInstances = () => new Map([...instancesRef.current].map(([k, v]) => [k, v.inst]));
+
+  const buildView = () => createEditView({
+    engine: session.engine, project, scene, assets: session.assets, pool: poolRef.current, shaders: shadersRef.current,
+    time: ui.time, clipIds: ui.clipId ? [ui.clipId] : [], vars: varsRef.current!, instances: liveInstances(),
+  });
+
+  // Render: on change, and continuously while playing or when the scene has moving content.
+  const continuous = ui.playing || scene.layers.some((l) => l.type === 'core.particles' || l.type === 'core.video' || !!l.effect);
+  useEffect(() => {
+    let raf = 0;
+    let alive = true;
+    const t0 = performance.now();
+    const draw = () => {
+      const stage = stageRef.current;
+      if (!stage || !alive) return;
+      const view = buildView();
+      if (continuous && !ui.playing) view.time = ui.time + (performance.now() - t0) / 1000 * (scene.layers.some((l) => l.type === 'core.particles' || l.effect) ? 1 : 0);
+      for (const l of scene.layers) view.instance(l.id)?.update?.(0, view.props(l), view.time);
+      const ctx = stage.begin();
+      try { drawScene(ctx, view, scene.background || '#000'); } catch (err) { console.error(err); }
+      poolRef.current.releaseAll();
+      if (continuous) raf = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => { alive = false; cancelAnimationFrame(raf); };
+  });
+
+  // Dialogue / choices preview in the real text box.
+  useEffect(() => {
+    const n = narrRef.current;
+    if (!n) return;
+    n.applyStyle(project.settings.textbox);
+    const lines = scene.dialogue;
+    const line = lines.find((l) => l.id === ui.selectedLine) || lines[0];
+    if (!ui.showTextbox || scene.hideTextbox) { n.renderStatic(null, null, false); return; }
+    const showChoices = scene.choices.length > 0 && (!line || ui.selectedLine === '__choices');
+    if (showChoices) { n.renderStatic(null, scene.choices.filter((c) => !c.hidden).map((c) => ({ id: c.id, text: c.text, disabled: false })), false); return; }
+    if (!line) { n.renderStatic(null, null, false); return; }
+    const ch = project.characters.find((c) => c.id === line.speakerId);
+    const pa = ch ? portraitAsset(project, ch.id, line.portraitId || null) : null;
+    n.renderStatic({ name: line.speakerName || ch?.name || '', nameColor: ch?.color, portraitUrl: pa ? session.assets.url(pa) : null, text: interpolateVarsCompat(line.text, project, varsRef.current!) }, null, true);
+  }, [scene.dialogue, scene.choices, ui.selectedLine, ui.showTextbox, scene.hideTextbox, project.settings.textbox, project.characters]);
+
+  /* --------------------------------------------------------------- */
+  /* View: pan / zoom                                                 */
+  /* --------------------------------------------------------------- */
+
+  const setView = (zoom: number, x: number, y: number) => {
+    stageRef.current?.setView(zoom, x, y);
+    session.setSceneUI(nodeId, { view: { zoom, x, y } });
+  };
+
+  useEffect(() => {
+    const el = hostRef.current!;
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const st = stageRef.current;
+      if (!st) return;
+      const r = el.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (!e.ctrlKey && !e.metaKey && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5 && e.deltaMode === 0 && Math.abs(e.deltaX) > 0) {
+        setView(st.scale, st.offsetX - e.deltaX, st.offsetY - e.deltaY);
+        return;
+      }
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015));
+      const zoom = Math.max(0.05, Math.min(8, st.scale * factor));
+      setView(zoom, mx - ((mx - st.offsetX) / st.scale) * zoom, my - ((my - st.offsetY) / st.scale) * zoom);
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    const kd = (e: KeyboardEvent) => { if (e.code === 'Space' && !(e.target as HTMLElement).closest('input, textarea, select, [contenteditable]')) setSpaceDown(true); };
+    const ku = (e: KeyboardEvent) => { if (e.code === 'Space') setSpaceDown(false); };
+    window.addEventListener('keydown', kd);
+    window.addEventListener('keyup', ku);
+    return () => { el.removeEventListener('wheel', wheel); window.removeEventListener('keydown', kd); window.removeEventListener('keyup', ku); };
+  }, [nodeId]);
+
+  const fit = () => {
+    const st = stageRef.current;
+    if (!st) return;
+    const f = st.fitScale();
+    setView(f.scale * 0.92, f.offsetX + st.width * f.scale * 0.04, f.offsetY + st.height * f.scale * 0.04);
+  };
+
+  /* --------------------------------------------------------------- */
+  /* Selection and transforms                                         */
+  /* --------------------------------------------------------------- */
+
+  const selected = ui.selectedLayers.filter((id) => scene.layers.some((l) => l.id === id));
+  const selectable = (l: Layer) => !l.locked && l.visible;
+
+  const startPan = (e: React.PointerEvent) => {
+    const st = stageRef.current!;
+    const sx = e.clientX, sy = e.clientY, ox = st.offsetX, oy = st.offsetY;
+    document.body.classList.add('panning');
+    const move = (ev: PointerEvent) => { st.setView(st.scale, ox + ev.clientX - sx, oy + ev.clientY - sy); force((x) => x + 1); };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('panning'); session.setSceneUI(nodeId, { view: { zoom: st.scale, x: st.offsetX, y: st.offsetY } }); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const parentInverse = (view: ReturnType<typeof buildView>, l: Layer) => {
+    if (!l.parentId) return null;
+    const pm = worldMatrix(view, l.parentId);
+    return invert([pm[0], pm[1], pm[2], pm[3], 0, 0]);
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    const st = stageRef.current;
+    if (!st) return;
+    hostRef.current?.focus();
+    if (e.button === 1 || e.button === 2 || spaceDown || (e.button === 0 && e.altKey && !(e.target as HTMLElement).closest('.gizmo-handle'))) {
+      if (e.button === 2) return;
+      e.preventDefault();
+      startPan(e);
+      return;
+    }
+    if (e.button !== 0) return;
+    const handle = (e.target as HTMLElement).closest('.gizmo-handle') as HTMLElement | null;
+    const view = buildView();
+    const p = st.toStage(e.clientX, e.clientY);
+    let ids = selected;
+    if (!handle) {
+      const hit = hitTest(view, p.x, p.y, selectable);
+      if (!hit) { session.setSceneUI(nodeId, { selectedLayers: [] }); return; }
+      if (e.shiftKey || e.metaKey || e.ctrlKey) ids = selected.includes(hit.id) ? selected.filter((x) => x !== hit.id) : [...selected, hit.id];
+      else ids = selected.includes(hit.id) ? selected : [hit.id];
+      session.setSceneUI(nodeId, { selectedLayers: ids });
+      if (!ids.includes(hit.id)) return;
+    }
+    const mode = handle?.dataset.mode || 'move';
+    const layers = ids.map((id) => scene.layers.find((l) => l.id === id)!).filter((l) => l && !l.locked);
+    if (!layers.length) return;
+    const starts = layers.map((l) => ({ l, props: { ...view.props(l) } }));
+    const primary = starts[0];
+    const pm = worldMatrix(view, primary.l.id);
+    const size = layerSize(view, primary.l, primary.props);
+    const anchorWorld = apply(pm, (primary.props.anchorX ?? 0.5) * size.width, (primary.props.anchorY ?? 0.5) * size.height);
+    const mergeKey = `xf-${Date.now()}`;
+    let moved = false;
+    const move = (ev: PointerEvent) => {
+      const q = st.toStage(ev.clientX, ev.clientY);
+      const dx = q.x - p.x, dy = q.y - p.y;
+      if (!moved && Math.hypot(dx, dy) * st.scale < 3) return;
+      moved = true;
+      if (mode === 'move') {
+        let sdx = dx, sdy = dy;
+        const g: Guide[] = [];
+        if (ui.snap && !ev.altKey) {
+          const corners = layerCorners(view, primary.l).map((c) => ({ x: c.x + dx, y: c.y + dy }));
+          const xs = [Math.min(...corners.map((c) => c.x)), (Math.min(...corners.map((c) => c.x)) + Math.max(...corners.map((c) => c.x))) / 2, Math.max(...corners.map((c) => c.x))];
+          const ys = [Math.min(...corners.map((c) => c.y)), (Math.min(...corners.map((c) => c.y)) + Math.max(...corners.map((c) => c.y))) / 2, Math.max(...corners.map((c) => c.y))];
+          const tx = [0, W / 2, W], ty = [0, H / 2, H];
+          for (const o of scene.layers) {
+            if (ids.includes(o.id) || !o.visible || session.engine.layerTypes.get(o.type)?.visual === false || o.type === 'core.group' || o.type === 'core.background') continue;
+            const oc = layerCorners(view, o);
+            const ox = oc.map((c) => c.x), oy = oc.map((c) => c.y);
+            tx.push(Math.min(...ox), (Math.min(...ox) + Math.max(...ox)) / 2, Math.max(...ox));
+            ty.push(Math.min(...oy), (Math.min(...oy) + Math.max(...oy)) / 2, Math.max(...oy));
+          }
+          const th = 6 / st.scale;
+          let best = th, bx: number | null = null;
+          for (const a of xs) for (const b of tx) if (Math.abs(a - b) < best) { best = Math.abs(a - b); bx = b - a; g[0] = { x: b }; }
+          best = th;
+          let by: number | null = null;
+          for (const a of ys) for (const b of ty) if (Math.abs(a - b) < best) { best = Math.abs(a - b); by = b - a; g[1] = { y: b }; }
+          if (bx !== null) sdx += bx;
+          if (by !== null) sdy += by;
+        }
+        setGuides(g.filter(Boolean));
+        for (const s of starts) {
+          const inv = parentInverse(view, s.l);
+          const d = inv ? apply(inv, sdx, sdy) : { x: sdx, y: sdy };
+          let nx = (s.props.x ?? 0) + d.x, ny = (s.props.y ?? 0) + d.y;
+          if (ev.shiftKey) { if (Math.abs(sdx) > Math.abs(sdy)) ny = s.props.y; else nx = s.props.x; }
+          setLayerProps(session, nodeId, s.l.id, { x: Math.round(nx * 10) / 10, y: Math.round(ny * 10) / 10 }, { mergeKey, label: t('layer.move') });
+        }
+      } else if (mode === 'rotate') {
+        const a0 = Math.atan2(p.y - anchorWorld.y, p.x - anchorWorld.x);
+        const a1 = Math.atan2(q.y - anchorWorld.y, q.x - anchorWorld.x);
+        let r = (primary.props.rotation ?? 0) + ((a1 - a0) * 180) / Math.PI;
+        if (ev.shiftKey) r = Math.round(r / 15) * 15;
+        setLayerProps(session, nodeId, primary.l.id, { rotation: Math.round(r * 10) / 10 }, { mergeKey, label: t('layer.rotate') });
+      } else if (mode.startsWith('scale')) {
+        const inv = invert(pm);
+        if (!inv) return;
+        const lp0 = apply(inv, p.x, p.y), lp1 = apply(inv, q.x, q.y);
+        const ax = (primary.props.anchorX ?? 0.5) * size.width, ay = (primary.props.anchorY ?? 0.5) * size.height;
+        const fx = Math.abs(lp0.x - ax) > 1 ? (lp1.x - ax) / (lp0.x - ax) : 1;
+        const fy = Math.abs(lp0.y - ay) > 1 ? (lp1.y - ay) / (lp0.y - ay) : 1;
+        let sx = (primary.props.scaleX ?? 1) * fx, sy = (primary.props.scaleY ?? 1) * fy;
+        if (mode === 'scale-x') sy = primary.props.scaleY ?? 1;
+        if (mode === 'scale-y') sx = primary.props.scaleX ?? 1;
+        if (ev.shiftKey && mode === 'scale') { const f = Math.abs(fx) > Math.abs(fy) ? fx : fy; sx = (primary.props.scaleX ?? 1) * f; sy = (primary.props.scaleY ?? 1) * f; }
+        setLayerProps(session, nodeId, primary.l.id, { scaleX: Math.round(sx * 1000) / 1000, scaleY: Math.round(sy * 1000) / 1000 }, { mergeKey, label: t('layer.scale') });
+      }
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setGuides([]);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.target as HTMLElement).closest('input, textarea, select')) return;
+    const mod = e.metaKey || e.ctrlKey;
+    const view = buildView();
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && selected.length) {
+      e.preventDefault();
+      const d = e.shiftKey ? 10 : 1;
+      const dx = e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0;
+      const dy = e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
+      for (const id of selected) { const l = scene.layers.find((x) => x.id === id)!; if (l.locked) continue; const p = view.props(l); setLayerProps(session, nodeId, id, { x: (p.x ?? 0) + dx, y: (p.y ?? 0) + dy }, { mergeKey: 'nudge', label: t('layer.move') }); }
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && selected.length) { e.preventDefault(); deleteLayers(session, nodeId, selected); }
+    else if (mod && e.key.toLowerCase() === 'd' && selected.length) { e.preventDefault(); duplicateLayers(session, nodeId, selected); }
+    else if (mod && e.key.toLowerCase() === 'c' && selected.length) { e.preventDefault(); store.clipboard = { kind: 'layers', data: scene.layers.filter((l) => selected.includes(l.id)) }; store.toast(t('layer.copied', { n: selected.length })); }
+    else if (mod && e.key.toLowerCase() === 'v' && store.clipboard?.kind === 'layers') { e.preventDefault(); pasteLayers(session, nodeId, store.clipboard.data); }
+    else if (mod && e.key.toLowerCase() === 'a') { e.preventDefault(); session.setSceneUI(nodeId, { selectedLayers: scene.layers.filter(selectable).map((l) => l.id) }); }
+    else if (e.key === 'Escape') session.setSceneUI(nodeId, { selectedLayers: [] });
+    else if (e.key === '0' && mod) { e.preventDefault(); fit(); }
+  };
+
+  const onDrop = (e: React.DragEvent) => {
+    const id = e.dataTransfer.getData('application/x-vne-asset');
+    const st = stageRef.current;
+    if (!id || !st) return;
+    e.preventDefault();
+    const a = project.assets.find((x) => x.id === id);
+    if (!a) return;
+    const p = st.toStage(e.clientX, e.clientY);
+    const hasBg = scene.layers.some((l) => l.type === 'core.background');
+    if (a.kind === 'image') {
+      const big = (a.meta.width || 0) >= W * 0.8 && (a.meta.height || 0) >= H * 0.8;
+      if (big && !hasBg) addLayer(session, nodeId, 'core.background', { assetId: a.id, x: W / 2, y: H / 2 }, a.name.replace(/\.[^.]+$/, ''));
+      else addLayer(session, nodeId, 'core.image', { assetId: a.id, x: Math.round(p.x), y: Math.round(p.y) }, a.name.replace(/\.[^.]+$/, ''));
+    } else if (a.kind === 'video') addLayer(session, nodeId, 'core.video', { assetId: a.id, x: Math.round(p.x), y: Math.round(p.y) }, a.name.replace(/\.[^.]+$/, ''));
+    else if (a.kind === 'audio') addLayer(session, nodeId, 'core.audio', { assetId: a.id }, a.name.replace(/\.[^.]+$/, ''));
+  };
+
+  // Gizmos (screen space)
+  const st = stageRef.current;
+  const view = st ? buildView() : null;
+  const toScreen = (q: { x: number; y: number }) => ({ x: (st?.offsetX || 0) + q.x * (st?.scale || 1), y: (st?.offsetY || 0) + q.y * (st?.scale || 1) });
+  const gizmos = view ? selected.map((id) => {
+    const l = scene.layers.find((x) => x.id === id);
+    if (!l || session.engine.layerTypes.get(l.type)?.visual === false) return null;
+    const c = layerCorners(view, l).map(toScreen);
+    const props = view.props(l);
+    const size = layerSize(view, l, props);
+    const m = worldMatrix(view, l.id);
+    const anchor = toScreen(apply(m, (props.anchorX ?? 0.5) * size.width, (props.anchorY ?? 0.5) * size.height));
+    const topMid = { x: (c[0].x + c[1].x) / 2, y: (c[0].y + c[1].y) / 2 };
+    const center = { x: (c[0].x + c[2].x) / 2, y: (c[0].y + c[2].y) / 2 };
+    const dir = { x: topMid.x - center.x, y: topMid.y - center.y };
+    const len = Math.hypot(dir.x, dir.y) || 1;
+    const rot = { x: topMid.x + (dir.x / len) * 28, y: topMid.y + (dir.y / len) * 28 };
+    const mid = (a: any, b: any) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    return { l, c, anchor, topMid, rot, sides: [mid(c[1], c[2]), mid(c[3], c[0]), mid(c[2], c[3])] };
+  }).filter(Boolean) as any[] : [];
+  const frame = st ? { x: st.offsetX, y: st.offsetY, w: W * st.scale, h: H * st.scale } : null;
+
+  return (
+    <div className="comp-wrap">
+      <div ref={hostRef} className={cx('comp-canvas', spaceDown && 'pan-ready')} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          const stg = stageRef.current;
+          if (!stg) return;
+          const vv = buildView();
+          const p = stg.toStage(e.clientX, e.clientY);
+          const hit = hitTest(vv, p.x, p.y, selectable);
+          if (hit && !selected.includes(hit.id)) session.setSceneUI(nodeId, { selectedLayers: [hit.id] });
+          const ids = hit ? (selected.includes(hit.id) ? selected : [hit.id]) : [];
+          openMenu(e, ids.length ? [
+            { label: t('common.duplicate'), icon: 'duplicate', onClick: () => duplicateLayers(session, nodeId, ids) },
+            { label: t('layer.bringFront'), icon: 'arrowUp', onClick: () => reorder(session, nodeId, ids, 'front') },
+            { label: t('layer.sendBack'), icon: 'arrowDown', onClick: () => reorder(session, nodeId, ids, 'back') },
+            { label: t('layer.addEffect'), icon: 'sparkles', onClick: () => session.setSceneUI(nodeId, { bottomTab: 'effects', selectedLayers: [ids[0]] }) },
+            { label: t('layer.addScript'), icon: 'script', onClick: () => session.setSceneUI(nodeId, { bottomTab: 'behaviors', selectedLayers: [ids[0]] }) },
+            { separator: true },
+            { label: t('common.delete'), icon: 'trash', danger: true, onClick: () => deleteLayers(session, nodeId, ids) },
+          ] : addLayerMenu(session, nodeId, t, { x: Math.round(p.x), y: Math.round(p.y) }));
+        }}
+        onDragOver={(e) => { if (e.dataTransfer.types.includes('application/x-vne-asset')) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; } }}
+        onDrop={onDrop}
+        aria-label={t('scene.canvas')}>
+        <svg className="gizmos" width="100%" height="100%">
+          {frame && <rect x={frame.x} y={frame.y} width={frame.w} height={frame.h} className="stage-frame" />}
+          {frame && ui.snap && <>
+            <line x1={frame.x + frame.w / 2} y1={frame.y} x2={frame.x + frame.w / 2} y2={frame.y + frame.h} className="center-guide" />
+            <line x1={frame.x} y1={frame.y + frame.h / 2} x2={frame.x + frame.w} y2={frame.y + frame.h / 2} className="center-guide" />
+          </>}
+          {guides.map((g, i) => g.x !== undefined
+            ? <line key={i} x1={toScreen({ x: g.x, y: 0 }).x} y1={0} x2={toScreen({ x: g.x, y: 0 }).x} y2="100%" className="snap-guide" />
+            : <line key={i} x1={0} y1={toScreen({ x: 0, y: g.y! }).y} x2="100%" y2={toScreen({ x: 0, y: g.y! }).y} className="snap-guide" />)}
+          {gizmos.map((g: any) => (
+            <g key={g.l.id} className="gizmo">
+              <polygon points={g.c.map((p: any) => `${p.x},${p.y}`).join(' ')} className="gizmo-box" />
+              <line x1={g.topMid.x} y1={g.topMid.y} x2={g.rot.x} y2={g.rot.y} className="gizmo-stem" />
+              <circle cx={g.rot.x} cy={g.rot.y} r={6} className="gizmo-handle rotate" data-mode="rotate" />
+              {g.c.map((p: any, i: number) => <rect key={i} x={p.x - 5} y={p.y - 5} width={10} height={10} className="gizmo-handle" data-mode="scale" />)}
+              <rect x={g.sides[0].x - 4} y={g.sides[0].y - 4} width={8} height={8} className="gizmo-handle side" data-mode="scale-x" />
+              <rect x={g.sides[1].x - 4} y={g.sides[1].y - 4} width={8} height={8} className="gizmo-handle side" data-mode="scale-x" />
+              <rect x={g.sides[2].x - 4} y={g.sides[2].y - 4} width={8} height={8} className="gizmo-handle side" data-mode="scale-y" />
+              <circle cx={g.anchor.x} cy={g.anchor.y} r={4} className="gizmo-anchor" />
+              {g.l.locked && <text x={g.c[0].x + 4} y={g.c[0].y - 6} className="gizmo-label">🔒</text>}
+            </g>
+          ))}
+        </svg>
+        {!scene.layers.length && (
+          <div className="comp-empty">
+            <Icon name="layers" size={26} />
+            <div className="empty-title">{t('scene.emptyTitle')}</div>
+            <div className="muted">{t('scene.emptyText')}</div>
+          </div>
+        )}
+      </div>
+      <div className="comp-toolbar">
+        <button type="button" className="btn btn-sm" onClick={(e) => openMenu(e, addLayerMenu(session, nodeId, t, { x: W / 2, y: H / 2 }))}><Icon name="plus" size={14} /><span>{t('layer.add')}</span></button>
+        <span className="sep" />
+        <IconButton icon="magnet" size={15} title={t('scene.snap')} active={ui.snap} onClick={() => session.setSceneUI(nodeId, { snap: !ui.snap })} />
+        <IconButton icon="message" size={15} title={t('scene.textboxPreview')} active={ui.showTextbox} onClick={() => session.setSceneUI(nodeId, { showTextbox: !ui.showTextbox })} />
+        <span className="sep" />
+        <IconButton icon="minus" size={15} title={t('graph.zoomOut')} onClick={() => { const s = stageRef.current!; const r = hostRef.current!.getBoundingClientRect(); const z = s.scale / 1.25; setView(z, r.width / 2 - ((r.width / 2 - s.offsetX) / s.scale) * z, r.height / 2 - ((r.height / 2 - s.offsetY) / s.scale) * z); }} />
+        <span className="zoom-label">{Math.round((st?.scale || 1) * 100)}%</span>
+        <IconButton icon="plus" size={15} title={t('graph.zoomIn')} onClick={() => { const s = stageRef.current!; const r = hostRef.current!.getBoundingClientRect(); const z = s.scale * 1.25; setView(z, r.width / 2 - ((r.width / 2 - s.offsetX) / s.scale) * z, r.height / 2 - ((r.height / 2 - s.offsetY) / s.scale) * z); }} />
+        <IconButton icon="fit" size={15} title={`${t('scene.fit')} (${'Mod+0'.replace('Mod', navigator.platform.includes('Mac') ? '⌘' : 'Ctrl')})`} onClick={fit} />
+        <span className="res-label">{W}×{H}</span>
+      </div>
+    </div>
+  );
+}
+
+export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: string, p?: any) => string, at: { x: number; y: number }) {
+  const defs = session.engine.layerTypes.list();
+  const cats = ['media', 'text', 'ui', 'interactive', 'effect', 'structure', 'module'];
+  const items: any[] = [];
+  for (const c of cats) {
+    const list = defs.filter((d) => (d.owner && d.owner !== 'core' ? 'module' : d.category) === c && d.id !== 'core.composition');
+    if (!list.length) continue;
+    items.push({ header: true, label: t(`layercat.${c}`) });
+    for (const d of list) items.push({ label: t(d.label), icon: d.icon || 'layers', onClick: () => addLayer(session, nodeId, d.id, d.visual && d.id !== 'core.background' && d.id !== 'core.particles' && d.id !== 'core.group' ? { x: at.x, y: at.y } : {}) });
+  }
+  if (session.project.compositions.length) {
+    items.push({ header: true, label: t('layer.compositions') });
+    for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => addLayer(session, nodeId, 'core.composition', { compositionId: c.id, x: at.x, y: at.y }, c.name) });
+  }
+  return items;
+}
+
+export function reorder(session: ProjectSession, nodeId: string, ids: string[], where: 'front' | 'back' | 'up' | 'down'): void {
+  const t = session.i18n.t;
+  session.update(t('layer.reorder'), (d) => {
+    const s = d.nodes[nodeId].data as SceneData;
+    const moving = s.layers.filter((l) => ids.includes(l.id));
+    const rest = s.layers.filter((l) => !ids.includes(l.id));
+    if (where === 'front') s.layers = [...rest, ...moving];
+    else if (where === 'back') {
+      const bgCount = rest.filter((l) => l.type === 'core.background').length && !moving.some((m) => m.type === 'core.background') ? rest.findIndex((l) => l.type !== 'core.background') : 0;
+      s.layers = [...rest.slice(0, Math.max(0, bgCount)), ...moving, ...rest.slice(Math.max(0, bgCount))];
+    } else {
+      const arr = [...s.layers];
+      const order = where === 'up' ? [...ids].reverse() : ids;
+      for (const id of order) {
+        const i = arr.findIndex((l) => l.id === id);
+        const j = where === 'up' ? i + 1 : i - 1;
+        if (j < 0 || j >= arr.length) continue;
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      s.layers = arr;
+    }
+  });
+}
+
+export function pasteLayers(session: ProjectSession, nodeId: string, layers: Layer[]): void {
+  const t = session.i18n.t;
+  const created: string[] = [];
+  session.update(t('common.paste'), (d) => {
+    const s = d.nodes[nodeId].data as SceneData;
+    const ids = new Set(s.layers.map((l) => l.id));
+    const map = new Map<string, string>();
+    for (const l of layers) map.set(l.id, `lyr_${Math.random().toString(36).slice(2, 14)}`);
+    for (const l of layers) {
+      const c: Layer = JSON.parse(JSON.stringify(l));
+      c.id = map.get(l.id)!;
+      c.parentId = l.parentId && map.has(l.parentId) ? map.get(l.parentId)! : l.parentId && ids.has(l.parentId) ? l.parentId : null;
+      if (typeof c.props.x === 'number') { c.props.x += 24; c.props.y += 24; }
+      s.layers.push(c);
+      created.push(c.id);
+    }
+  });
+  session.setSceneUI(nodeId, { selectedLayers: created });
+}
+
+export { layerMatrix };

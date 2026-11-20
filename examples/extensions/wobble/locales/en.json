@@ -1,0 +1,1 @@
+{ "wobble.prop": "Wobble", "wobble.prop.desc": "Jelly-like squash and stretch. 0 = off.", "float.prop": "Float", "float.prop.desc": "Gentle up-and-down bobbing, in pixels.", "wobble.ease": "Smoother step", "group.wobble": "Motion extras" }

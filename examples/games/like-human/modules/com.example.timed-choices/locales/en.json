@@ -1,0 +1,2 @@
+{ "tc.label": "Timed choices", "tc.desc": "Choices must be made before the timer runs out.", "tc.seconds": "Time limit", "tc.default": "When time runs out, choose", "tc.lastChoice": "The last available choice",
+  "tc.color": "Bar color", "tc.uiIntro": "The bar appears when the choices do. Preview:", "tc.issue.noChoices": "Timed choices: this scene has no choices yet.", "tc.issue.missing": "Timed choices: the default choice was deleted." }

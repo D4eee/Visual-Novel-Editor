@@ -1,0 +1,6 @@
+{
+  "bubble.layer": "Speech bubble", "bubble.text": "Text", "bubble.width": "Width", "bubble.fontSize": "Font size", "bubble.fill": "Fill", "bubble.textColor": "Text color",
+  "bubble.tail": "Tail", "bubble.tail.bl": "Bottom left", "bubble.tail.br": "Bottom right", "bubble.tail.none": "None",
+  "bubble.style": "Style", "bubble.style.speech": "Speech", "bubble.style.thought": "Thought", "bubble.style.shout": "Shout",
+  "bubble.pop": "Pop", "bubble.pop.desc": "Animate 0 → 1.1 → 1 for a bouncy entrance.", "group.bubble": "Bubble"
+}

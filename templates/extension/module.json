@@ -1,0 +1,17 @@
+{
+  "id": "com.yourname.my-module",
+  "name": { "en": "My Module", "zh-CN": "我的模块" },
+  "version": "0.1.0",
+  "description": { "en": "Describe what your module adds.", "zh-CN": "描述你的模块提供了什么。" },
+  "author": { "name": "Your Name" },
+  "license": "MIT",
+  "engine": ">=0.1.0 <1.0.0",
+  "api": "^1.0.0",
+  "kind": "combined",
+  "provides": { "blocks": ["hello"], "panels": ["panel"] },
+  "runtime": "runtime.js",
+  "editor": "editor.js",
+  "locales": "locales",
+  "dependencies": {},
+  "permissions": []
+}

@@ -1,0 +1,134 @@
+{
+  "name": "visual-novel-editor",
+  "productName": "Visual Novel Editor",
+  "version": "0.1.0",
+  "description": "A standalone, extensible visual novel engine: story flow graph, scene composition, timeline animation, procedural effects, visual scripting and one-click export to macOS and Windows.",
+  "license": "MIT",
+  "private": true,
+  "author": "Visual Novel Editor contributors",
+  "homepage": "https://github.com/D4eee/Visual-Novel-Editor",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/D4eee/Visual-Novel-Editor.git"
+  },
+  "main": "dist/desktop/main.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch --dev",
+    "start": "npm run build && electron .",
+    "serve": "npm run build && node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test tests/",
+    "check-i18n": "node scripts/check-i18n.mjs",
+    "pack-module": "node scripts/pack-module.mjs",
+    "fetch-runtimes": "node scripts/fetch-runtime-templates.mjs",
+    "dist": "npm run build && node scripts/fetch-runtime-templates.mjs --host && electron-builder",
+    "dist:mac": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --mac",
+    "dist:win": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --win"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "electron": "45.4.1",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.28.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-icons": "^5.5.0",
+    "typescript": "^6.0.3"
+  },
+  "build": {
+    "appId": "io.github.d4eee.visual-novel-editor",
+    "productName": "Visual Novel Editor",
+    "copyright": "Visual Novel Editor contributors",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "!dist/**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "examples",
+        "to": "examples"
+      },
+      {
+        "from": "sdk",
+        "to": "sdk",
+        "filter": [
+          "dist/**/*",
+          "types/**/*",
+          "README.md"
+        ]
+      },
+      {
+        "from": "templates",
+        "to": "templates"
+      },
+      {
+        "from": "resources/runtime-templates",
+        "to": "runtime-templates",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "vne",
+        "name": "Visual Novel Project",
+        "role": "Editor"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "resources/icons/app.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ]
+    },
+    "win": {
+      "icon": "resources/icons/app.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "asar": false
+  }
+}

@@ -1,0 +1,3503 @@
+{
+  "format": "vne.project",
+  "formatVersion": 1,
+  "engineVersion": "0.1.0",
+  "id": "prj_like_human",
+  "name": "Like Human",
+  "created": "2026-11-19T00:00:00.000Z",
+  "modified": "2026-11-19T00:00:00.000Z",
+  "settings": {
+    "title": "Like Human",
+    "version": "1.0.0",
+    "author": "Visual Novel Editor examples",
+    "identifier": "com.example.likehuman",
+    "resolution": {
+      "width": 1280,
+      "height": 720
+    },
+    "window": {
+      "mode": "windowed",
+      "resizable": true,
+      "width": 1280,
+      "height": 720,
+      "allowFullscreenToggle": true
+    },
+    "iconAssetId": "ast_icon",
+    "textSpeed": 40,
+    "autoAdvanceDelay": 1.5,
+    "textbox": {
+      "position": "bottom",
+      "height": 200,
+      "margin": 24,
+      "padding": 24,
+      "background": "rgba(12, 14, 24, 0.82)",
+      "borderColor": "rgba(255, 255, 255, 0.14)",
+      "borderRadius": 14,
+      "textColor": "#f4f1ea",
+      "nameColor": "#ffd38a",
+      "fontFamily": "system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+      "fontSize": 26,
+      "lineHeight": 1.5,
+      "showPortrait": false,
+      "choiceBackground": "rgba(16, 18, 30, 0.86)",
+      "choiceHover": "rgba(70, 90, 160, 0.92)",
+      "choiceTextColor": "#ffffff"
+    },
+    "titleScreen": {
+      "backgroundAssetId": "ast_bg_title",
+      "musicAssetId": "ast_bgm_lab",
+      "showTitle": true
+    },
+    "defaultTransition": {
+      "type": "fade",
+      "duration": 0.5
+    },
+    "description": "A short story about an android and the engineer who built her. Shows every major feature: branching, conditions, cross-chapter jumps, animation, effects, scripts and modules."
+  },
+  "chapters": [
+    {
+      "id": "chp_awakening",
+      "name": "Awakening",
+      "entryNodeId": null,
+      "color": "#5aa9e6"
+    },
+    {
+      "id": "chp_city",
+      "name": "The City",
+      "color": "#b388ff"
+    }
+  ],
+  "nodes": {
+    "nod_start": {
+      "id": "nod_start",
+      "type": "core.start",
+      "chapterId": "chp_awakening",
+      "name": "Start",
+      "x": 0,
+      "y": 276,
+      "data": {},
+      "modules": []
+    },
+    "scn_boot": {
+      "id": "scn_boot",
+      "type": "core.scene",
+      "chapterId": "chp_awakening",
+      "name": "Boot sequence",
+      "x": 345,
+      "y": 230,
+      "data": {
+        "number": "1",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_007",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_lab",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_008",
+            "type": "core.particles",
+            "name": "Dust",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "dust",
+              "width": 1280,
+              "height": 720,
+              "count": 60,
+              "speed": 0.4,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#bff8ff"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_009",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 900,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_surprised",
+              "height": 640,
+              "flip": false,
+              "dim": 0,
+              "wobble": 0,
+              "float": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_00c",
+            "type": "com.example.speech-bubble/bubble",
+            "name": "Hint bubble",
+            "parentId": null,
+            "visible": false,
+            "locked": false,
+            "effect": null,
+            "props": {
+              "x": 1010,
+              "y": 150,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.2,
+              "anchorY": 1,
+              "opacity": 1,
+              "text": "Psst… click me!",
+              "width": 240,
+              "fontSize": 24,
+              "tail": "bottomLeft",
+              "style": "speech",
+              "pop": 0,
+              "fill": "#ffffff",
+              "textColor": "#1d1d27"
+            }
+          },
+          {
+            "id": "lyr_00a",
+            "type": "core.text",
+            "name": "Boot text",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 40,
+              "y": 36,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0,
+              "anchorY": 0,
+              "opacity": 1,
+              "text": "UNIT 7 // VISUAL INPUT ONLINE",
+              "fontFamily": "ui-monospace, Menlo, Consolas, monospace",
+              "fontSize": 22,
+              "fontWeight": "normal",
+              "italic": false,
+              "color": "#7ff3ff",
+              "align": "left",
+              "width": 700,
+              "lineHeight": 1.3,
+              "letterSpacing": 0,
+              "reveal": 0,
+              "strokeColor": "#000000",
+              "strokeWidth": 0,
+              "shadowColor": "rgba(0,0,0,0.6)",
+              "shadowBlur": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_00b",
+            "type": "core.shape",
+            "name": "Eyelids",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "shape": "rect",
+              "width": 1280,
+              "height": 720,
+              "fill": "#000000",
+              "gradient": "none",
+              "fill2": "rgba(20,20,40,0.9)",
+              "gradientAngle": 90,
+              "stroke": "rgba(255,255,255,0.0)",
+              "strokeWidth": 0,
+              "radius": 12
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_00d",
+            "type": "core.audio",
+            "name": "Lab music",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "assetId": "ast_bgm_lab",
+              "category": "bgm",
+              "autoplay": true,
+              "loop": true,
+              "volume": 0.6,
+              "persist": true
+            },
+            "effect": null
+          }
+        ],
+        "animations": [
+          {
+            "id": "anm_00e",
+            "name": "Open eyes",
+            "duration": 3,
+            "loop": false,
+            "autoplay": true,
+            "media": [],
+            "tracks": [
+              {
+                "id": "trk_00f",
+                "layerId": "lyr_00b",
+                "prop": "opacity",
+                "keyframes": [
+                  {
+                    "id": "key_00g",
+                    "t": 0,
+                    "v": 1,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_00h",
+                    "t": 2.2,
+                    "v": 0,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_00i",
+                "layerId": "lyr_00b",
+                "prop": "scaleY",
+                "keyframes": [
+                  {
+                    "id": "key_00j",
+                    "t": 0,
+                    "v": 1,
+                    "ease": "easeIn"
+                  },
+                  {
+                    "id": "key_00k",
+                    "t": 2.2,
+                    "v": 0.15,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_00l",
+                "layerId": "lyr_00a",
+                "prop": "reveal",
+                "keyframes": [
+                  {
+                    "id": "key_00m",
+                    "t": 0.8,
+                    "v": 0,
+                    "ease": "linear"
+                  },
+                  {
+                    "id": "key_00n",
+                    "t": 2.4,
+                    "v": 1,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_00o",
+                "layerId": "lyr_009",
+                "prop": "x",
+                "keyframes": [
+                  {
+                    "id": "key_00p",
+                    "t": 1,
+                    "v": 1040,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_00q",
+                    "t": 2.6,
+                    "v": 900,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_00r",
+                "layerId": "lyr_009",
+                "prop": "opacity",
+                "keyframes": [
+                  {
+                    "id": "key_00s",
+                    "t": 1,
+                    "v": 0,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_00t",
+                    "t": 2.2,
+                    "v": 1,
+                    "ease": "easeInOut"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "anm_00u",
+            "name": "Mika waves",
+            "duration": 1.2,
+            "loop": false,
+            "autoplay": false,
+            "media": [],
+            "tracks": [
+              {
+                "id": "trk_00v",
+                "layerId": "lyr_009",
+                "prop": "wobble",
+                "keyframes": [
+                  {
+                    "id": "key_00w",
+                    "t": 0,
+                    "v": 0,
+                    "ease": "com.example.wobble/smoothstep"
+                  },
+                  {
+                    "id": "key_00x",
+                    "t": 0.3,
+                    "v": 1,
+                    "ease": "com.example.wobble/smoothstep"
+                  },
+                  {
+                    "id": "key_00y",
+                    "t": 1.2,
+                    "v": 0,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_00z",
+                "layerId": "lyr_009",
+                "prop": "rotation",
+                "keyframes": [
+                  {
+                    "id": "key_010",
+                    "t": 0,
+                    "v": 0,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_011",
+                    "t": 0.25,
+                    "v": -3,
+                    "ease": "easeInOut"
+                  },
+                  {
+                    "id": "key_012",
+                    "t": 0.6,
+                    "v": 3,
+                    "ease": "easeInOut"
+                  },
+                  {
+                    "id": "key_013",
+                    "t": 1.2,
+                    "v": 0,
+                    "ease": "easeInOut"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "dialogue": [
+          {
+            "id": "ln_014",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "…Signal detected. Visual input online.",
+            "speakerName": "SYSTEM"
+          },
+          {
+            "id": "ln_015",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_surprised",
+            "text": "Oh! You’re awake. Can you hear me?"
+          },
+          {
+            "id": "ln_016",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "I’m Mika. I built you — well, most of you."
+          },
+          {
+            "id": "ln_017",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "Try something for me. Say anything. Or… do anything."
+          }
+        ],
+        "choices": [
+          {
+            "id": "cho_hello",
+            "text": "Hello, Mika.",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [
+              {
+                "varId": "var_empathy",
+                "op": "add",
+                "value": 1
+              }
+            ],
+            "animationId": null
+          },
+          {
+            "id": "cho_silent",
+            "text": "( Stay silent )",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [],
+            "animationId": null
+          },
+          {
+            "id": "cho_hand",
+            "text": "Take her hand.",
+            "condition": null,
+            "hidden": true,
+            "unavailable": "hide",
+            "effects": [
+              {
+                "varId": "var_empathy",
+                "op": "add",
+                "value": 2
+              }
+            ],
+            "animationId": null
+          }
+        ],
+        "scripts": [
+          {
+            "id": "stk_01g",
+            "x": 40,
+            "y": 40,
+            "enabled": true,
+            "hat": {
+              "id": "blk_018",
+              "type": "core.whenLayerClicked",
+              "args": {
+                "layer": "lyr_009"
+              }
+            },
+            "body": [
+              {
+                "id": "blk_019",
+                "type": "core.playAnimation",
+                "args": {
+                  "anim": "anm_00u",
+                  "wait": true
+                }
+              },
+              {
+                "id": "blk_01a",
+                "type": "com.example.relationships/change",
+                "args": {
+                  "character": "chr_mika",
+                  "delta": 1
+                }
+              },
+              {
+                "id": "blk_01b",
+                "type": "core.playSound",
+                "args": {
+                  "asset": "ast_sfx_beep",
+                  "volume": 0.7
+                }
+              },
+              {
+                "id": "blk_01c",
+                "type": "core.wait",
+                "args": {
+                  "seconds": 0.4
+                }
+              },
+              {
+                "id": "blk_01d",
+                "type": "core.showChoice",
+                "args": {
+                  "choice": "cho_hand"
+                }
+              },
+              {
+                "id": "blk_01e",
+                "type": "core.hide",
+                "args": {
+                  "layer": "lyr_00c"
+                }
+              },
+              {
+                "id": "blk_01f",
+                "type": "com.example.extra-blocks/notify",
+                "args": {
+                  "text": "New option: Take her hand",
+                  "seconds": 2.5
+                }
+              }
+            ]
+          },
+          {
+            "id": "stk_01l",
+            "x": 460,
+            "y": 40,
+            "enabled": true,
+            "hat": {
+              "id": "blk_01h",
+              "type": "core.whenDialogueEnds",
+              "args": {}
+            },
+            "body": [
+              {
+                "id": "blk_01i",
+                "type": "core.wait",
+                "args": {
+                  "seconds": 1.5
+                }
+              },
+              {
+                "id": "blk_01j",
+                "type": "core.show",
+                "args": {
+                  "layer": "lyr_00c"
+                }
+              },
+              {
+                "id": "blk_01k",
+                "type": "core.tweenProp",
+                "args": {
+                  "layer": "lyr_00c",
+                  "prop": "pop",
+                  "value": 1,
+                  "seconds": 0.5,
+                  "ease": "backOut",
+                  "wait": false
+                }
+              }
+            ]
+          }
+        ],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "scn_first_words": {
+      "id": "scn_first_words",
+      "type": "core.scene",
+      "chapterId": "chp_awakening",
+      "name": "First words",
+      "x": 713,
+      "y": 115,
+      "data": {
+        "number": "2",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_01n",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_lab",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_01o",
+            "type": "core.particles",
+            "name": "Dust",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "dust",
+              "width": 1280,
+              "height": 720,
+              "count": 60,
+              "speed": 0.4,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#bff8ff"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_01m",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 900,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_smile",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_01p",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "You did it! Your voice module works."
+          },
+          {
+            "id": "ln_01q",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "Empathy calibration: {empathy}.",
+            "speakerName": "SYSTEM"
+          },
+          {
+            "id": "ln_01r",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "Come on. There’s something I want to show you."
+          }
+        ],
+        "choices": [],
+        "scripts": [],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "scn_silence": {
+      "id": "scn_silence",
+      "type": "core.scene",
+      "chapterId": "chp_awakening",
+      "name": "Silence",
+      "x": 713,
+      "y": 414,
+      "data": {
+        "number": "3",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_022",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_lab",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_01s",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 420,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_sad",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_01t",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 900,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_glitch",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": {
+              "kind": "inline",
+              "graph": {
+                "id": "fxg_01y",
+                "name": "Glitch scanlines",
+                "params": [],
+                "nodes": [
+                  {
+                    "id": "fxn_01u",
+                    "type": "fx.input",
+                    "x": 40,
+                    "y": 80,
+                    "values": {}
+                  },
+                  {
+                    "id": "fxn_01v",
+                    "type": "fx.chromatic",
+                    "x": 260,
+                    "y": 80,
+                    "values": {
+                      "amount": 6
+                    }
+                  },
+                  {
+                    "id": "fxn_01w",
+                    "type": "com.example.retro-fx/scanlines",
+                    "x": 500,
+                    "y": 80,
+                    "values": {
+                      "spacing": 4,
+                      "darkness": 0.45,
+                      "roll": 30
+                    }
+                  },
+                  {
+                    "id": "fxn_01x",
+                    "type": "fx.output",
+                    "x": 760,
+                    "y": 80,
+                    "values": {}
+                  }
+                ],
+                "edges": [
+                  {
+                    "id": "fxe_01z",
+                    "from": {
+                      "node": "fxn_01u",
+                      "port": "image"
+                    },
+                    "to": {
+                      "node": "fxn_01v",
+                      "port": "image"
+                    }
+                  },
+                  {
+                    "id": "fxe_020",
+                    "from": {
+                      "node": "fxn_01v",
+                      "port": "image"
+                    },
+                    "to": {
+                      "node": "fxn_01w",
+                      "port": "image"
+                    }
+                  },
+                  {
+                    "id": "fxe_021",
+                    "from": {
+                      "node": "fxn_01w",
+                      "port": "image"
+                    },
+                    "to": {
+                      "node": "fxn_01x",
+                      "port": "image"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_023",
+            "speakerId": "chr_seven",
+            "portraitId": "por_seven_glitch",
+            "text": "[ERROR] Response buffer empty."
+          },
+          {
+            "id": "ln_024",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_sad",
+            "text": "Nothing? …That’s okay. Silence is an answer too."
+          },
+          {
+            "id": "ln_025",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "Let’s run the calibration anyway."
+          }
+        ],
+        "choices": [],
+        "scripts": [
+          {
+            "id": "stk_029",
+            "x": 40,
+            "y": 40,
+            "enabled": true,
+            "hat": {
+              "id": "blk_026",
+              "type": "core.whenSceneStarts",
+              "args": {}
+            },
+            "body": [
+              {
+                "id": "blk_027",
+                "type": "core.wait",
+                "args": {
+                  "seconds": 0.3
+                }
+              },
+              {
+                "id": "blk_028",
+                "type": "core.runBehavior",
+                "args": {
+                  "behavior": "bhv_glitch"
+                }
+              }
+            ]
+          }
+        ],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "nod_calibrate": {
+      "id": "nod_calibrate",
+      "type": "core.event",
+      "chapterId": "chp_awakening",
+      "name": "Calibrate",
+      "x": 1081,
+      "y": 115,
+      "data": {
+        "actions": [
+          {
+            "id": "blk_02a",
+            "type": "core.setVar",
+            "args": {
+              "variable": "var_met",
+              "value": true
+            }
+          },
+          {
+            "id": "blk_02b",
+            "type": "core.log",
+            "args": {
+              "value": {
+                "k": "lit",
+                "v": "Calibration finished"
+              }
+            }
+          }
+        ]
+      },
+      "modules": []
+    },
+    "nod_empathy_check": {
+      "id": "nod_empathy_check",
+      "type": "core.condition",
+      "chapterId": "chp_awakening",
+      "name": "Empathy ≥ 2?",
+      "x": 1380,
+      "y": 253,
+      "data": {
+        "expr": {
+          "k": "op",
+          "op": ">=",
+          "a": {
+            "k": "var",
+            "id": "var_empathy"
+          },
+          "b": {
+            "k": "lit",
+            "v": 2
+          }
+        }
+      },
+      "modules": []
+    },
+    "nod_jump_city": {
+      "id": "nod_jump_city",
+      "type": "core.jumpIn",
+      "chapterId": "chp_awakening",
+      "name": "To the city",
+      "x": 1702,
+      "y": 138,
+      "data": {
+        "number": 1
+      },
+      "modules": []
+    },
+    "nod_roll": {
+      "id": "nod_roll",
+      "type": "com.example.dice-check/rollDice",
+      "chapterId": "chp_awakening",
+      "name": "Roll d20 + empathy",
+      "x": 1380,
+      "y": 541,
+      "data": {
+        "count": 1,
+        "sides": 20,
+        "modifierVar": "var_empathy"
+      },
+      "modules": []
+    },
+    "nod_skill": {
+      "id": "nod_skill",
+      "type": "com.example.dice-check/skillCheck",
+      "chapterId": "chp_awakening",
+      "name": "Calibration check",
+      "x": 1702,
+      "y": 379,
+      "data": {
+        "difficulty": 8,
+        "resultVar": null
+      },
+      "modules": []
+    },
+    "scn_shutdown": {
+      "id": "scn_shutdown",
+      "type": "core.scene",
+      "chapterId": "chp_awakening",
+      "name": "Shutdown",
+      "x": 2024,
+      "y": 483,
+      "data": {
+        "number": "4",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_02d",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_lab",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02e",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_sad",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02c",
+            "type": "core.shape",
+            "name": "Fade",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 0,
+              "shape": "rect",
+              "width": 1280,
+              "height": 720,
+              "fill": "#000000",
+              "gradient": "none",
+              "fill2": "rgba(20,20,40,0.9)",
+              "gradientAngle": 90,
+              "stroke": "rgba(255,255,255,0.0)",
+              "strokeWidth": 0,
+              "radius": 12
+            },
+            "effect": null
+          }
+        ],
+        "animations": [
+          {
+            "id": "anm_02f",
+            "name": "Fade out",
+            "duration": 4,
+            "loop": false,
+            "autoplay": true,
+            "media": [],
+            "tracks": [
+              {
+                "id": "trk_02g",
+                "layerId": "lyr_02c",
+                "prop": "opacity",
+                "keyframes": [
+                  {
+                    "id": "key_02h",
+                    "t": 1.5,
+                    "v": 0,
+                    "ease": "easeIn"
+                  },
+                  {
+                    "id": "key_02i",
+                    "t": 4,
+                    "v": 1,
+                    "ease": "easeInOut"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "dialogue": [
+          {
+            "id": "ln_02j",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "Calibration failed. Entering sleep mode.",
+            "speakerName": "SYSTEM"
+          },
+          {
+            "id": "ln_02k",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_sad",
+            "text": "Goodnight, Seven. We’ll try again."
+          }
+        ],
+        "choices": [],
+        "scripts": [],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "nod_end_shutdown": {
+      "id": "nod_end_shutdown",
+      "type": "core.ending",
+      "chapterId": "chp_awakening",
+      "name": "Ending: Sleep mode",
+      "x": 2346,
+      "y": 506,
+      "data": {
+        "label": "Sleep Mode",
+        "behavior": "title",
+        "message": "Seven went back to sleep. Try being a little more… human.",
+        "unlockVarId": "var_end_shutdown"
+      },
+      "modules": []
+    },
+    "nod_note1": {
+      "id": "nod_note1",
+      "type": "core.comment",
+      "chapterId": "chp_awakening",
+      "name": "Note",
+      "x": 345,
+      "y": 598,
+      "data": {
+        "text": "Click Mika in “Boot sequence” to reveal a hidden choice (see its Scripts tab).\nThe dice check uses the Dice Check module.",
+        "width": 420,
+        "height": 110
+      },
+      "modules": []
+    },
+    "nod_from_lab": {
+      "id": "nod_from_lab",
+      "type": "core.jumpOut",
+      "chapterId": "chp_city",
+      "name": "From the lab",
+      "x": 0,
+      "y": 276,
+      "data": {
+        "number": 1
+      },
+      "modules": []
+    },
+    "scn_rooftop": {
+      "id": "scn_rooftop",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Rooftop",
+      "x": 345,
+      "y": 230,
+      "data": {
+        "number": "5",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_02p",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_rooftop",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02l",
+            "type": "core.particles",
+            "name": "Rain",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "rain",
+              "width": 1280,
+              "height": 720,
+              "count": 220,
+              "speed": 1.2,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#9fb6ff"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02m",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 400,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_neutral",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02n",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 880,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_neutral",
+              "height": 640,
+              "flip": false,
+              "dim": 0,
+              "float": 6
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02o",
+            "type": "core.composition",
+            "name": "Title card",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 80,
+              "y": 90,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0,
+              "anchorY": 0,
+              "opacity": 0,
+              "compositionId": "cmp_title_card"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02q",
+            "type": "core.audio",
+            "name": "Rain",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "assetId": "ast_amb_rain",
+              "category": "ambient",
+              "autoplay": true,
+              "loop": true,
+              "volume": 0.35,
+              "persist": false
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_02r",
+            "type": "core.audio",
+            "name": "City music",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "assetId": "ast_bgm_city",
+              "category": "bgm",
+              "autoplay": true,
+              "loop": true,
+              "volume": 0.6,
+              "persist": true
+            },
+            "effect": null
+          }
+        ],
+        "animations": [
+          {
+            "id": "anm_02s",
+            "name": "Title card",
+            "duration": 4.5,
+            "loop": false,
+            "autoplay": true,
+            "media": [],
+            "tracks": [
+              {
+                "id": "trk_02t",
+                "layerId": "lyr_02o",
+                "prop": "opacity",
+                "keyframes": [
+                  {
+                    "id": "key_02u",
+                    "t": 0.3,
+                    "v": 0,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_02v",
+                    "t": 1.2,
+                    "v": 1,
+                    "ease": "linear"
+                  },
+                  {
+                    "id": "key_02w",
+                    "t": 3.4,
+                    "v": 1,
+                    "ease": "easeIn"
+                  },
+                  {
+                    "id": "key_02x",
+                    "t": 4.4,
+                    "v": 0,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_02y",
+                "layerId": "lyr_02o",
+                "prop": "x",
+                "keyframes": [
+                  {
+                    "id": "key_02z",
+                    "t": 0.3,
+                    "v": 40,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_030",
+                    "t": 1.4,
+                    "v": 80,
+                    "ease": "easeInOut"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "dialogue": [
+          {
+            "id": "ln_031",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "This is the city I grew up in."
+          },
+          {
+            "id": "ln_032",
+            "speakerId": "chr_seven",
+            "portraitId": "por_seven_neutral",
+            "text": "It is very loud. And very bright. And wet."
+          },
+          {
+            "id": "ln_033",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "Ha! That’s the rain. Do you like it?"
+          }
+        ],
+        "choices": [
+          {
+            "id": "cho_like_you",
+            "text": "I like it, because you are here.",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [],
+            "animationId": null
+          },
+          {
+            "id": "cho_learning",
+            "text": "I do not understand “like” yet.",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [
+              {
+                "varId": "var_empathy",
+                "op": "add",
+                "value": 1
+              }
+            ],
+            "animationId": null
+          }
+        ],
+        "scripts": [],
+        "localVariables": [],
+        "transition": {
+          "type": "com.example.retro-fx/pixels",
+          "duration": 1.2,
+          "params": {
+            "block": 32
+          }
+        },
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "scn_blush": {
+      "id": "scn_blush",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Because you are here",
+      "x": 713,
+      "y": 115,
+      "data": {
+        "number": "6",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_034",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_rooftop",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_035",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 400,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_surprised",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_036",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 880,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_smile",
+              "height": 640,
+              "flip": false,
+              "dim": 0,
+              "float": 6
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_037",
+            "type": "core.particles",
+            "name": "Sparkles",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "sparkle",
+              "width": 1280,
+              "height": 720,
+              "count": 40,
+              "speed": 1,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#ffd27a"
+            },
+            "effect": null
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_038",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_surprised",
+            "text": "…Oh."
+          },
+          {
+            "id": "ln_039",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "Where did you learn to say things like that?"
+          }
+        ],
+        "choices": [],
+        "scripts": [],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": [
+        {
+          "id": "mi_aff_blush",
+          "moduleId": "com.example.relationships",
+          "component": "com.example.relationships/onEnter",
+          "enabled": true,
+          "data": {
+            "characterId": "chr_mika",
+            "delta": 2
+          }
+        }
+      ]
+    },
+    "scn_learning": {
+      "id": "scn_learning",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Learning",
+      "x": 713,
+      "y": 414,
+      "data": {
+        "number": "7",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_03a",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_rooftop",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03b",
+            "type": "core.particles",
+            "name": "Rain",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "rain",
+              "width": 1280,
+              "height": 720,
+              "count": 220,
+              "speed": 1.2,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#9fb6ff"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03c",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 400,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_smile",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03d",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 880,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_neutral",
+              "height": 640,
+              "flip": false,
+              "dim": 0,
+              "float": 6
+            },
+            "effect": null
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_03e",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "That’s fine. Nobody really does."
+          },
+          {
+            "id": "ln_03f",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "You learn it by noticing what you miss when it’s gone."
+          }
+        ],
+        "choices": [],
+        "scripts": [],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "scn_memory": {
+      "id": "scn_memory",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Memory",
+      "x": 1081,
+      "y": 253,
+      "data": {
+        "number": "8",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_03g",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_memory",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": {
+              "kind": "ref",
+              "graphId": "fxg_old_film",
+              "params": {}
+            }
+          },
+          {
+            "id": "lyr_03h",
+            "type": "core.video",
+            "name": "Old TV",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 650,
+              "y": 400,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_memory_lights",
+              "width": 260,
+              "height": 146,
+              "autoplay": true,
+              "loop": true,
+              "muted": true,
+              "volume": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03i",
+            "type": "core.shape",
+            "name": "TV frame",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 650,
+              "y": 400,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "shape": "rect",
+              "width": 280,
+              "height": 166,
+              "fill": "rgba(0,0,0,0)",
+              "gradient": "none",
+              "fill2": "rgba(20,20,40,0.9)",
+              "gradientAngle": 90,
+              "stroke": "#2b1b18",
+              "strokeWidth": 10,
+              "radius": 12
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03j",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 1000,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_neutral",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03k",
+            "type": "core.particles",
+            "name": "Dust",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "dust",
+              "width": 1280,
+              "height": 720,
+              "count": 40,
+              "speed": 1,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#ffd9a0"
+            },
+            "effect": null
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_03l",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_neutral",
+            "text": "When I was little, my father repaired old TVs in this room."
+          },
+          {
+            "id": "ln_03m",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "He said every machine has a little bit of its maker inside."
+          },
+          {
+            "id": "ln_03n",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_sad",
+            "text": "Then he got sick. And the room got very quiet."
+          },
+          {
+            "id": "ln_03o",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "She is reaching for your hand.",
+            "speakerName": ""
+          }
+        ],
+        "choices": [
+          {
+            "id": "cho_hold",
+            "text": "Hold her hand.",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [
+              {
+                "varId": "var_empathy",
+                "op": "add",
+                "value": 1
+              }
+            ],
+            "animationId": null
+          },
+          {
+            "id": "cho_wait",
+            "text": "( Do nothing )",
+            "condition": null,
+            "hidden": false,
+            "unavailable": "hide",
+            "effects": [],
+            "animationId": null
+          }
+        ],
+        "scripts": [
+          {
+            "id": "stk_03r",
+            "x": 40,
+            "y": 40,
+            "enabled": true,
+            "hat": {
+              "id": "blk_03p",
+              "type": "core.whenChoiceSelected",
+              "args": {
+                "choice": "cho_hold"
+              }
+            },
+            "body": [
+              {
+                "id": "blk_03q",
+                "type": "com.example.relationships/change",
+                "args": {
+                  "character": "chr_mika",
+                  "delta": 2
+                }
+              }
+            ]
+          }
+        ],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": [
+        {
+          "id": "mi_timer_memory",
+          "moduleId": "com.example.timed-choices",
+          "component": "com.example.timed-choices/timer",
+          "enabled": true,
+          "data": {
+            "seconds": 8,
+            "defaultChoice": "cho_wait",
+            "color": "#ffcc66"
+          }
+        }
+      ]
+    },
+    "nod_affection": {
+      "id": "nod_affection",
+      "type": "com.example.relationships/branch",
+      "chapterId": "chp_city",
+      "name": "Does Mika trust Seven?",
+      "x": 1426,
+      "y": 276,
+      "data": {
+        "characterId": "chr_mika",
+        "threshold": null
+      },
+      "modules": []
+    },
+    "scn_dawn": {
+      "id": "scn_dawn",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Dawn",
+      "x": 1748,
+      "y": 115,
+      "data": {
+        "number": "9",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_03v",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_dawn",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03u",
+            "type": "core.shape",
+            "name": "Sun glow",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 980,
+              "y": 400,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 0.5,
+              "shape": "ellipse",
+              "width": 900,
+              "height": 900,
+              "fill": "#fff3c4",
+              "gradient": "radial",
+              "fill2": "rgba(255,243,196,0)",
+              "gradientAngle": 90,
+              "stroke": "rgba(255,255,255,0.0)",
+              "strokeWidth": 0,
+              "radius": 12
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03w",
+            "type": "core.particles",
+            "name": "Petals",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "petals",
+              "width": 1280,
+              "height": 720,
+              "count": 50,
+              "speed": 1,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#ffc4d6"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03s",
+            "type": "core.character",
+            "name": "Mika",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 420,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_mika",
+              "portraitId": "por_mika_smile",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03t",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 860,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_smile",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_03x",
+            "type": "core.audio",
+            "name": "Ending music",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "assetId": "ast_bgm_ending",
+              "category": "bgm",
+              "autoplay": true,
+              "loop": true,
+              "volume": 0.7,
+              "persist": true
+            },
+            "effect": null
+          }
+        ],
+        "animations": [
+          {
+            "id": "anm_03y",
+            "name": "Sunrise",
+            "duration": 6,
+            "loop": false,
+            "autoplay": true,
+            "media": [],
+            "tracks": [
+              {
+                "id": "trk_03z",
+                "layerId": "lyr_03u",
+                "prop": "opacity",
+                "keyframes": [
+                  {
+                    "id": "key_040",
+                    "t": 0,
+                    "v": 0.2,
+                    "ease": "easeInOut"
+                  },
+                  {
+                    "id": "key_041",
+                    "t": 6,
+                    "v": 0.6,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_042",
+                "layerId": "lyr_03u",
+                "prop": "scaleX",
+                "keyframes": [
+                  {
+                    "id": "key_043",
+                    "t": 0,
+                    "v": 0.8,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_044",
+                    "t": 6,
+                    "v": 1.1,
+                    "ease": "easeInOut"
+                  }
+                ]
+              },
+              {
+                "id": "trk_045",
+                "layerId": "lyr_03u",
+                "prop": "scaleY",
+                "keyframes": [
+                  {
+                    "id": "key_046",
+                    "t": 0,
+                    "v": 0.8,
+                    "ease": "easeOut"
+                  },
+                  {
+                    "id": "key_047",
+                    "t": 6,
+                    "v": 1.1,
+                    "ease": "easeInOut"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "dialogue": [
+          {
+            "id": "ln_048",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "We stayed until the sun came up.",
+            "speakerName": ""
+          },
+          {
+            "id": "ln_049",
+            "speakerId": "chr_seven",
+            "portraitId": "por_seven_smile",
+            "text": "Mika. I think this is what you call “happy”."
+          },
+          {
+            "id": "ln_04a",
+            "speakerId": "chr_mika",
+            "portraitId": "por_mika_smile",
+            "text": "Yeah. I think it is."
+          }
+        ],
+        "choices": [],
+        "scripts": [
+          {
+            "id": "stk_04d",
+            "x": 40,
+            "y": 40,
+            "enabled": true,
+            "hat": {
+              "id": "blk_04b",
+              "type": "core.whenLineShown",
+              "args": {
+                "line": "ln_049"
+              }
+            },
+            "body": [
+              {
+                "id": "blk_04c",
+                "type": "core.playSound",
+                "args": {
+                  "asset": "ast_sfx_chime",
+                  "volume": 0.6
+                }
+              }
+            ]
+          }
+        ],
+        "localVariables": [],
+        "transition": {
+          "type": "fade",
+          "duration": 1.5
+        },
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "scn_rain": {
+      "id": "scn_rain",
+      "type": "core.scene",
+      "chapterId": "chp_city",
+      "name": "Rain",
+      "x": 1748,
+      "y": 437,
+      "data": {
+        "number": "10",
+        "background": "#1b1d2a",
+        "layers": [
+          {
+            "id": "lyr_04e",
+            "type": "core.background",
+            "name": "Background",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "assetId": "ast_bg_rooftop",
+              "color": "#20222e",
+              "fit": "cover"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_04f",
+            "type": "core.particles",
+            "name": "Rain",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 360,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "kind": "rain",
+              "width": 1280,
+              "height": 720,
+              "count": 320,
+              "speed": 1.4,
+              "size": 4,
+              "wind": 0.2,
+              "color": "#9fb6ff"
+            },
+            "effect": null
+          },
+          {
+            "id": "lyr_04g",
+            "type": "core.character",
+            "name": "Seven",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 720,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 1,
+              "opacity": 1,
+              "characterId": "chr_seven",
+              "portraitId": "por_seven_neutral",
+              "height": 640,
+              "flip": false,
+              "dim": 0
+            },
+            "effect": null
+          }
+        ],
+        "animations": [],
+        "dialogue": [
+          {
+            "id": "ln_04h",
+            "speakerId": null,
+            "portraitId": null,
+            "text": "Mika went home early.",
+            "speakerName": ""
+          },
+          {
+            "id": "ln_04i",
+            "speakerId": "chr_seven",
+            "portraitId": "por_seven_neutral",
+            "text": "Rain: 100%. Understanding: 12%. Logging for tomorrow."
+          }
+        ],
+        "choices": [],
+        "scripts": [],
+        "localVariables": [],
+        "transition": null,
+        "hideTextbox": false,
+        "holdSeconds": 0
+      },
+      "modules": []
+    },
+    "nod_end_human": {
+      "id": "nod_end_human",
+      "type": "core.ending",
+      "chapterId": "chp_city",
+      "name": "Ending: Like Human",
+      "x": 2093,
+      "y": 138,
+      "data": {
+        "label": "Like Human",
+        "behavior": "title",
+        "message": "Thank you for playing.",
+        "unlockVarId": "var_end_human"
+      },
+      "modules": []
+    },
+    "nod_end_machine": {
+      "id": "nod_end_machine",
+      "type": "core.ending",
+      "chapterId": "chp_city",
+      "name": "Ending: Just a Machine",
+      "x": 2093,
+      "y": 460,
+      "data": {
+        "label": "Just a Machine",
+        "behavior": "title",
+        "message": "Some things take more than one try.",
+        "unlockVarId": "var_end_machine"
+      },
+      "modules": []
+    },
+    "nod_note2": {
+      "id": "nod_note2",
+      "type": "core.comment",
+      "chapterId": "chp_city",
+      "name": "Note",
+      "x": 1081,
+      "y": 552,
+      "data": {
+        "text": "Memory has a Timed Choices module (Modules tab) and uses the shared “Old film” effect.\nThe pink node is an Affection Branch from the Relationships module.",
+        "width": 440,
+        "height": 110
+      },
+      "modules": []
+    }
+  },
+  "edges": [
+    {
+      "id": "edg_nod_start_out_scn_boot",
+      "from": {
+        "node": "nod_start",
+        "port": "out"
+      },
+      "to": {
+        "node": "scn_boot",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_boot_c_cho_hello_scn_first_words",
+      "from": {
+        "node": "scn_boot",
+        "port": "c:cho_hello"
+      },
+      "to": {
+        "node": "scn_first_words",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_boot_c_cho_hand_scn_first_words",
+      "from": {
+        "node": "scn_boot",
+        "port": "c:cho_hand"
+      },
+      "to": {
+        "node": "scn_first_words",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_boot_c_cho_silent_scn_silence",
+      "from": {
+        "node": "scn_boot",
+        "port": "c:cho_silent"
+      },
+      "to": {
+        "node": "scn_silence",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_first_words_next_nod_calibrate",
+      "from": {
+        "node": "scn_first_words",
+        "port": "next"
+      },
+      "to": {
+        "node": "nod_calibrate",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_calibrate_out_nod_empathy_check",
+      "from": {
+        "node": "nod_calibrate",
+        "port": "out"
+      },
+      "to": {
+        "node": "nod_empathy_check",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_silence_next_nod_empathy_check",
+      "from": {
+        "node": "scn_silence",
+        "port": "next"
+      },
+      "to": {
+        "node": "nod_empathy_check",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_empathy_check_true_nod_jump_city",
+      "from": {
+        "node": "nod_empathy_check",
+        "port": "true"
+      },
+      "to": {
+        "node": "nod_jump_city",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_empathy_check_false_nod_skill",
+      "from": {
+        "node": "nod_empathy_check",
+        "port": "false"
+      },
+      "to": {
+        "node": "nod_skill",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_roll_roll_nod_skill",
+      "from": {
+        "node": "nod_roll",
+        "port": "roll"
+      },
+      "to": {
+        "node": "nod_skill",
+        "port": "bonus"
+      }
+    },
+    {
+      "id": "edg_nod_skill_success_nod_jump_city",
+      "from": {
+        "node": "nod_skill",
+        "port": "success"
+      },
+      "to": {
+        "node": "nod_jump_city",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_skill_failure_scn_shutdown",
+      "from": {
+        "node": "nod_skill",
+        "port": "failure"
+      },
+      "to": {
+        "node": "scn_shutdown",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_shutdown_next_nod_end_shutdown",
+      "from": {
+        "node": "scn_shutdown",
+        "port": "next"
+      },
+      "to": {
+        "node": "nod_end_shutdown",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_from_lab_out_scn_rooftop",
+      "from": {
+        "node": "nod_from_lab",
+        "port": "out"
+      },
+      "to": {
+        "node": "scn_rooftop",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_rooftop_c_cho_like_you_scn_blush",
+      "from": {
+        "node": "scn_rooftop",
+        "port": "c:cho_like_you"
+      },
+      "to": {
+        "node": "scn_blush",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_rooftop_c_cho_learning_scn_learning",
+      "from": {
+        "node": "scn_rooftop",
+        "port": "c:cho_learning"
+      },
+      "to": {
+        "node": "scn_learning",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_blush_next_scn_memory",
+      "from": {
+        "node": "scn_blush",
+        "port": "next"
+      },
+      "to": {
+        "node": "scn_memory",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_learning_next_scn_memory",
+      "from": {
+        "node": "scn_learning",
+        "port": "next"
+      },
+      "to": {
+        "node": "scn_memory",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_memory_c_cho_hold_nod_affection",
+      "from": {
+        "node": "scn_memory",
+        "port": "c:cho_hold"
+      },
+      "to": {
+        "node": "nod_affection",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_memory_c_cho_wait_nod_affection",
+      "from": {
+        "node": "scn_memory",
+        "port": "c:cho_wait"
+      },
+      "to": {
+        "node": "nod_affection",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_affection_high_scn_dawn",
+      "from": {
+        "node": "nod_affection",
+        "port": "high"
+      },
+      "to": {
+        "node": "scn_dawn",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_nod_affection_low_scn_rain",
+      "from": {
+        "node": "nod_affection",
+        "port": "low"
+      },
+      "to": {
+        "node": "scn_rain",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_dawn_next_nod_end_human",
+      "from": {
+        "node": "scn_dawn",
+        "port": "next"
+      },
+      "to": {
+        "node": "nod_end_human",
+        "port": "in"
+      }
+    },
+    {
+      "id": "edg_scn_rain_next_nod_end_machine",
+      "from": {
+        "node": "scn_rain",
+        "port": "next"
+      },
+      "to": {
+        "node": "nod_end_machine",
+        "port": "in"
+      }
+    }
+  ],
+  "variables": [
+    {
+      "id": "var_empathy",
+      "name": "empathy",
+      "type": "number",
+      "initial": 0,
+      "scope": "game",
+      "description": "How well Seven understands people. Raised by choices."
+    },
+    {
+      "id": "var_met",
+      "name": "metMika",
+      "type": "boolean",
+      "initial": false,
+      "scope": "game",
+      "description": "Set by the \"Calibrate\" event."
+    },
+    {
+      "id": "var_end_human",
+      "name": "endingHuman",
+      "type": "boolean",
+      "initial": false,
+      "scope": "persistent",
+      "description": "Unlocked when the \"Like Human\" ending is reached (kept across playthroughs)."
+    },
+    {
+      "id": "var_end_machine",
+      "name": "endingMachine",
+      "type": "boolean",
+      "initial": false,
+      "scope": "persistent"
+    },
+    {
+      "id": "var_end_shutdown",
+      "name": "endingShutdown",
+      "type": "boolean",
+      "initial": false,
+      "scope": "persistent"
+    }
+  ],
+  "characters": [
+    {
+      "id": "chr_mika",
+      "name": "Mika",
+      "color": "#ff8fb8",
+      "description": "Robotics engineer. Talks to machines like they are people.",
+      "portraits": [
+        {
+          "id": "por_mika_neutral",
+          "name": "neutral",
+          "assetId": "ast_mika_neutral"
+        },
+        {
+          "id": "por_mika_smile",
+          "name": "smile",
+          "assetId": "ast_mika_smile"
+        },
+        {
+          "id": "por_mika_surprised",
+          "name": "surprised",
+          "assetId": "ast_mika_surprised"
+        },
+        {
+          "id": "por_mika_sad",
+          "name": "sad",
+          "assetId": "ast_mika_sad"
+        }
+      ]
+    },
+    {
+      "id": "chr_seven",
+      "name": "Seven",
+      "color": "#7ff3ff",
+      "description": "Prototype android, unit 7. Learning what feelings are.",
+      "portraits": [
+        {
+          "id": "por_seven_neutral",
+          "name": "neutral",
+          "assetId": "ast_seven_neutral"
+        },
+        {
+          "id": "por_seven_smile",
+          "name": "smile",
+          "assetId": "ast_seven_smile"
+        },
+        {
+          "id": "por_seven_glitch",
+          "name": "glitch",
+          "assetId": "ast_seven_glitch"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "ast_bg_dawn",
+      "name": "bg_dawn",
+      "kind": "image",
+      "path": "assets/images/bg_dawn.png",
+      "size": 24516,
+      "hash": "0289fd99899b114e907f2afa2cad28b05ada59be",
+      "tags": [
+        "background"
+      ],
+      "meta": {
+        "width": 1280,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bg_lab",
+      "name": "bg_lab",
+      "kind": "image",
+      "path": "assets/images/bg_lab.png",
+      "size": 186368,
+      "hash": "0682c45697297fd783cafb8e1e2871d3c2f12d0d",
+      "tags": [
+        "background"
+      ],
+      "meta": {
+        "width": 1280,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bg_memory",
+      "name": "bg_memory",
+      "kind": "image",
+      "path": "assets/images/bg_memory.png",
+      "size": 51937,
+      "hash": "ee1e8f6dfe530b3b0c956234b8cc5b3ac8f472e9",
+      "tags": [
+        "background"
+      ],
+      "meta": {
+        "width": 1280,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bg_rooftop",
+      "name": "bg_rooftop",
+      "kind": "image",
+      "path": "assets/images/bg_rooftop.png",
+      "size": 25922,
+      "hash": "217327a42c0c035da1f547fa4bd76595c4768c3f",
+      "tags": [
+        "background"
+      ],
+      "meta": {
+        "width": 1280,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bg_title",
+      "name": "bg_title",
+      "kind": "image",
+      "path": "assets/images/bg_title.png",
+      "size": 184823,
+      "hash": "edead2d8a49c128a0704fc78f61208d03abd7c37",
+      "tags": [
+        "background"
+      ],
+      "meta": {
+        "width": 1280,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_icon",
+      "name": "icon",
+      "kind": "image",
+      "path": "assets/images/icon.png",
+      "size": 23148,
+      "hash": "cef1f7bcaa7426759f8a1481f901e95b5e167935",
+      "tags": [
+        "ui"
+      ],
+      "meta": {
+        "width": 512,
+        "height": 512
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_mika_neutral",
+      "name": "mika_neutral",
+      "kind": "image",
+      "path": "assets/images/mika_neutral.png",
+      "size": 33585,
+      "hash": "708f86a0c63b9f6acec119dd9771c2c509c35ff4",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_mika_sad",
+      "name": "mika_sad",
+      "kind": "image",
+      "path": "assets/images/mika_sad.png",
+      "size": 34331,
+      "hash": "4c50f05991c750fdb55290aec5c18a88126cf51f",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_mika_smile",
+      "name": "mika_smile",
+      "kind": "image",
+      "path": "assets/images/mika_smile.png",
+      "size": 31750,
+      "hash": "9ecd658816e248d42294ebb7088c22f47de9fdbd",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_mika_surprised",
+      "name": "mika_surprised",
+      "kind": "image",
+      "path": "assets/images/mika_surprised.png",
+      "size": 33527,
+      "hash": "79eb050eb4e463dd19818fa573c774505f081151",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_seven_glitch",
+      "name": "seven_glitch",
+      "kind": "image",
+      "path": "assets/images/seven_glitch.png",
+      "size": 26844,
+      "hash": "2d96db9b302c3ffa8805880acf9316d0b6e8e984",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_seven_neutral",
+      "name": "seven_neutral",
+      "kind": "image",
+      "path": "assets/images/seven_neutral.png",
+      "size": 22071,
+      "hash": "63109fd81ede641bcdcf73504d820fd9327082ab",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_seven_smile",
+      "name": "seven_smile",
+      "kind": "image",
+      "path": "assets/images/seven_smile.png",
+      "size": 22579,
+      "hash": "2edcfb39fef9e397bcb473e3316815a81c0af1c8",
+      "tags": [
+        "character"
+      ],
+      "meta": {
+        "width": 560,
+        "height": 720
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_amb_rain",
+      "name": "amb_rain",
+      "kind": "audio",
+      "path": "assets/audio/amb_rain.ogg",
+      "size": 128997,
+      "hash": "95d4d25e7ee1981a45a55daf7ef074c05403ac8c",
+      "tags": [
+        "amb"
+      ],
+      "meta": {
+        "duration": 8
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bgm_city",
+      "name": "bgm_city",
+      "kind": "audio",
+      "path": "assets/audio/bgm_city.ogg",
+      "size": 228590,
+      "hash": "3859612ee56564bf262e6428c361159a5a79ac10",
+      "tags": [
+        "bgm"
+      ],
+      "meta": {
+        "duration": 32
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bgm_ending",
+      "name": "bgm_ending",
+      "kind": "audio",
+      "path": "assets/audio/bgm_ending.ogg",
+      "size": 229765,
+      "hash": "6efda19a03fc0f59fd902a2b1b280ef9f2df8f89",
+      "tags": [
+        "bgm"
+      ],
+      "meta": {
+        "duration": 32
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_bgm_lab",
+      "name": "bgm_lab",
+      "kind": "audio",
+      "path": "assets/audio/bgm_lab.ogg",
+      "size": 221919,
+      "hash": "21e6f15e2008f6a84f49275b6647afb99ced22a7",
+      "tags": [
+        "bgm"
+      ],
+      "meta": {
+        "duration": 32
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_sfx_beep",
+      "name": "sfx_beep",
+      "kind": "audio",
+      "path": "assets/audio/sfx_beep.ogg",
+      "size": 7303,
+      "hash": "38f23aaaeb4e5dc242bddfae8a38a1d2301bbd0c",
+      "tags": [
+        "sfx"
+      ],
+      "meta": {
+        "duration": 0.5
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_sfx_chime",
+      "name": "sfx_chime",
+      "kind": "audio",
+      "path": "assets/audio/sfx_chime.ogg",
+      "size": 15452,
+      "hash": "29745dfdeb0ff4e6740c8155a1750adb762ea826",
+      "tags": [
+        "sfx"
+      ],
+      "meta": {
+        "duration": 1.6
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_sfx_glitch",
+      "name": "sfx_glitch",
+      "kind": "audio",
+      "path": "assets/audio/sfx_glitch.ogg",
+      "size": 20185,
+      "hash": "7b149b041a3ff0539eb4d4d0b1b2ca09b751d95b",
+      "tags": [
+        "sfx"
+      ],
+      "meta": {
+        "duration": 0.6
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    },
+    {
+      "id": "ast_memory_lights",
+      "name": "memory_lights",
+      "kind": "video",
+      "path": "assets/video/memory_lights.webm",
+      "size": 336509,
+      "hash": "54e312e17c2bf7a74e00b17d0460b7f866b762f3",
+      "tags": [
+        "memory"
+      ],
+      "meta": {
+        "duration": 6,
+        "width": 640,
+        "height": 360
+      },
+      "imported": "2026-11-19T00:00:00.000Z"
+    }
+  ],
+  "compositions": [
+    {
+      "id": "cmp_title_card",
+      "name": "Chapter title card",
+      "width": 640,
+      "height": 160,
+      "layers": [
+        {
+          "id": "lyr_004",
+          "type": "core.shape",
+          "name": "Bar",
+          "parentId": null,
+          "visible": true,
+          "locked": false,
+          "props": {
+            "x": 0,
+            "y": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "rotation": 0,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "shape": "rect",
+            "width": 640,
+            "height": 4,
+            "fill": "#b388ff",
+            "gradient": "none",
+            "fill2": "rgba(20,20,40,0.9)",
+            "gradientAngle": 90,
+            "stroke": "rgba(255,255,255,0.0)",
+            "strokeWidth": 0,
+            "radius": 12
+          },
+          "effect": null
+        },
+        {
+          "id": "lyr_005",
+          "type": "core.text",
+          "name": "Title",
+          "parentId": null,
+          "visible": true,
+          "locked": false,
+          "props": {
+            "x": 0,
+            "y": 24,
+            "scaleX": 1,
+            "scaleY": 1,
+            "rotation": 0,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "text": "Chapter 2",
+            "fontFamily": "system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+            "fontSize": 28,
+            "fontWeight": "600",
+            "italic": false,
+            "color": "#b388ff",
+            "align": "left",
+            "width": 640,
+            "lineHeight": 1.3,
+            "letterSpacing": 0,
+            "reveal": 1,
+            "strokeColor": "#000000",
+            "strokeWidth": 0,
+            "shadowColor": "rgba(0,0,0,0.6)",
+            "shadowBlur": 0
+          },
+          "effect": null
+        },
+        {
+          "id": "lyr_006",
+          "type": "core.text",
+          "name": "Subtitle",
+          "parentId": null,
+          "visible": true,
+          "locked": false,
+          "props": {
+            "x": 0,
+            "y": 64,
+            "scaleX": 1,
+            "scaleY": 1,
+            "rotation": 0,
+            "anchorX": 0,
+            "anchorY": 0,
+            "opacity": 1,
+            "text": "The City",
+            "fontFamily": "system-ui, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+            "fontSize": 64,
+            "fontWeight": "bold",
+            "italic": false,
+            "color": "#ffffff",
+            "align": "left",
+            "width": 640,
+            "lineHeight": 1.3,
+            "letterSpacing": 0,
+            "reveal": 1,
+            "strokeColor": "#000000",
+            "strokeWidth": 0,
+            "shadowColor": "rgba(0,0,0,0.6)",
+            "shadowBlur": 12
+          },
+          "effect": null
+        }
+      ]
+    }
+  ],
+  "effectGraphs": [
+    {
+      "id": "fxg_old_film",
+      "name": "Old film",
+      "nodes": [
+        {
+          "id": "fxn_h2miwkefev4j",
+          "type": "fx.input",
+          "x": 40,
+          "y": 80,
+          "values": {}
+        },
+        {
+          "id": "fxn_rja7qsd8kjps",
+          "type": "fx.sepia",
+          "x": 260,
+          "y": 80,
+          "values": {
+            "amount": 0.85
+          }
+        },
+        {
+          "id": "fxn_p4mn837ii04j",
+          "type": "fx.noise",
+          "x": 260,
+          "y": 260,
+          "values": {
+            "scale": 3,
+            "speed": 8,
+            "colorA": "rgba(0,0,0,0)",
+            "colorB": "rgba(255,255,255,0.35)"
+          }
+        },
+        {
+          "id": "fxn_4xq5qo48aynd",
+          "type": "fx.blend",
+          "x": 500,
+          "y": 80,
+          "values": {
+            "mode": "overlay",
+            "amount": 0.5
+          }
+        },
+        {
+          "id": "fxn_n07esye8gx1z",
+          "type": "fx.vignette",
+          "x": 740,
+          "y": 80,
+          "values": {
+            "amount": 0.7,
+            "softness": 0.6
+          }
+        },
+        {
+          "id": "fxn_yy20w5x6s1jk",
+          "type": "fx.output",
+          "x": 980,
+          "y": 80,
+          "values": {}
+        }
+      ],
+      "edges": [
+        {
+          "id": "fxe_437tm7wk3qey",
+          "from": {
+            "node": "fxn_h2miwkefev4j",
+            "port": "image"
+          },
+          "to": {
+            "node": "fxn_rja7qsd8kjps",
+            "port": "image"
+          }
+        },
+        {
+          "id": "fxe_ncnj4b24t47h",
+          "from": {
+            "node": "fxn_rja7qsd8kjps",
+            "port": "image"
+          },
+          "to": {
+            "node": "fxn_4xq5qo48aynd",
+            "port": "a"
+          }
+        },
+        {
+          "id": "fxe_03q8lo3a3tdg",
+          "from": {
+            "node": "fxn_p4mn837ii04j",
+            "port": "image"
+          },
+          "to": {
+            "node": "fxn_4xq5qo48aynd",
+            "port": "b"
+          }
+        },
+        {
+          "id": "fxe_tlskm4xfidgj",
+          "from": {
+            "node": "fxn_4xq5qo48aynd",
+            "port": "image"
+          },
+          "to": {
+            "node": "fxn_n07esye8gx1z",
+            "port": "image"
+          }
+        },
+        {
+          "id": "fxe_jb0wxbdltbqw",
+          "from": {
+            "node": "fxn_n07esye8gx1z",
+            "port": "image"
+          },
+          "to": {
+            "node": "fxn_yy20w5x6s1jk",
+            "port": "image"
+          }
+        }
+      ],
+      "params": []
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "bhv_glitch",
+      "name": "Glitch",
+      "body": [
+        {
+          "id": "blk_001",
+          "type": "core.playSound",
+          "args": {
+            "asset": "ast_sfx_glitch",
+            "volume": 0.8
+          }
+        },
+        {
+          "id": "blk_002",
+          "type": "core.flashScreen",
+          "args": {
+            "color": "#7ff3ff",
+            "seconds": 0.25
+          }
+        },
+        {
+          "id": "blk_003",
+          "type": "core.shakeScreen",
+          "args": {
+            "intensity": 14,
+            "seconds": 0.4
+          }
+        }
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "id": "com.example.relationships",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.timed-choices",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.speech-bubble",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.wobble",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.retro-fx",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.extra-blocks",
+      "version": "^1.0.0",
+      "enabled": true
+    },
+    {
+      "id": "com.example.dice-check",
+      "version": "^1.0.0",
+      "enabled": true
+    }
+  ],
+  "extensions": {
+    "com.example.relationships": {
+      "showMeter": true,
+      "characters": {
+        "chr_mika": {
+          "tracked": true,
+          "start": 2,
+          "max": 10,
+          "threshold": 5
+        }
+      }
+    }
+  },
+  "editor": {
+    "views": {},
+    "lastChapterId": "chp_awakening"
+  }
+}

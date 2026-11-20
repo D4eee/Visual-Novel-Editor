@@ -1,0 +1,2 @@
+{ "tc.label": "限时选项", "tc.desc": "必须在倒计时结束前做出选择。", "tc.seconds": "时间限制", "tc.default": "超时后选择", "tc.lastChoice": "最后一个可选项",
+  "tc.color": "进度条颜色", "tc.uiIntro": "选项出现时显示倒计时条。预览：", "tc.issue.noChoices": "限时选项：这个场景还没有选项。", "tc.issue.missing": "限时选项：默认选项已被删除。" }

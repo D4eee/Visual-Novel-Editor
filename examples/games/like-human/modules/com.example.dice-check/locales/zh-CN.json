@@ -1,0 +1,20 @@
+{
+  "dice.port.roll": "点数",
+  "dice.port.bonus": "点数（可选）",
+  "dice.port.success": "成功",
+  "dice.port.failure": "失败",
+  "dice.node.roll": "掷骰",
+  "dice.node.roll.desc": "其他节点读取时掷骰。连接到「技能检定」使用。",
+  "dice.node.check": "技能检定",
+  "dice.node.check.desc": "把点数与难度比较，走「成功」或「失败」出口。",
+  "dice.prop.count": "骰子数量",
+  "dice.prop.sides": "面数",
+  "dice.prop.modifier": "加上变量",
+  "dice.prop.modifier.desc": "可选：加到点数上的数字变量（例如勇气）。",
+  "dice.prop.difficulty": "难度",
+  "dice.prop.resultVar": "把点数存入",
+  "dice.prop.resultVar.desc": "可选：接收点数的数字变量。",
+  "dice.toast.success": "🎲 {roll} 对 {dc}——成功！",
+  "dice.toast.failure": "🎲 {roll} 对 {dc}——失败。",
+  "dice.issue.dc": "难度高于任何可能的点数。"
+}

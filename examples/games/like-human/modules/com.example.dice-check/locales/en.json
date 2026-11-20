@@ -1,0 +1,20 @@
+{
+  "dice.port.roll": "Roll",
+  "dice.port.bonus": "Roll (optional)",
+  "dice.port.success": "Success",
+  "dice.port.failure": "Failure",
+  "dice.node.roll": "Roll Dice",
+  "dice.node.roll.desc": "Rolls dice when another node reads its value. Connect it to a Skill Check.",
+  "dice.node.check": "Skill Check",
+  "dice.node.check.desc": "Compares a roll with a difficulty and continues through Success or Failure.",
+  "dice.prop.count": "Number of dice",
+  "dice.prop.sides": "Sides",
+  "dice.prop.modifier": "Add variable",
+  "dice.prop.modifier.desc": "Optional: a number variable added to the roll (e.g. courage).",
+  "dice.prop.difficulty": "Difficulty",
+  "dice.prop.resultVar": "Store roll in",
+  "dice.prop.resultVar.desc": "Optional: a number variable that receives the roll.",
+  "dice.toast.success": "🎲 {roll} vs {dc} — success!",
+  "dice.toast.failure": "🎲 {roll} vs {dc} — failed.",
+  "dice.issue.dc": "The difficulty is higher than any roll can reach."
+}
