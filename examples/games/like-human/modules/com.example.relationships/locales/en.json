@@ -25,5 +25,6 @@
   "rel.issue.noChar": "Affection Branch: choose a character.",
   "rel.report": "Affection report",
   "rel.report.empty": "No affection changes found.",
-  "rel.report.done": "Affection report downloaded."
+  "rel.report.done": "Affection report downloaded.",
+  "rel.block.affectionOf": "affection of {character}"
 }

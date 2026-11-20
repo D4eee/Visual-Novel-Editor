@@ -30,6 +30,6 @@ export * from './scene';
 export * from './game';
 export * from './modules';
 export * from './editview';
-export { TRANSFORM_PROPS, portraitAsset } from './builtins/layers';
+export { TRANSFORM_PROPS, portraitAsset, regionPoints, regionContains, regionPath } from './builtins/layers';
 export { varNameFn } from './builtins/nodes';
 export { runtimeStrings } from './strings';

@@ -832,7 +832,7 @@ body.panning .blk-workspace.canvas { cursor: grabbing; }
 .blk.running { box-shadow: 0 0 0 2px #fff, 0 0 18px 2px var(--blk); filter: brightness(1.15); transition: box-shadow .1s; }
 .blk-elements { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
 .blk-elements { align-self: stretch; }
-.blk-element-row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: space-between; }
+.blk-element-row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: flex-start; }
 .blk-element-row .blk.mini { flex: none !important; width: auto !important; align-self: center; }
 .blk-pill .nm { overflow: hidden; text-overflow: ellipsis; }
 .blk-pill { min-width: 48px; flex: 0 1 auto !important; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 10px; border-radius: 12px; background: #3d8bfd; color: #fff; font-size: 12px; font-weight: 600; cursor: grab; user-select: none; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -866,3 +866,32 @@ body.dragging-block .blk-slot-layer { box-shadow: 0 0 0 1px rgba(255,255,255,.35
 .fxp-chain { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
 .fxp-chain .chip.missing { border-color: var(--err); color: var(--err); }
 .fxp-manager .fxp-body { min-height: 300px; }
+
+/* Reporter (round) and condition (pointed) blocks */
+.blk.shape-reporter { border-radius: 16px; padding: 3px 12px; min-height: 28px; }
+.blk.shape-boolean { border-radius: 4px; padding: 3px 18px; min-height: 28px; clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%); }
+.blk.nested { min-height: 24px; padding-top: 2px; padding-bottom: 2px; font-size: 12px; box-shadow: 0 0 0 1px rgba(0,0,0,.25); cursor: grab; }
+.blk.nested.shape-reporter { padding-left: 9px; padding-right: 9px; }
+.blk.nested.shape-boolean { padding-left: 14px; padding-right: 14px; }
+.blk-slot-val { display: inline-flex; align-items: center; border-radius: 13px; transition: box-shadow .1s; }
+.blk-slot-val.accept-boolean:not(.filled) { border-radius: 4px; }
+body.dragging-block .blk-slot-val:not(.filled) { box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
+.blk-slot-val.hot { box-shadow: 0 0 0 2px #fff !important; }
+.blk-slot.t-boolean { width: 30px; border-radius: 3px; clip-path: polygon(8px 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 8px 100%, 0 50%); }
+.blk-slot.filled { padding: 0 8px; background: rgba(0,0,0,.25); font-weight: 600; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blk-slot.t-layer.filled { background: #3d8bfd; box-shadow: 0 0 0 1px rgba(255,255,255,.35); }
+
+/* Elements palette: one entry per element, its blocks underneath */
+.blk-new-el { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px dashed var(--line-2); background: transparent; color: var(--text-2); cursor: pointer; font: inherit; font-size: 12px; margin-bottom: 4px; }
+.blk-new-el:hover { border-color: var(--accent); color: var(--text); }
+.blk-element { display: flex; flex-direction: column; gap: 6px; width: 100%; border-radius: 8px; }
+.blk-element.selected > .blk-element-row .blk-pill { box-shadow: 0 0 0 2px #fff; }
+.blk-element.open { padding-bottom: 6px; }
+.blk-el-toggle { width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--muted); cursor: pointer; padding: 0; flex: none; }
+.blk-element-blocks { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding-left: 22px; }
+.blk-element-blocks .blk.shape-hat { min-width: 0; }
+.blk-stack.refs-selected { box-shadow: 0 0 0 2px rgba(61,139,253,.75); background: rgba(61,139,253,.06); }
+.gizmo-region { fill: none; stroke: #50c8ff; stroke-width: 6; stroke-opacity: 0.001; pointer-events: stroke; cursor: copy; }
+.gizmo-handle.point { fill: #50c8ff; stroke: #fff; cursor: move; }
+.layer-flag.script-badge { display: inline-flex; align-items: center; gap: 2px; border: 0; background: rgba(61,139,253,.18); color: #8fbaff; border-radius: 8px; padding: 0 5px; height: 16px; font-size: 10px; cursor: pointer; }
+.layer-flag.script-badge:hover { background: rgba(61,139,253,.35); color: #fff; }

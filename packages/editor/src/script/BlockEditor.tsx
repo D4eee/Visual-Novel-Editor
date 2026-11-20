@@ -1,7 +1,7 @@
 import { sceneChoices, sceneLines } from '@vne/core';
 import { useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import type { Block, BlockDef, Engine, Project, SceneData, StoryNode, Behavior } from '@vne/core';
-import { newId, remapIds } from '@vne/core';
+import { newId, remapIds, isBlockRef } from '@vne/core';
 import { Icon } from '../ui/Icon';
 import { cx, IconButton, Toggle } from '../ui/controls';
 import { openMenu, MenuItem } from '../ui/Menu';
@@ -10,7 +10,7 @@ import { ExprInput, ValueInput, ExprCtx } from './ExprInput';
 export interface WStack { id: string; hat: Block | null; body: Block[]; enabled: boolean; x?: number; y?: number }
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  elements: '#3d8bfd', events: '#d9a520', control: '#e8873a', looks: '#8b6cf0', sound: '#c75ec7', variables: '#e0566b', story: '#4c8dff', operators: '#4fb35a', module: '#25a89c',
+  elements: '#3d8bfd', events: '#d9a520', control: '#e8873a', looks: '#8b6cf0', sound: '#c75ec7', sensing: '#2fa9cf', variables: '#e0566b', story: '#4c8dff', operators: '#4fb35a', module: '#25a89c',
 };
 
 export function blockColor(def: BlockDef | undefined): string {
@@ -73,22 +73,75 @@ function removeBlock(stacks: WStack[], blockId: string): Block | null {
   return null;
 }
 
+/** Reporter / boolean blocks placed in a block's slots. */
+function slotBlocks(b: Block): { arg: string; block: Block }[] {
+  const out: { arg: string; block: Block }[] = [];
+  for (const [arg, v] of Object.entries(b.args || {})) if (isBlockRef(v)) out.push({ arg, block: v.block });
+  return out;
+}
+
+/** Find a block anywhere: in scripts, inside C blocks and inside other blocks' slots. */
 function findBlock(stacks: WStack[], blockId: string): Block | null {
+  const inBlock = (b: Block): Block | null => {
+    if (b.id === blockId) return b;
+    for (const s of slotBlocks(b)) { const r = inBlock(s.block); if (r) return r; }
+    return (b.body && f(b.body)) || (b.else && f(b.else)) || null;
+  };
   const f = (list: Block[]): Block | null => {
-    for (const b of list) {
-      if (b.id === blockId) return b;
-      const r = (b.body && f(b.body)) || (b.else && f(b.else));
-      if (r) return r;
-    }
+    for (const b of list) { const r = inBlock(b); if (r) return r; }
     return null;
   };
   for (const s of stacks) {
-    if (s.hat?.id === blockId) return s.hat;
+    if (s.hat) { const r = inBlock(s.hat); if (r) return r; }
     const r = f(s.body);
     if (r) return r;
   }
   return null;
 }
+
+/** Take a reporter out of the slot it sits in (the slot gets its default value back). */
+function detachFromSlot(stacks: WStack[], blockId: string, engine: Engine): Block | null {
+  const visit = (b: Block): Block | null => {
+    for (const s of slotBlocks(b)) {
+      if (s.block.id === blockId) {
+        const def = engine.blocks.get(b.type);
+        const a = def?.args.find((x) => x.id === s.arg);
+        b.args[s.arg] = a?.default ?? (a?.type === 'number' ? 0 : a?.type === 'boolean' ? false : null);
+        return s.block;
+      }
+      const r = visit(s.block);
+      if (r) return r;
+    }
+    for (const c of [...(b.body || []), ...(b.else || [])]) { const r = visit(c); if (r) return r; }
+    return null;
+  };
+  for (const st of stacks) {
+    for (const b of [...(st.hat ? [st.hat] : []), ...st.body]) { const r = visit(b); if (r) return r; }
+  }
+  return null;
+}
+
+/** True if `id` is the block itself or nested anywhere inside it. */
+function containsBlock(b: Block, id: string): boolean {
+  if (b.id === id) return true;
+  return slotBlocks(b).some((s) => containsBlock(s.block, id)) || [...(b.body || []), ...(b.else || [])].some((c) => containsBlock(c, id));
+}
+
+/** Element ids a script refers to (any element slot, nested blocks included). */
+export function stackElements(s: WStack, engine: Engine): Set<string> {
+  const out = new Set<string>();
+  const visit = (b: Block) => {
+    const def = engine.blocks.get(b.type);
+    for (const a of def?.args || []) if (a.type === 'layer' && typeof b.args[a.id] === 'string') out.add(b.args[a.id] as string);
+    for (const x of slotBlocks(b)) visit(x.block);
+    for (const c of [...(b.body || []), ...(b.else || [])]) visit(c);
+  };
+  if (s.hat) visit(s.hat);
+  s.body.forEach(visit);
+  return out;
+}
+
+const isValueShape = (d: BlockDef | undefined) => d?.shape === 'reporter' || d?.shape === 'boolean';
 
 function contains(b: Block, key: ListKey): boolean {
   if (`${b.id}.body` === key || `${b.id}.else` === key) return true;
@@ -101,9 +154,11 @@ function contains(b: Block, key: ListKey): boolean {
 
 type DragState =
   | { kind: 'new'; def: BlockDef; args?: Record<string, any> }
-  | { kind: 'move'; blockId: string; label: string; color: string }
+  | { kind: 'move'; blockId: string; label: string; color: string; shape: string }
   | { kind: 'element'; layerId: string; label: string };
-type DropTarget = { list: ListKey; index: number } | { newStack: true; x: number; y: number } | { slot: { blockId: string; arg: string } } | null;
+type DropTarget = { list: ListKey; index: number } | { newStack: true; x: number; y: number } | { slot: { blockId: string; arg: string } } | { value: { blockId: string; arg: string } } | { discard: true } | null;
+
+const dragShape = (d: DragState): string => (d.kind === 'new' ? d.def.shape : d.kind === 'move' ? d.shape : 'element');
 
 function useBlockDrag(onDrop: (d: DragState, target: DropTarget) => void) {
   const [drag, setDrag] = useState<(DragState & { x: number; y: number; target: string | null }) | null>(null);
@@ -124,6 +179,13 @@ function useBlockDrag(onDrop: (d: DragState, target: DropTarget) => void) {
         if (slot) return { slot: { blockId: slot.dataset.block!, arg: slot.dataset.arg! } };
         return el?.closest('.blk-workspace-drop') ? { newStack: true as const, x, y } : null;
       }
+      // Reporters and conditions drop into value slots; boolean slots take conditions only.
+      const shape = dragShape(d);
+      if (shape === 'reporter' || shape === 'boolean') {
+        const slot = el?.closest('.blk-slot-val') as HTMLElement | null;
+        if (slot && (slot.dataset.accept !== 'boolean' || shape === 'boolean') && !(d.kind === 'move' && slot.closest(`[data-blk="${d.blockId}"]`))) return { value: { blockId: slot.dataset.block!, arg: slot.dataset.arg! } };
+        return el?.closest('.blk-workspace-drop, .blk-palette') ? { discard: true as const } : null;
+      }
       const gap = el?.closest('.blk-gap') as HTMLElement | null;
       if (gap) return { list: gap.dataset.list!, index: Number(gap.dataset.index) };
       // nearest gap within the hovered list
@@ -141,7 +203,7 @@ function useBlockDrag(onDrop: (d: DragState, target: DropTarget) => void) {
       if (!active && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
       active = true;
       target = locate(ev.clientX, ev.clientY);
-      setDrag({ ...d, x: ev.clientX, y: ev.clientY, target: target ? ('list' in target ? `${target.list}:${target.index}` : 'slot' in target ? `slot:${target.slot.blockId}:${target.slot.arg}` : 'new') : null } as any);
+      setDrag({ ...d, x: ev.clientX, y: ev.clientY, target: target ? ('list' in target ? `${target.list}:${target.index}` : 'slot' in target ? `slot:${target.slot.blockId}:${target.slot.arg}` : 'value' in target ? `val:${target.value.blockId}:${target.value.arg}` : 'discard' in target ? 'discard' : 'new') : null } as any);
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
@@ -174,8 +236,13 @@ function freeSpot(stacks: WStack[]): { x: number; y: number } {
   return { x: 16 + (n % 3) * 360, y: 16 + Math.floor(n / 3) * 260 };
 }
 
-export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onSelectStack, header, running }: {
+export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onSelectStack, header, running, selectedLayer, onSelectLayer, onNewElement }: {
   stacks: WStack[];
+  /** Scene scripts: the element selected in the scene (its blocks open in the palette, its scripts are marked). */
+  selectedLayer?: string | null;
+  onSelectLayer?: (id: string) => void;
+  /** Scene scripts: menu for creating elements (media, text, shape, button, detection area, choice) from here. */
+  onNewElement?: (e: React.MouseEvent) => void;
   /** Ids of blocks that ran a moment ago (test runs). */
   running?: Set<string>;
   onChange: (recipe: (draft: WStack[]) => void, label: string) => void;
@@ -191,6 +258,26 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
   const scene = canvas ? (ctx.project.nodes[ctx.nodeId]?.data as SceneData | undefined) : undefined;
   const elements = (scene?.layers || []).filter((l) => l.type !== 'core.dialogue').slice().reverse();
   const [category, setCategory] = useState<string>(mode === 'scene' ? 'elements' : 'looks');
+  const [expanded, setExpanded] = useState<string | null>(selectedLayer || null);
+  // Selecting an element in the scene opens its blocks here.
+  useEffect(() => { if (selectedLayer) { setExpanded(selectedLayer); if (canvas) setCategory('elements'); } }, [selectedLayer]);
+  const refsSelected = useMemo(() => new Set(selectedLayer ? stacks.filter((s) => stackElements(s, engine).has(selectedLayer)).map((s) => s.id) : []), [stacks, selectedLayer, engine]);
+  /** Blocks offered under an element, with the element already filled in. */
+  const elementBlocks = (l: { id: string; type: string }): { def: BlockDef; args: Record<string, any> }[] => {
+    const visual = engine.layerTypes.get(l.type)?.visual !== false;
+    const out: { def: BlockDef; args: Record<string, any> }[] = [];
+    for (const d of engine.blocks.list()) {
+      if (d.context === 'story') continue;
+      const arg = d.args.find((a) => a.type === 'layer');
+      if (!arg) continue;
+      const types = d.layerTypes;
+      const ok = types ? types.includes('*') || types.includes(l.type) : visual;
+      if (!ok || (arg.layerTypes && !arg.layerTypes.includes(l.type))) continue;
+      out.push({ def: d, args: { [arg.id]: l.id } });
+    }
+    const rank: Record<string, number> = { hat: 0, statement: 1, c: 1, 'c-else': 1, cap: 1, boolean: 2, reporter: 3 };
+    return out.sort((a, b) => (rank[a.def.shape] ?? 9) - (rank[b.def.shape] ?? 9));
+  };
   // Canvas view (scene scripts): wheel zooms, dragging empty space pans.
   const [view, setView] = useState({ x: 16, y: 16, zoom: 1 });
   const viewRef = useRef(view);
@@ -251,7 +338,7 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
   const defs = useMemo(() => engine.blocks.list().filter((d) => (mode === 'scene' ? d.context !== 'story' : d.shape !== 'hat' && d.context !== 'scene' ? true : d.shape !== 'hat' && mode === 'story' && d.context === 'scene' ? false : d.shape !== 'hat')), [engine, mode, engine.blocks.list().length]);
   const usable = defs.filter((d) => (mode === 'story' ? d.shape !== 'hat' && d.context !== 'scene' : true));
   const categories = [...new Set([...(canvas ? ['elements'] : []), ...usable.map((d) => d.category)])];
-  const order = ['elements', 'events', 'control', 'looks', 'sound', 'variables', 'story', 'operators'];
+  const order = ['elements', 'events', 'control', 'looks', 'sound', 'sensing', 'operators', 'variables', 'story'];
   categories.sort((a, b) => (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 99 : order.indexOf(b)));
   const shown = usable.filter((d) => (query ? t(d.label).toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()) : d.category === category));
 
@@ -259,9 +346,29 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
 
   const { drag, start } = useBlockDrag((d, target) => {
     const at = target && 'newStack' in target ? toWorld(target.x, target.y) : freeSpot(stacks);
+    // Reporters / conditions: into a value slot, out of one, or away.
+    if (dragShape(d) === 'reporter' || dragShape(d) === 'boolean') {
+      if (d.kind === 'new') {
+        if (!target || !('value' in target)) return;
+        const r = newBlock(d.def);
+        Object.assign(r.args, d.args || {});
+        onChange((draft) => { const b = findBlock(draft, target.value.blockId); if (b) b.args[target.value.arg] = { k: 'block', block: r }; }, t('script.addBlock'));
+        return;
+      }
+      if (d.kind !== 'move' || !target) return;
+      onChange((draft) => {
+        const inner = detachFromSlot(draft, d.blockId, engine);
+        if (!inner || !('value' in target)) return; // dropped elsewhere: removed
+        const host = findBlock(draft, target.value.blockId);
+        if (host && !containsBlock(inner, host.id)) host.args[target.value.arg] = { k: 'block', block: inner };
+      }, 'value' in target ? t('script.moveBlock') : t('script.deleteBlock'));
+      return;
+    }
     if (d.kind === 'element') {
       if (target && 'slot' in target) { ops.setArg(target.slot.blockId, target.slot.arg, d.layerId); return; }
-      // Dropped on the canvas (or clicked): a new script that reacts to this element.
+      // A click selects the element (in the scene too) and opens its blocks.
+      if (!target) { setExpanded((x) => (x === d.layerId && selectedLayer === d.layerId ? null : d.layerId)); onSelectLayer?.(d.layerId); return; }
+      // Dropped on the canvas: a new script that reacts to this element.
       const hatDef = engine.blocks.get('core.whenLayerClicked');
       if (!hatDef || mode !== 'scene') return;
       const hat = newBlock(hatDef);
@@ -317,9 +424,9 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
     ctx,
     running,
     drag,
-    startMove: (e, b) => { const def = engine.blocks.get(b.type); start(e, { kind: 'move', blockId: b.id, label: t(def?.label || b.type), color: blockColor(def) }); },
+    startMove: (e, b) => { const def = engine.blocks.get(b.type); start(e, { kind: 'move', blockId: b.id, label: t(def?.label || b.type), color: blockColor(def), shape: def?.shape || 'statement' }); },
     setArg: (blockId, arg, value) => onChange((draft) => { const b = findBlock(draft, blockId); if (b) b.args[arg] = value; }, t('script.editBlock')),
-    remove: (blockId) => onChange((draft) => { removeBlock(draft, blockId); }, t('script.deleteBlock')),
+    remove: (blockId) => onChange((draft) => { if (!removeBlock(draft, blockId)) detachFromSlot(draft, blockId, engine); }, t('script.deleteBlock')),
     duplicate: (blockId) => onChange((draft) => {
       const b = findBlock(draft, blockId);
       if (!b) return;
@@ -352,28 +459,40 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
         <div className="blk-palette-list">
           {canvas && !query && category === 'elements' && (
             <div className="blk-elements">
+              {onNewElement && <button type="button" className="blk-new-el" onClick={onNewElement} title={t('script.newElementHint')}><Icon name="plus" size={13} />{t('script.newElement')}</button>}
               {elements.map((l) => {
                 const ldef = engine.layerTypes.get(l.type);
-                const clickHat = engine.blocks.get('core.whenLayerClicked');
+                const open = expanded === l.id;
                 return (
-                  <div key={l.id} className="blk-element-row">
-                    <span className="blk-pill" onPointerDown={(e) => start(e, { kind: 'element', layerId: l.id, label: l.name })} title={t('script.elementHint')}>
-                      <Icon name={ldef?.icon || 'layers'} size={12} /><span className="nm">{l.name}</span>
-                    </span>
-                    {clickHat && (
-                      <span className="blk mini shape-hat" style={{ ['--blk' as any]: blockColor(clickHat) }} title={t('script.dragOrClick')}
-                        onPointerDown={(e) => start(e, { kind: 'new', def: clickHat, args: { layer: l.id } })}>{t('script.whenThisClicked')}</span>
+                  <div key={l.id} className={cx('blk-element', open && 'open', selectedLayer === l.id && 'selected')}>
+                    <div className="blk-element-row">
+                      <button type="button" className="blk-el-toggle" aria-expanded={open} aria-label={t('script.elementBlocks', { name: l.name })} onClick={() => setExpanded(open ? null : l.id)}><Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} /></button>
+                      <span className="blk-pill" onPointerDown={(e) => start(e, { kind: 'element', layerId: l.id, label: l.name })} title={t('script.elementHint')}>
+                        <Icon name={ldef?.icon || 'layers'} size={12} /><span className="nm">{l.name}</span>
+                      </span>
+                      {!l.visible && <Icon name="eyeOff" size={12} title={t('script.startsHidden')} />}
+                    </div>
+                    {open && (
+                      <div className="blk-element-blocks">
+                        {elementBlocks(l).map(({ def, args }) => <PaletteBlock key={def.id} def={def} args={args} ctx={ctx} onPointerDown={(e) => start(e, { kind: 'new', def, args })} />)}
+                      </div>
                     )}
                   </div>
                 );
               })}
-              {!elements.length && <div className="muted small pad">{t('layer.none')}</div>}
+              {!elements.length && <div className="muted small pad">{t('script.noElements')}</div>}
             </div>
           )}
-          {shown.map((d) => (
-            <div key={d.id} className={cx('blk', `shape-${d.shape}`, 'palette')} style={{ ['--blk' as any]: blockColor(d) }} onPointerDown={(e) => start(e, { kind: 'new', def: d })} title={t('script.dragOrClick')}>
-              <BlockLabel def={d} block={null} ops={null} />
+          {!query && category === 'variables' && (
+            <div className="blk-elements">
+              {[...ctx.project.variables, ...(scene?.localVariables || [])].map((v) => {
+                const def = engine.blocks.get('core.varValue');
+                return def ? <PaletteBlock key={v.id} def={def} args={{ variable: v.id }} ctx={ctx} onPointerDown={(e) => start(e, { kind: 'new', def, args: { variable: v.id } })} /> : null;
+              })}
             </div>
+          )}
+          {shown.filter((d) => !(category === 'variables' && d.id === 'core.varValue' && !query)).map((d) => (
+            <PaletteBlock key={d.id} def={d} ctx={ctx} onPointerDown={(e) => start(e, { kind: 'new', def: d })} />
           ))}
           {!shown.length && <div className="muted small pad">{t('common.noResults')}</div>}
         </div>
@@ -386,7 +505,7 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
           {stacks.map((s, i) => {
             const pos = stackPos(s, i);
             return (
-            <div key={s.id} className={cx('blk-stack', s.id === targetStack && 'targeted', !s.enabled && 'disabled')} onPointerDown={() => onSelectStack?.(s.id)}
+            <div key={s.id} className={cx('blk-stack', s.id === targetStack && 'targeted', !s.enabled && 'disabled', refsSelected.has(s.id) && 'refs-selected')} onPointerDown={() => onSelectStack?.(s.id)}
               style={canvas ? { left: pos.x, top: pos.y } : undefined}>
               {s.hat && (
                 <div className={cx('blk shape-hat', running?.has(s.hat.id) && 'running')} style={{ ['--blk' as any]: blockColor(engine.blocks.get(s.hat.type)) }} onPointerDown={(e) => stackMoveStart(e, s, pos)}>
@@ -499,14 +618,71 @@ function BlockLabel({ def, block, ops }: { def: BlockDef | undefined; block: Blo
         if (!m) return <span key={i} className="blk-text">{part}</span>;
         const arg = def.args.find((a) => a.id === m[1]);
         if (!arg) return <span key={i}>{part}</span>;
-        if (!block || !ops) return <span key={i} className="blk-slot">{arg.type === 'boolean' ? '☐' : '…'}</span>;
-        const editor = <ArgEditor key={i} arg={arg} value={block.args[arg.id]} onChange={(v) => ops.setArg(block.id, arg.id, v)} ctx={ops.ctx} block={block} />;
+        if (!block || !ops) return <span key={i} className={cx('blk-slot', `t-${arg.type}`)}>{arg.type === 'boolean' ? '☐' : arg.type === 'layer' ? '◉' : arg.type === 'expr' || arg.type === 'number' || arg.type === 'string' ? '' : '…'}</span>;
+        const value = block.args[arg.id];
+        // Value slots take reporter / condition blocks (Scratch-style); a placed block replaces the field.
+        if (VALUE_SLOTS.has(arg.type)) {
+          const accept = arg.type === 'boolean' ? 'boolean' : 'any';
+          const hot = ops.drag?.target === `val:${block.id}:${arg.id}`;
+          return (
+            <span key={i} className={cx('blk-slot-val', `accept-${accept}`, hot && 'hot', isBlockRef(value) && 'filled')} data-block={block.id} data-arg={arg.id} data-accept={accept}>
+              {isBlockRef(value)
+                ? <ValueBlockView block={value.block} ops={ops} />
+                : <ArgEditor arg={arg} value={value} onChange={(v) => ops.setArg(block.id, arg.id, v)} ctx={ops.ctx} block={block} />}
+            </span>
+          );
+        }
+        const editor = <ArgEditor key={i} arg={arg} value={value} onChange={(v) => ops.setArg(block.id, arg.id, v)} ctx={ops.ctx} block={block} />;
         // Element slots accept elements dragged from the palette.
         return arg.type === 'layer'
           ? <span key={i} className={cx('blk-slot-layer', ops.drag?.target === `slot:${block.id}:${arg.id}` && 'hot')} data-block={block.id} data-arg={arg.id}>{editor}</span>
           : editor;
       })}
     </span>
+  );
+}
+
+const VALUE_SLOTS = new Set(['expr', 'number', 'string', 'boolean']);
+
+/** A reporter or condition sitting in a slot: drag it out to move or remove it. */
+function ValueBlockView({ block, ops }: { block: Block; ops: BlockOps }) {
+  const def = ops.ctx.engine.blocks.get(block.type);
+  const t = ops.ctx.t;
+  if (!def) return <span className="blk nested shape-reporter missing" data-blk={block.id} onPointerDown={(e) => ops.startMove(e, block)}><Icon name="warning" size={12} /> {block.type}</span>;
+  return (
+    <span className={cx('blk nested', `shape-${def.shape}`, ops.running?.has(block.id) && 'running')} data-blk={block.id} style={{ ['--blk' as any]: blockColor(def) }}
+      onPointerDown={(e) => ops.startMove(e, block)}
+      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); openMenu(e, [{ label: t('common.delete'), icon: 'trash', danger: true, onClick: () => ops.remove(block.id) }]); }}>
+      <BlockLabel def={def} block={block} ops={ops} />
+    </span>
+  );
+}
+
+/** A block in the palette; `args` pre-fills slots (e.g. the element it belongs to), shown by name. */
+function PaletteBlock({ def, args, ctx, onPointerDown }: { def: BlockDef; args?: Record<string, any>; ctx: BlockCtx; onPointerDown: (e: React.PointerEvent) => void }) {
+  const t = ctx.t;
+  const label = t(def.label);
+  const name = (arg: BlockDef['args'][number], v: any): string | null => {
+    if (v == null) return null;
+    if (arg.type === 'layer') for (const n of Object.values(ctx.project.nodes)) { const l = (n.data as any)?.layers?.find?.((x: any) => x.id === v); if (l) return l.name; }
+    if (arg.type === 'variable') return ctx.project.variables.find((x) => x.id === v)?.name || (ctx.project.nodes[ctx.nodeId]?.data as any)?.localVariables?.find?.((x: any) => x.id === v)?.name || null;
+    return null;
+  };
+  return (
+    <div className={cx('blk', `shape-${def.shape}`, 'palette')} style={{ ['--blk' as any]: blockColor(def) }} onPointerDown={onPointerDown}
+      title={def.shape === 'reporter' || def.shape === 'boolean' ? t('script.dragIntoSlot') : t('script.dragOrClick')}>
+      <span className="blk-label">
+        {label.split(/(\{\w+\})/g).filter(Boolean).map((part: string, i: number) => {
+          const m = /^\{(\w+)\}$/.exec(part);
+          if (!m) return <span key={i} className="blk-text">{part}</span>;
+          const arg = def.args.find((a) => a.id === m[1]);
+          if (!arg) return <span key={i}>{part}</span>;
+          const preset = args && args[arg.id] !== undefined ? name(arg, args[arg.id]) : null;
+          if (preset) return <span key={i} className={cx('blk-slot filled', `t-${arg.type}`)}>{preset}</span>;
+          return <span key={i} className={cx('blk-slot', `t-${arg.type}`)}>{arg.type === 'boolean' ? '' : arg.type === 'layer' ? '◉' : ''}</span>;
+        })}
+      </span>
+    </div>
   );
 }
 

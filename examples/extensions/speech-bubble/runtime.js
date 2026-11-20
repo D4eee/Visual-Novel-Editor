@@ -111,4 +111,45 @@ export function activate(api) {
       ctx.restore();
     },
   });
+
+  // Element blocks: listed under every speech bubble in the Interactions palette
+  // (layerTypes), pre-filled with that bubble. This is how a module's elements get
+  // their own blocks.
+  const BUBBLE = [`${api.id}/bubble`];
+  api.blocks.register({
+    id: 'say',
+    category: 'looks',
+    shape: 'statement',
+    label: 'bubble.block.say',
+    color: '#f0a23c',
+    layerTypes: BUBBLE,
+    args: [
+      { id: 'layer', type: 'layer', layerTypes: BUBBLE },
+      { id: 'text', type: 'expr', default: { k: 'lit', v: 'Hello!' } },
+      { id: 'seconds', type: 'number', default: 2 },
+    ],
+    async run(ctx, a) {
+      const s = ctx.scene;
+      if (!s) return;
+      s.setProp(a.layer, 'text', String(a.text ?? ''));
+      s.setProp(a.layer, 'pop', 0);
+      s.setVisible(a.layer, true);
+      await s.tween(a.layer, 'pop', 1, 0.25, 'backOut');
+      if (Number(a.seconds) > 0) {
+        await ctx.wait(Number(a.seconds));
+        await s.tween(a.layer, 'pop', 0, 0.2, 'easeIn');
+        s.setVisible(a.layer, false);
+      }
+    },
+  });
+  api.blocks.register({
+    id: 'textOf',
+    category: 'looks',
+    shape: 'reporter',
+    label: 'bubble.block.textOf',
+    color: '#f0a23c',
+    layerTypes: BUBBLE,
+    args: [{ id: 'layer', type: 'layer', layerTypes: BUBBLE }],
+    report: (ctx, a) => (ctx.scene ? String(ctx.scene.getProp(a.layer, 'text') ?? '') : ''),
+  });
 }

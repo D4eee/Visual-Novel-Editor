@@ -15,7 +15,7 @@ export function interpolateVarsCompat(text: string, project: Project, vars: VarS
 import { AnimationPlayer, propKind } from './animation';
 import { ScriptEngine, ScriptHost, CancelToken, RuntimeEvent } from './script';
 import type { SceneView } from './render';
-import { hitTest, computeDrives } from './render';
+import { hitTest, computeDrives, layerContains, layerBounds, effectiveVisible } from './render';
 import { lerp, lerpColor, num } from './math';
 import { portraitAsset } from './builtins/layers';
 import type { GameRuntime } from './game';
@@ -466,6 +466,42 @@ export class ScenePlayer {
     if (hit.type === 'core.button' && this.layerState.get(hit.id)?.enabled === false) return true;
     this.dispatch({ type: 'layer.click', layerId: hit.id });
     return true;
+  }
+
+  /* ----------------------------------------------------------------- */
+  /* Sensing (used by blocks and modules)                               */
+  /* ----------------------------------------------------------------- */
+
+  private timerStart = 0;
+  /** Seconds since the scene started or the timer was reset. */
+  get timer(): number { return Math.max(0, this.time - this.timerStart); }
+  resetTimer(): void { this.timerStart = this.time; }
+
+  /** Is the element shown (its own visibility and its groups')? */
+  isVisible(layerId: string): boolean {
+    const l = this.layer(layerId);
+    return !!l && effectiveVisible(this.view, l);
+  }
+
+  /** Is the stage point (default: the mouse) inside the element's shape? Hidden elements contain nothing. */
+  contains(layerId: string, x = this.rt.input.x, y = this.rt.input.y): boolean {
+    const l = this.layer(layerId);
+    if (!l || !effectiveVisible(this.view, l)) return false;
+    if (this.rt.engine.layerTypes.get(l.type)?.visual === false) return false;
+    return layerContains(this.view, l, x, y);
+  }
+
+  /** Stage-space bounding box of an element. */
+  bounds(layerId: string): { x: number; y: number; width: number; height: number } | null {
+    const l = this.layer(layerId);
+    return l ? layerBounds(this.view, l) : null;
+  }
+
+  /** Do two visible elements' bounding boxes overlap? */
+  touching(a: string, b: string): boolean {
+    if (!this.isVisible(a) || !this.isVisible(b)) return false;
+    const p = this.bounds(a), q = this.bounds(b);
+    return !!p && !!q && p.x < q.x + q.width && q.x < p.x + p.width && p.y < q.y + q.height && q.y < p.y + p.height;
   }
 
   pointerMove(x: number, y: number): string {
