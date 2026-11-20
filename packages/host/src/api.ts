@@ -9,6 +9,7 @@ import { importAssets, missingAssets, relinkAsset, IncomingFile } from './assets
 import { ModuleStore, ModuleScope } from './modules';
 import { TemplateStore, ELECTRON_VERSION } from './templates';
 import { exportGame, ExportOptions } from './exporter';
+import { EffectPresetStore } from './effectPresets';
 
 export interface HostConfig {
   mode: 'electron' | 'browser';
@@ -42,6 +43,7 @@ export function createHost(cfg: HostConfig) {
   const recent = new RecentList(path.join(cfg.userDataDir, 'recent.json'));
   const libraryDir = path.join(cfg.userDataDir, 'modules');
   const store = new ModuleStore(libraryDir, [path.join(cfg.examplesDir, 'extensions')]);
+  const effectPresets = new EffectPresetStore(path.join(cfg.userDataDir, 'effect-presets'));
   const templates = new TemplateStore(path.join(cfg.userDataDir, 'runtime-templates'), cfg.templateDirs || []);
   const fileUrl = (root: string, rel = '') => `${cfg.urlBase}${allowRoot(root)}/${rel.split('/').map(encodeURIComponent).join('/')}`;
   allowRoot(path.join(cfg.examplesDir));
@@ -53,7 +55,7 @@ export function createHost(cfg: HostConfig) {
 
   const methods: Record<string, (args: any) => Promise<any>> = {
     async info() {
-      return { mode: cfg.mode, platform: process.platform, arch: process.arch, home: os.homedir(), userDataDir: cfg.userDataDir, libraryDir, urlBase: cfg.urlBase, nativeDialogs: !!cfg.dialogs, electronVersion: ELECTRON_VERSION, examplesDir: cfg.examplesDir, examplesReadOnly: !!cfg.examplesReadOnly };
+      return { mode: cfg.mode, platform: process.platform, arch: process.arch, home: os.homedir(), userDataDir: cfg.userDataDir, libraryDir, effectPresetsDir: effectPresets.dir, urlBase: cfg.urlBase, nativeDialogs: !!cfg.dialogs, electronVersion: ELECTRON_VERSION, examplesDir: cfg.examplesDir, examplesReadOnly: !!cfg.examplesReadOnly };
     },
     async 'recent.list'() { return recent.list(); },
     async 'recent.remove'({ path: p }) { await recent.remove(p); return true; },
@@ -125,6 +127,13 @@ export function createHost(cfg: HostConfig) {
     async 'assets.import'({ path: p, files, existing }) { return importAssets(p, files as IncomingFile[], existing || []); },
     async 'assets.missing'({ path: p, assets }) { return missingAssets(p, assets || []); },
     async 'assets.relink'({ path: p, asset, file }) { return relinkAsset(p, asset, file); },
+
+    // Effect presets (the user's library, shared by all projects)
+    async 'effectPresets.list'() { return effectPresets.list(); },
+    async 'effectPresets.save'({ preset }) { return effectPresets.save(preset); },
+    async 'effectPresets.delete'({ id }) { await effectPresets.remove(String(id)); return true; },
+    async 'effectPresets.import'({ paths }) { return effectPresets.import((paths || []).map(String)); },
+    async 'effectPresets.export'({ id, dir }) { return { path: await effectPresets.export(String(id), String(dir)) }; },
 
     async 'modules.list'({ path: p }) { return listModules(p); },
     async 'modules.install'({ source, scope, path: p }) {

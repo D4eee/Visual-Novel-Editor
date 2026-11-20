@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AnimationClip, Keyframe, SceneData, Track, Layer } from '@vne/core';
 import { newId, createAnimation, DIALOGUE_LAYER } from '@vne/core';
-import { EFFECT_PRESETS } from '../effects/presets';
+import { effectMenuItems, saveEffectAsPreset, loadEffectPresets } from '../effects/userPresets';
 import { normalizeTrack, clipEnd, sampleTrack, propKind, cubicBezier } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
@@ -353,14 +353,13 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
                       ...(isMedia && !media.length ? [{ separator: true } as MenuItem, { label: t('timeline.addMedia'), icon: 'music', onClick: () => addMedia(layer) }] : []),
                     ], { search: props.length > 10 }); }} />
                     {session.engine.layerTypes.get(layer.type)?.visual && (
-                      <IconButton icon="sparkles" size={13} active={!!layer.effect} title={layer.effect ? t('effects.edit') : t('effects.add')} onClick={(e) => {
-                        e.stopPropagation();
-                        if (layer.effect) { session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true }); return; }
-                        openMenu(e, EFFECT_PRESETS.map((p) => ({ label: t(p.label), icon: p.id === 'empty' ? 'plus' : 'sparkles', onClick: () => {
-                          const g = p.make();
-                          updateScene(session, nodeId, t('effects.add'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.effect = { kind: 'inline', graph: g }; });
-                          session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true });
-                        } })));
+                      <IconButton icon="sparkles" size={13} active={!!layer.effect} title={layer.effect ? t('fxp.effectMenu') : t('fxp.addMenu')} onClick={async (ev) => {
+                        ev.stopPropagation();
+                        const e = { clientX: ev.clientX, clientY: ev.clientY };
+                        await loadEffectPresets();
+                        // With several elements selected, a preset goes on all of them.
+                        const ids = selLayers.has(layer.id) && selLayers.size > 1 ? [...selLayers].filter((id) => session.engine.layerTypes.get(scene.layers.find((l) => l.id === id)?.type || '')?.visual) : [layer.id];
+                        openMenu(e, effectMenuItems(session, nodeId, ids, () => { if (ids.length === 1) session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true }); }), { search: true });
                       }} />
                     )}
                   </div>
@@ -375,6 +374,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
                       <button type="button" className="link" onClick={() => session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true })}>
                         {layer.effect.kind === 'inline' ? (layer.effect.graph.name || t('effects.title')) : (session.project.effectGraphs.find((g) => g.id === (layer.effect as any).graphId)?.name || t('effects.title'))}
                       </button>
+                      <IconButton icon="bookmarkPlus" size={12} title={t('fxp.saveAsHint')} onClick={() => saveEffectAsPreset(session, layer)} />
                       <IconButton icon="close" size={12} title={t('effects.remove')} onClick={() => updateScene(session, nodeId, t('effects.remove'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.effect = null; })} />
                     </div>
                     <div className="tl-lane" style={{ width }} />
