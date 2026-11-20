@@ -12,19 +12,14 @@
 | --- | --- |
 | `npm install` | Installs the dependencies (build tools and Electron are pinned to exact versions) and creates `package-lock.json` — commit it |
 | `npm run build` | Builds everything into `dist/` (editor, player, desktop, server, test bundle) and `sdk/dist/` |
-| `npm start` | Build and run the desktop editor |
-| `npm run serve` | Build and run the editor in a browser (`http://127.0.0.1:5199`) — used for development and automated UI tests |
+| `npm start` / `npm run serve` | Build and run the editor in a browser (`http://127.0.0.1:5199`) — used for development and automated UI tests |
 | `npm run watch` | Rebuild on change (development) |
 | `npm test` | Build and run the automated tests |
 | `npm run typecheck` | TypeScript type check |
 | `npm run check-i18n` | Report interface strings missing from either language |
 | `npm run docs:api` | Regenerate `docs/api/README.md` from the SDK typings |
 | `npm run fetch-runtimes` | Download and verify the Electron runtimes used as export templates (`resources/runtime-templates/`) |
-| `npm run app:mac` | Package the desktop editor for this Mac (`release/Visual Novel Editor-mac-<arch>/Visual Novel Editor.app`), no electron-builder needed; signed ad hoc on a Mac |
-| `npm run app:win` | Package the desktop editor for Windows x64 (`release/…-win-x64.zip`) |
 | `npm run app:web` | Package the web edition (`release/Visual-Novel-Editor-<version>-web.zip`, needs only Node.js to run) |
-| `npm run dist:mac` | Build the macOS editor (`release/*.dmg`, `*.zip`, arm64 + x64) with all export runtimes bundled |
-| `npm run dist:win` | Build the Windows editor (`release/*Setup*.exe`, `*.zip`) with all export runtimes bundled |
 | `npm run pack-module -- <folder>` | Package a module as `.vnemod` |
 
 ## Desktop package layout

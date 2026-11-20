@@ -1,4 +1,6 @@
-# Visual Novel Editor
+# Visual Novel Editor — Web edition
+
+> Branch `web`: the editor runs in your web browser, served by a small local Node.js server (no Electron). The desktop app is on the [`desktop`](https://github.com/D4eee/Visual-Novel-Editor/tree/desktop) branch; the full source and history are on [`main`](https://github.com/D4eee/Visual-Novel-Editor/tree/main).
 
 A standalone, extensible visual novel engine for macOS and Windows: a story flow graph, layered scene composition, keyframe animation, procedural effect graphs, Scratch-style visual scripting, a module SDK, and one-click export of games as a macOS `.app` or a Windows `.exe`.
 
@@ -50,22 +52,17 @@ Requires Node.js 20+.
 
 ```bash
 npm install
-npm start            # build and launch the desktop editor (Electron)
-npm run serve        # or: run the editor in a browser at http://127.0.0.1:5199
+npm start            # build and open the editor at http://127.0.0.1:5199
 npm test             # unit tests
 ```
 
 ## Build the editor
 
 ```bash
-npm run app:mac      # desktop app for this Mac → release/Visual Novel Editor-mac-<arch>/Visual Novel Editor.app (signed ad hoc)
-npm run app:win      # desktop app for Windows x64 → release/…-win-x64.zip
-npm run app:web      # web edition → release/Visual-Novel-Editor-<version>-web.zip
-npm run dist:mac     # installer builds with electron-builder (.dmg / .zip, arm64 + x64)
-npm run dist:win     # Windows installer (.exe) and zip
+npm run app:web      # → release/Visual-Novel-Editor-<version>-web.zip (runs with Node.js only)
 ```
 
-`app:*` work on any OS without extra tools (`node scripts/package-desktop.mjs --target mac-arm64 --target mac-x64 --target win-x64 --zip` builds all three). `app:*` and `dist` download the Electron runtimes used as templates for exported games (checked against Electron's SHA256 sums) and ships them inside the editor, so exporting games works offline. See [docs/architecture/build-and-release.md](docs/architecture/build-and-release.md).
+Exporting macOS/Windows games downloads the Electron runtimes used as templates for exported games (checked against Electron's SHA256 sums) and ships them inside the editor, so exporting games works offline. See [docs/architecture/build-and-release.md](docs/architecture/build-and-release.md).
 
 ## Repository layout
 
@@ -74,7 +71,7 @@ npm run dist:win     # Windows installer (.exe) and zip
 | `packages/core` | Data model, graph rules, validation, migration, expressions, i18n (no DOM) |
 | `packages/runtime` | Game runtime shared by preview and exported games: renderer, animation, effects, scripts, UI |
 | `packages/host` | File system, projects, assets, modules, export (Node) |
-| `packages/desktop` | Electron shell for the editor and for exported games |
+| `packages/desktop` | Electron shell for exported games (player) |
 | `packages/editor` | The editor UI (React) |
 | `sdk` | Module SDK: typings and helpers |
 | `examples/games` | Example game projects (available as templates in the editor) |
