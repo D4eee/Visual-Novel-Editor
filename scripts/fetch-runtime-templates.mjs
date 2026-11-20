@@ -22,7 +22,9 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
-const version = String(pkg.devDependencies.electron).replace(/^[^\d]*/, '');
+// Same Electron version as exported games (packages/host/src/templates.ts).
+const tplSrc = await readFile(path.join(root, 'packages', 'host', 'src', 'templates.ts'), 'utf8').catch(() => '');
+const version = (tplSrc.match(/ELECTRON_VERSION = '([\d.]+)'/) || [])[1] || String(pkg.devDependencies?.electron || '').replace(/^[^\d]*/, '');
 const outDir = path.join(root, 'resources', 'runtime-templates');
 const args = process.argv.slice(2);
 

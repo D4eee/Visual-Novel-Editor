@@ -71,15 +71,18 @@ async function writeHtml() {
 `);
 }
 
+// Editions (branches `desktop` / `web`) leave out the entry points they do not use.
+const present = (b) => Object.values(b.entryPoints).every((f) => existsSync(f));
+
 async function main() {
   await mkdir(dist, { recursive: true });
   await writeHtml();
   await copyFile(path.join(root, 'resources/icons/app.png'), path.join(dist, 'editor', 'icon.png'));
   if (watch) {
-    for (const b of builds) (await esbuild.context(b)).watch();
+    for (const b of builds.filter(present)) (await esbuild.context(b)).watch();
     console.log('Watching for changes…');
   } else {
-    await Promise.all(builds.map((b) => esbuild.build(b)));
+    await Promise.all(builds.filter(present).map((b) => esbuild.build(b)));
     // Type declarations for module authors are hand-maintained in sdk/types.
     if (existsSync(path.join(root, 'sdk/types/index.d.ts'))) await copyFile(path.join(root, 'sdk/types/index.d.ts'), path.join(root, 'sdk/dist/index.d.ts'));
     // Keep the SDK copies used by example modules and the extension template in sync.
