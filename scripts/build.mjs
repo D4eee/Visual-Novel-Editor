@@ -43,6 +43,8 @@ const builds = [
   { ...common, entryPoints: { main: path.join(root, 'packages/desktop/src/main.ts'), preload: path.join(root, 'packages/desktop/src/preload.ts') }, outdir: path.join(dist, 'desktop'), format: 'cjs', platform: 'node', target: ['node20'], external: ['electron'] },
   { ...common, entryPoints: { main: path.join(root, 'packages/desktop/src/player-main.ts'), preload: path.join(root, 'packages/desktop/src/player-preload.ts') }, outdir: path.join(dist, 'player-shell'), format: 'cjs', platform: 'node', target: ['node20'], external: ['electron'], minify: true, sourcemap: false },
   { ...common, entryPoints: { server: path.join(root, 'packages/host/src/server.ts') }, outdir: dist, format: 'cjs', platform: 'node', target: ['node20'] },
+  // Test bundle (node --test tests/): the source packages as one ES module.
+  { ...common, entryPoints: { vne: path.join(root, 'tests/lib.ts') }, outdir: path.join(dist, 'test'), format: 'esm', platform: 'node', target: ['node20'], minify: false, sourcemap: false, outExtension: { '.js': '.mjs' }, banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" } },
   { ...common, entryPoints: { index: path.join(root, 'sdk/src/index.ts') }, outdir: path.join(root, 'sdk/dist'), format: 'esm', platform: 'neutral', target: ['es2022'], minify: false, sourcemap: false, bundle: true },
 ];
 
@@ -55,6 +57,7 @@ async function writeHtml() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' vne-fs: vne-app: http://127.0.0.1:* data: blob:; script-src 'self' vne-fs: vne-app: http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' vne-fs: http://127.0.0.1:* data: blob:; media-src 'self' vne-fs: http://127.0.0.1:* data: blob:; font-src 'self' vne-fs: http://127.0.0.1:* data:; connect-src 'self' vne-fs: vne-app: http://127.0.0.1:* data: blob:">
 <title>Visual Novel Editor</title>
+<link rel="icon" href="./icon.png">
 <link rel="stylesheet" href="./editor.css">
 </head>
 <body>
@@ -68,6 +71,7 @@ async function writeHtml() {
 async function main() {
   await mkdir(dist, { recursive: true });
   await writeHtml();
+  await copyFile(path.join(root, 'resources/icons/app.png'), path.join(dist, 'editor', 'icon.png'));
   if (watch) {
     for (const b of builds) (await esbuild.context(b)).watch();
     console.log('Watching for changes…');
@@ -80,6 +84,11 @@ async function main() {
     for (const name of await readdir(path.join(root, 'examples/extensions')).catch(() => [])) {
       const v = path.join(root, 'examples/extensions', name, 'vendor');
       if (existsSync(v)) vendors.push(v);
+    }
+    // …and the copies inside example game projects.
+    for (const game of await readdir(path.join(root, 'examples/games')).catch(() => [])) {
+      const mods = path.join(root, 'examples/games', game, 'modules');
+      for (const name of await readdir(mods).catch(() => [])) if (existsSync(path.join(mods, name, 'vendor'))) vendors.push(path.join(mods, name, 'vendor'));
     }
     for (const v of vendors) if (existsSync(v)) {
       await copyFile(path.join(root, 'sdk/dist/index.js'), path.join(v, 'vne-sdk.js'));

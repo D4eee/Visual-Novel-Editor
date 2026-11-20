@@ -15,6 +15,7 @@ export function DataPanel({ session }: { session: ProjectSession }) {
       <VariablesSection session={session} />
       <CharactersSection session={session} />
       <BehaviorsSection session={session} />
+      <CompositionsSection session={session} />
     </div>
   );
 }
@@ -132,6 +133,40 @@ function BehaviorsSection({ session }: { session: ProjectSession }) {
           <Icon name="script" size={13} /><span>{b.name}</span><span className="muted small">{t('beh.blocks', { n: b.body.length })}</span>
         </button>
       ))}
+    </Section>
+  );
+}
+
+function CompositionsSection({ session }: { session: ProjectSession }) {
+  const t = useT();
+  const project = session.project;
+  const uses = (id: string) => {
+    let n = 0;
+    for (const node of Object.values(project.nodes)) for (const l of ((node.data as any)?.layers || []) as { type: string; props: any }[]) if (l.type === 'core.composition' && l.props.compositionId === id) n++;
+    for (const c of project.compositions) for (const l of c.layers) if (l.type === 'core.composition' && l.props.compositionId === id) n++;
+    return n;
+  };
+  const rename = async (id: string, name: string) => {
+    const v = await (globalThis as any).__vneStore.prompt(t('comp.rename'), t('comp.name'), name);
+    if (v && v.trim()) session.update(t('comp.rename'), (d) => { const c = d.compositions.find((x) => x.id === id); if (c) c.name = v.trim(); });
+  };
+  const remove = async (id: string, name: string) => {
+    const n = uses(id);
+    if (n && !(await (globalThis as any).__vneStore.confirm(t('comp.deleteTitle'), t('comp.deleteUsed', { name, n }), t('common.delete'), true))) return;
+    session.update(t('comp.delete'), (d) => { d.compositions = d.compositions.filter((c) => c.id !== id); });
+  };
+  return (
+    <Section id="data.comp" title={<>{t('layer.compositions')} <span className="muted">{project.compositions.length}</span></>}>
+      {!project.compositions.length && <div className="muted small pad">{t('comp.emptyText')}</div>}
+      {project.compositions.map((c) => (
+        <div key={c.id} className="link-row">
+          <Icon name="layers" size={13} /><span>{c.name}</span>
+          <span className="muted small">{t('comp.uses', { n: uses(c.id) })}</span>
+          <IconButton icon="text" size={13} title={t('comp.rename')} onClick={() => rename(c.id, c.name)} />
+          <IconButton icon="trash" size={13} title={t('comp.delete')} onClick={() => remove(c.id, c.name)} />
+        </div>
+      ))}
+      {project.compositions.length > 0 && <div className="muted small pad">{t('comp.howToEdit')}</div>}
     </Section>
   );
 }

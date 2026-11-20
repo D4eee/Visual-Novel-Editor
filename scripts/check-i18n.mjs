@@ -3,7 +3,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
-const load = (f) => { const s = readFileSync(path.join(root, f), 'utf8'); const keys = new Set(); for (const m of s.matchAll(/'([^'\n]+)':\s*'/g)) keys.add(m[1]); return keys; };
+const load = (f) => { const s = readFileSync(path.join(root, f), 'utf8'); const keys = new Set(); for (const m of s.matchAll(/'([^'\n]+)':\s*['"]/g)) keys.add(m[1]); return keys; };
 const en = load('packages/editor/src/i18n/en.ts');
 const zh = load('packages/editor/src/i18n/zh-CN.ts');
 const files = [];

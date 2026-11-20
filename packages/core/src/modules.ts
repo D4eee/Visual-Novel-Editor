@@ -31,7 +31,10 @@ export interface ModuleManifest {
     portTypes?: string[];
     systems?: string[];
     panels?: string[];
+    inspectors?: string[];
+    nodeWorkspaces?: string[];
     workspaces?: string[];
+    toolbar?: string[];
     importers?: string[];
     exporters?: string[];
   };

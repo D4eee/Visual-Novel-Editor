@@ -1,0 +1,45 @@
+# Interactions (visual scripting)
+
+Interactions make scenes respond to the player. Open a scene's **Interactions** tab. Scripts are stacks of blocks: a yellow **trigger** ("When …") on top, then **actions** that run from top to bottom.
+
+Drag blocks from the palette (or click one to add it to the selected script). Drop blocks inside C-shaped blocks (*if*, *repeat*). Inputs inside blocks pick layers, animations, variables, choices, sounds and so on from the project — or accept expressions.
+
+Tip: select a button, hotspot or character layer and use the quick start (**When clicked…**) to create a script for it in one click.
+
+## Block categories
+
+| Category | Blocks |
+| --- | --- |
+| Events | When scene starts / ends, when *layer* is clicked, hover starts / ends, key pressed, animation finished, media ended, variable changes, line shown, dialogue ends, choice selected, message received, after *n* seconds, every *n* seconds |
+| Control | Wait, wait until, if, if / else, repeat, repeat until, forever, stop, broadcast message, run behavior, log |
+| Looks | Show, hide, set / change property, tween property, play / stop animation, set text, set image, set portrait, shake screen, flash screen |
+| Sound | Play / pause / stop media layer, play sound, play music, stop music |
+| Variables | Set, change, toggle variable |
+| Story | Show / hide choice, go to line, advance, show / hide text box, continue (leave the scene), go to node |
+
+Modules can add blocks and categories. The *Extra Blocks* example adds *With N % chance*, *Show notification* and *When … reaches …*; *Relationships* adds *Change affection*.
+
+## Example: a hidden choice
+
+The *Boot sequence* scene of the *Like Human* example:
+
+```
+When [Mika] is clicked
+  Play animation [Mika waves] and wait
+  Change affection of [Mika] by 1
+  Play sound [sfx_beep]
+  Wait 0.4 s
+  Show choice [Take her hand.]
+```
+
+The choice is marked *hidden* in the Choices list, so it only appears after the click.
+
+## Reusable behaviors
+
+*Variables & characters → Reusable behaviors* holds scripts you can run from anywhere with *Run behavior* (for example a "Glitch" effect used in several scenes). Event nodes in the story graph run the same kind of blocks when the story passes through.
+
+## Scene variables and messages
+
+Scene variables reset every time the scene starts — useful for counters inside one scene. *Broadcast* sends a message that *When I receive* triggers pick up, so scripts can talk to each other.
+
+Scripts stop automatically when the scene ends. Blocks from a module that is not installed are kept and shown as missing; they are skipped when playing.

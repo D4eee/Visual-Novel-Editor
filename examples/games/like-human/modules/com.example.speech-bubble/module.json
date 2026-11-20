@@ -1,13 +1,30 @@
 {
   "id": "com.example.speech-bubble",
-  "name": { "en": "Speech Bubble", "zh-CN": "对话气泡" },
+  "name": {
+    "en": "Speech Bubble",
+    "zh-CN": "对话气泡"
+  },
   "version": "1.0.0",
-  "description": { "en": "A comic-style speech bubble layer with a tail, word wrap and an animatable “pop”. Shows how to add a custom layer type.", "zh-CN": "带尾巴、自动换行、可做「弹出」动画的漫画式对话气泡图层。演示如何添加自定义图层类型。" },
-  "author": { "name": "Visual Novel Editor examples" },
+  "description": {
+    "en": "A comic-style speech bubble layer with a tail, word wrap and an animatable “pop”, plus one-click style presets in the inspector. Shows how to add a custom layer type and a layer inspector.",
+    "zh-CN": "带尾巴、自动换行、可做「弹出」动画的漫画式对话气泡图层，并在检查器中提供一键样式。演示如何添加自定义图层类型和图层检查器。"
+  },
+  "author": {
+    "name": "Visual Novel Editor examples"
+  },
   "license": "MIT",
   "engine": ">=0.1.0 <1.0.0",
   "api": "^1.0.0",
-  "provides": { "layers": ["bubble"] },
+  "provides": {
+    "layers": [
+      "bubble"
+    ],
+    "inspectors": [
+      "styles"
+    ]
+  },
   "runtime": "runtime.js",
-  "locales": "locales"
+  "locales": "locales",
+  "kind": "combined",
+  "editor": "editor.js"
 }

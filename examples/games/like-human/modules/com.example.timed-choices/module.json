@@ -1,14 +1,29 @@
 {
   "id": "com.example.timed-choices",
-  "name": { "en": "Timed Choices", "zh-CN": "限时选项" },
+  "name": {
+    "en": "Timed Choices",
+    "zh-CN": "限时选项"
+  },
   "version": "1.0.0",
-  "description": { "en": "Attach to a scene to put the player's choices on a countdown. If time runs out, a default choice is taken. Shows a node module with its own editor interface and runtime behavior.", "zh-CN": "挂到场景上即可让选项倒计时，超时自动选择默认选项。演示带自定义编辑界面和运行时行为的节点模块。" },
-  "author": { "name": "Visual Novel Editor examples" },
+  "description": {
+    "en": "Attach to a scene to put the player's choices on a countdown. If time runs out, a default choice is taken. Shows a node module with its own editor interface and runtime behavior.",
+    "zh-CN": "挂到场景上即可让选项倒计时，超时自动选择默认选项。演示带自定义编辑界面和运行时行为的节点模块。"
+  },
+  "author": {
+    "name": "Visual Novel Editor examples"
+  },
   "license": "MIT",
   "engine": ">=0.1.0 <1.0.0",
   "api": "^1.0.0",
   "kind": "combined",
-  "provides": { "components": ["timer"] },
+  "provides": {
+    "components": [
+      "timer"
+    ],
+    "nodeWorkspaces": [
+      "timerUi"
+    ]
+  },
   "runtime": "runtime.js",
   "editor": "editor.js",
   "locales": "locales"

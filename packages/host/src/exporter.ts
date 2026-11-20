@@ -108,7 +108,7 @@ export async function buildGameFolder(ctx: ExportContext, projectDir: string, pr
 <html lang="en"><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)}</title>
+<title>${escapeHtml(title)}</title>${opts.icons?.[512] ? '\n<link rel="icon" href="icon.png">' : ''}
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}#game{position:fixed;inset:0}</style>
 </head><body><div id="game"></div>
 <script src="game.js"></script>

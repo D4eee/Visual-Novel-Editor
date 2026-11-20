@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Layer, LayerInstance, SceneData } from '@vne/core';
+import type { Layer, LayerInstance, SceneData, Engine, Project } from '@vne/core';
 import { Stage, NarrativeUI, createEditView, drawScene, hitTest, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
@@ -80,7 +80,8 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   });
 
   // Render: on change, and continuously while playing or when the scene has moving content.
-  const continuous = ui.playing || scene.layers.some((l) => l.type === 'core.particles' || l.type === 'core.video' || !!l.effect);
+  const moving = scene.layers.some((l) => l.type === 'core.particles' || layerMovesOverTime(session.engine, session.project, l));
+  const continuous = ui.playing || moving || scene.layers.some((l) => l.type === 'core.video');
   useEffect(() => {
     let raf = 0;
     let alive = true;
@@ -89,7 +90,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
       const stage = stageRef.current;
       if (!stage || !alive) return;
       const view = buildView();
-      if (continuous && !ui.playing) view.time = ui.time + (performance.now() - t0) / 1000 * (scene.layers.some((l) => l.type === 'core.particles' || l.effect) ? 1 : 0);
+      if (continuous && !ui.playing) view.time = ui.time + (performance.now() - t0) / 1000 * (moving ? 1 : 0);
       for (const l of scene.layers) view.instance(l.id)?.update?.(0, view.props(l), view.time);
       const ctx = stage.begin();
       try { drawScene(ctx, view, scene.background || '#000'); } catch (err) { console.error(err); }
@@ -470,3 +471,18 @@ export function pasteLayers(session: ProjectSession, nodeId: string, layers: Lay
 }
 
 export { layerMatrix };
+
+/** Effect nodes whose output depends on time or on live values (redraw continuously in the editor). */
+const TIME_NODES = new Set(['fx.time', 'fx.oscillator', 'fx.smoothNoise', 'fx.noise', 'fx.wave', 'fx.ripple', 'fx.shader', 'fx.variable', 'fx.layerProp']);
+
+/** True when a layer changes without keyframes: time-based effect graphs or module properties that use time. */
+function layerMovesOverTime(engine: Engine, project: Project, l: Layer): boolean {
+  const eff = l.effect;
+  if (eff) {
+    const graph = eff.kind === 'inline' ? eff.graph : project.effectGraphs.find((g) => g.id === eff.graphId);
+    if (graph?.nodes.some((n) => TIME_NODES.has(n.type) || engine.effectNodes.get(n.type)?.animated || !engine.effectNodes.get(n.type))) return true;
+  }
+  // Properties added by modules may animate with the clock (e.g. "Float"); redraw while they are set.
+  for (const ext of engine.properties.list()) if (l.props[ext.prop.key]) return true;
+  return false;
+}

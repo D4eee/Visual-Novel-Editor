@@ -6,6 +6,7 @@ declare global {
       invoke(name: string, args: unknown): Promise<any>;
       newWindow(): Promise<boolean>;
       onCommand(fn: (cmd: string) => void): () => void;
+      setLocale?(locale: string): Promise<boolean>;
       pathForFile(file: File): string;
     };
   }

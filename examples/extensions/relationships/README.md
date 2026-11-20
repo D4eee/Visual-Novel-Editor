@@ -7,6 +7,7 @@ Example extension for Visual Novel Editor demonstrating **a complete gameplay sy
 - **Story node** – *Affection Branch* with *High* / *Low* outputs.
 - **Scene module** – *Affection on enter*, attachable to scenes (several per scene).
 - **Expression function** – `affection("Mika") >= 5` in any condition.
+- **Exporter** (editor.js, `api.exporters.register`) – *Export → Other exports → Affection report* downloads a Markdown list of every place that reads or changes affection.
 - **Editor panel** (editor.js, `api.panels.register`) – a sidebar panel that stores settings in `project.extensions["com.example.relationships"]` through undoable `ctx.update()` calls. The settings are exported with the game.
 
 Try it: install the module, open **Relationships** in the left sidebar, enable tracking for a character, then use the block or node in your story. The example game *Like Human* uses this module.
@@ -14,7 +15,7 @@ Try it: install the module, open **Relationships** in the left sidebar, enable t
 ## Files
 
 - `module.json` – the manifest (id, version, compatibility, entry points).
-- runtime.js – systems, blocks, nodes, components, functions; editor.js – `api.panels.register`.
+- runtime.js – systems, blocks, nodes, components, functions; editor.js – `api.panels.register`, `api.exporters.register`.
 - `locales/en.json`, `locales/zh-CN.json` – UI strings. Labels in definitions are i18n keys looked up in these files.
 
 ## Install

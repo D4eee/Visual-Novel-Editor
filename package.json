@@ -21,13 +21,14 @@
     "start": "npm run build && electron .",
     "serve": "npm run build && node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test tests/",
+    "test": "npm run build && node --test tests/*.test.mjs",
     "check-i18n": "node scripts/check-i18n.mjs",
     "pack-module": "node scripts/pack-module.mjs",
     "fetch-runtimes": "node scripts/fetch-runtime-templates.mjs",
-    "dist": "npm run build && node scripts/fetch-runtime-templates.mjs --host && electron-builder",
+    "dist": "npm run build && node scripts/fetch-runtime-templates.mjs && electron-builder",
     "dist:mac": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --mac",
-    "dist:win": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --win"
+    "dist:win": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --win",
+    "docs:api": "node scripts/gen-api-docs.mjs"
   },
   "dependencies": {},
   "devDependencies": {
@@ -36,11 +37,11 @@
     "@types/react-dom": "^19.2.0",
     "electron": "45.4.1",
     "electron-builder": "^26.0.12",
-    "esbuild": "^0.28.2",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-icons": "^5.5.0",
-    "typescript": "^6.0.3"
+    "esbuild": "0.28.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-icons": "5.7.0",
+    "typescript": "6.0.3"
   },
   "build": {
     "appId": "io.github.d4eee.visual-novel-editor",
@@ -53,7 +54,9 @@
     "files": [
       "dist/**/*",
       "package.json",
-      "!dist/**/*.map"
+      "!dist/**/*.map",
+      "!dist/test/**",
+      "!dist/.like-human-build/**"
     ],
     "extraResources": [
       {

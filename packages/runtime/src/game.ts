@@ -592,7 +592,9 @@ export class GameRuntime {
     if (e.button !== 0 || this.ui.isOpen || this.transition) return;
     const p = this.stage.toStage(e.clientX, e.clientY);
     if (this.scene && !this.scene.isExited) {
-      if (this.scene.pointerDown(p.x, p.y)) return;
+      // Clicks on the text box (or other runtime UI) advance the story; they never reach layers underneath.
+      const onUi = (e.target as HTMLElement | null)?.closest?.('.vne-textbox, .vne-quick, .vne-hud > *');
+      if (!onUi && this.scene.pointerDown(p.x, p.y)) return;
       if (this.narrative.choicesOpen) return;
       if (this.autoMode) { this.autoMode = false; this.ui.refreshQuick(); }
       this.scene.advance();
@@ -602,6 +604,7 @@ export class GameRuntime {
   private onPointerMove(e: PointerEvent): void {
     if (!this.scene || this.ui.isOpen) return;
     const p = this.stage.toStage(e.clientX, e.clientY);
+    if ((e.target as HTMLElement | null)?.closest?.('.vne-textbox')) { this.stage.overlay.style.cursor = ''; return; }
     this.stage.overlay.style.cursor = this.scene.pointerMove(p.x, p.y);
   }
 

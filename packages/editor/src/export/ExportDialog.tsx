@@ -8,6 +8,7 @@ import { Button, Field, TextInput, NumberInput, Select, Toggle, Checkbox, Sectio
 import { Icon } from '../ui/Icon';
 import { AssetPicker } from '../inspect/AssetPicker';
 import { IssueList } from '../problems/Problems';
+import { makeMountContext } from '../modules/editorApi';
 import { serializeProject } from '@vne/core';
 
 const TARGETS = [
@@ -89,7 +90,7 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
   return (
     <Modal title={t('export.title')} onClose={busy ? () => {} : onClose} width={760} icon={<Icon name="export" size={18} />}
       footer={<>
-        <span className="muted small">{errors.length ? t('export.blocked', { n: errors.length }) : warnings.length ? t('export.warnings', { n: warnings.length }) : t('export.ready')}</span>
+        <span className={cx('muted small', result && 'ok')}>{busy ? t('export.exporting') : result ? t('export.success') : errors.length ? t('export.blocked', { n: errors.length }) : warnings.length ? t('export.warnings', { n: warnings.length }) : t('export.ready')}</span>
         <div className="grow" />
         <Button onClick={onClose} disabled={busy}>{t('common.close')}</Button>
         <Button kind="primary" icon="export" onClick={run} disabled={busy || !targets.size || errors.length > 0}>{busy ? t('export.exporting') : t('export.run')}</Button>
@@ -157,18 +158,22 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
               </div>
             ))}
           </Section>
+          {session.ext.exporters.length > 0 && (
+            <Section id="export.extra" title={t('export.moduleExporters')}>
+              <div className="muted small">{t('export.moduleExportersHint')}</div>
+              {session.ext.exporters.map((x) => (
+                <Button key={`${x.moduleId}/${x.id}`} small icon="module" onClick={async () => {
+                  try { await x.run(makeMountContext(session, x.moduleId)); } catch (err) { session.moduleError(x.moduleId, err, 'exporter'); }
+                }}>{t(x.label)}</Button>
+              ))}
+            </Section>
+          )}
           <Section id="export.check" title={t('export.validation')}>
             {errors.length > 0 ? <IssueList session={session} issues={errors} limit={8} /> : <div className="issue ok"><Icon name="check" size={14} />{t('export.noErrors')}</div>}
             {warnings.length > 0 && <details><summary className="muted small">{t('export.showWarnings', { n: warnings.length })}</summary><IssueList session={session} issues={warnings} limit={20} /></details>}
           </Section>
         </div>
       </div>
-      {(logs.length > 0 || error) && (
-        <div className="export-log">
-          {logs.map((l, i) => <div key={i}>{l}</div>)}
-          {error && <div className="err">{error}</div>}
-        </div>
-      )}
       {result && (
         <div className="export-results">
           {result.outputs.map((o) => (
@@ -179,6 +184,12 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
             </div>
           ))}
           <div className="muted small">{t('export.signingNote')}</div>
+        </div>
+      )}
+      {(logs.length > 0 || error) && (
+        <div className="export-log" ref={(el) => { if (el) el.scrollTop = el.scrollHeight; }}>
+          {logs.map((l, i) => <div key={i}>{l}</div>)}
+          {error && <div className="err">{error}</div>}
         </div>
       )}
     </Modal>

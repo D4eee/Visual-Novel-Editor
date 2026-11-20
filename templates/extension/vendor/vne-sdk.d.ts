@@ -184,7 +184,17 @@ export interface RenderContext {
   time: number;
   project: Project;
   assets: { image(assetId: Id | null | undefined): HTMLImageElement | null; url(assetId: Id | null | undefined): string | null };
+  /** Size of the layer being drawn (local space is 0..width × 0..height). */
+  width?: number;
+  height?: number;
   drawChildren(parentId: Id | null): void;
+}
+
+/** Given to LayerTypeDef.size(). `measure` is a scratch 2D context for measuring text. */
+export interface SizeContext {
+  project: Project;
+  assets: RenderContext['assets'];
+  measure: CanvasRenderingContext2D;
 }
 
 export interface Block { id: Id; type: string; args: Record<string, unknown>; body?: Block[]; else?: Block[] }
@@ -234,7 +244,7 @@ export interface LayerTypeDef {
   /** Transform props (x, y, scale, rotation, anchor, opacity) are added automatically for visual layers. */
   props: PropDef[];
   defaults?(ctx: { project: Project; width: number; height: number }): Record<string, any>;
-  size?(layer: Layer, props: Record<string, any>, rc: any): { width: number; height: number };
+  size?(layer: Layer, props: Record<string, any>, rc: SizeContext): { width: number; height: number };
   draw?(rc: RenderContext, layer: Layer, props: Record<string, any>): void;
   createInstance?(layer: Layer, rt: { mode: 'edit' | 'play'; emit(e: RuntimeEvent): void; requestRender(): void; assets: any; audio: any }): LayerInstance;
 }
@@ -427,7 +437,7 @@ export interface ModuleManifest {
   api?: string;
   dependencies?: Record<string, string>;
   kind?: 'editor' | 'runtime' | 'combined';
-  provides?: Partial<Record<'nodes' | 'layers' | 'blocks' | 'effects' | 'components' | 'properties' | 'interpolators' | 'transitions' | 'portTypes' | 'systems' | 'panels' | 'workspaces' | 'importers' | 'exporters', string[]>>;
+  provides?: Partial<Record<'nodes' | 'layers' | 'blocks' | 'effects' | 'components' | 'properties' | 'interpolators' | 'transitions' | 'portTypes' | 'systems' | 'panels' | 'inspectors' | 'nodeWorkspaces' | 'workspaces' | 'toolbar' | 'importers' | 'exporters', string[]>>;
   runtime?: string;
   editor?: string;
   locales?: string;

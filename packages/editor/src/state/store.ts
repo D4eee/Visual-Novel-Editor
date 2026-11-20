@@ -44,6 +44,7 @@ export class EditorStore {
     this.i18n.add('zh-CN', zhCN);
     this.i18n.subscribe(() => this.bump());
     document.documentElement.lang = locale;
+    window.vneHost?.setLocale?.(locale).catch(() => {});
   }
 
   async init(): Promise<void> {
@@ -60,6 +61,7 @@ export class EditorStore {
   setLocale(locale: string): void {
     this.i18n.setLocale(locale);
     document.documentElement.lang = locale;
+    window.vneHost?.setLocale?.(locale).catch(() => {});
     try { localStorage.setItem('vne.editor.locale', locale); } catch { /* ignore */ }
   }
 

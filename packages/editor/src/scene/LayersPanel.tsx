@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { SceneData, Layer } from '@vne/core';
-import { newId, createLayer } from '@vne/core';
+import { newId, createLayer, remapIds } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { layerTree, deleteLayers, duplicateLayers, updateScene, sceneOf } from './sceneOps';
@@ -121,6 +121,9 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
                 { label: t('layer.sendBack'), icon: 'arrowDown', onClick: () => reorder(session, nodeId, ids, 'back') },
                 { separator: true },
                 { label: t('layer.saveComposition'), icon: 'layers', onClick: () => saveAsComposition(session, nodeId, ids) },
+                ...(l.type === 'core.composition' && l.props.compositionId ? [{ label: t('layer.unpackComposition'), icon: 'folderOpen', onClick: () => unpackComposition(session, nodeId, l.id) }] : []),
+                ...(l.type === 'core.group' && l.sourceCompositionId && session.project.compositions.some((c) => c.id === l.sourceCompositionId)
+                  ? [{ label: t('layer.updateComposition', { name: session.project.compositions.find((c) => c.id === l.sourceCompositionId)!.name }), icon: 'refresh', onClick: () => updateComposition(session, nodeId, l.id) }] : []),
                 { label: t('common.delete'), icon: 'trash', danger: true, onClick: () => deleteLayers(session, nodeId, ids) },
               ]); }}>
               {l.type === 'core.group' ? <Icon name="folder" size={14} className="layer-icon" /> : <Icon name={icon(l)} size={14} className="layer-icon" />}
@@ -155,4 +158,40 @@ function saveAsComposition(session: ProjectSession, nodeId: string, ids: string[
     d.compositions.push({ id: newId('cmp'), name: layers[0]?.name || t('layer.composition'), width, height, layers: JSON.parse(JSON.stringify(layers)) });
   });
   (globalThis as any).__vneStore?.toast(t('layer.compositionSaved'), 'success');
+}
+
+/** Replace a composition layer by an editable group holding copies of the composition's layers. */
+function unpackComposition(session: ProjectSession, nodeId: string, layerId: string): void {
+  const t = session.i18n.t;
+  const scene = session.project.nodes[nodeId].data as SceneData;
+  const inst = scene.layers.find((l) => l.id === layerId);
+  const comp = session.project.compositions.find((c) => c.id === inst?.props.compositionId);
+  if (!inst || !comp) return;
+  const groupId = newId('lyr');
+  const copies = remapIds(JSON.parse(JSON.stringify(comp.layers)) as Layer[]).value.map((l) => ({ ...l, parentId: l.parentId || groupId }));
+  updateScene(session, nodeId, t('layer.unpackComposition'), (s) => {
+    const i = s.layers.findIndex((l) => l.id === layerId);
+    const group: Layer = { id: groupId, type: 'core.group', name: comp.name, parentId: inst.parentId, visible: inst.visible, locked: false, props: { ...inst.props }, sourceCompositionId: comp.id };
+    delete group.props.compositionId;
+    s.layers.splice(i, 1, group, ...copies);
+  });
+  session.setSceneUI(nodeId, { selectedLayers: [groupId] });
+}
+
+/** Write a group's layers back into the composition it was unpacked from (every instance updates). */
+function updateComposition(session: ProjectSession, nodeId: string, groupId: string): void {
+  const t = session.i18n.t;
+  const scene = session.project.nodes[nodeId].data as SceneData;
+  const group = scene.layers.find((l) => l.id === groupId);
+  if (!group?.sourceCompositionId) return;
+  const inside = new Set<string>([groupId]);
+  let grew = true;
+  while (grew) { grew = false; for (const l of scene.layers) if (l.parentId && inside.has(l.parentId) && !inside.has(l.id)) { inside.add(l.id); grew = true; } }
+  const layers = scene.layers.filter((l) => l.id !== groupId && inside.has(l.id)).map((l) => ({ ...JSON.parse(JSON.stringify(l)), parentId: l.parentId === groupId ? null : l.parentId }));
+  const name = session.project.compositions.find((c) => c.id === group.sourceCompositionId)?.name || '';
+  session.update(t('layer.updateComposition', { name }), (d) => {
+    const c = d.compositions.find((x) => x.id === group.sourceCompositionId);
+    if (c) c.layers = remapIds(layers).value;
+  });
+  (globalThis as any).__vneStore?.toast(t('layer.compositionUpdated', { name }), 'success');
 }

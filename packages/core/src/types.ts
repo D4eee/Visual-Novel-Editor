@@ -231,6 +231,8 @@ export interface Layer {
   blend?: string;
   /** Free-form data for module-defined layers. */
   data?: Record<string, unknown>;
+  /** Set on a group made by "Edit as layers" from a reusable composition, so it can update that composition. */
+  sourceCompositionId?: Id;
 }
 
 export type LayerEffect =

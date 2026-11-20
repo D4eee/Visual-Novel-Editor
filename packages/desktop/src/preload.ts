@@ -4,6 +4,8 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 contextBridge.exposeInMainWorld('vneHost', {
   invoke: (name: string, args: unknown) => ipcRenderer.invoke('vne:host', name, args),
   newWindow: () => ipcRenderer.invoke('vne:window.new'),
+  /** Keep the native menu in the editor's interface language. */
+  setLocale: (locale: string) => ipcRenderer.invoke('vne:locale', locale),
   onCommand: (fn: (cmd: string) => void) => {
     const listener = (_e: unknown, cmd: string) => fn(cmd);
     ipcRenderer.on('vne:command', listener);

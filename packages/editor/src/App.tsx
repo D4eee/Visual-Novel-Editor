@@ -22,6 +22,8 @@ import { Icon } from './ui/Icon';
 import { makeMountContext } from './modules/editorApi';
 import { call } from './host';
 
+const isMacPlatform = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
 export function App() {
   const st = useStore();
   const t = useT();
@@ -49,10 +51,35 @@ export function App() {
       if (cmd === 'project.new') store.open({ kind: 'newProject' });
       if (cmd === 'project.open') store.pickProject(t('home.openTitle')).then((p) => { if (p) store.openProject(p); });
       if (cmd === 'export.open' && store.session) store.open({ kind: 'export' });
+      if (cmd === 'help.shortcuts') store.open({ kind: 'shortcuts' });
+      // Edit menu: text fields get the native command; elsewhere the editor's own shortcut handlers run.
+      const el = document.activeElement as HTMLElement | null;
+      const inText = !!el?.closest?.('input, textarea, [contenteditable="true"]');
+      const key = (k: string, shift = false) => (el || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: !isMacPlatform, metaKey: isMacPlatform, shiftKey: shift, bubbles: true, cancelable: true }));
+      if (cmd === 'edit.undo') { if (inText) document.execCommand('undo'); else key('z'); }
+      if (cmd === 'edit.redo') { if (inText) document.execCommand('redo'); else key('z', true); }
+      if (cmd === 'edit.selectAll') { if (inText) document.execCommand('selectAll'); else key('a'); }
     });
+    // Copy / cut / paste from the native menu arrive as clipboard events; route them to the
+    // graph and canvas shortcut handlers when no text field is focused.
+    let lastKey = 0;
+    const markKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.isTrusted) lastKey = Date.now(); };
+    const onClip = (kind: 'c' | 'x' | 'v') => (e: ClipboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      if (el?.closest?.('input, textarea, [contenteditable="true"]') || Date.now() - lastKey < 200) return;
+      e.preventDefault();
+      (el || document.body).dispatchEvent(new KeyboardEvent('keydown', { key: kind, ctrlKey: !isMacPlatform, metaKey: isMacPlatform, bubbles: true, cancelable: true }));
+    };
+    const copyH = onClip('c'), cutH = onClip('x'), pasteH = onClip('v');
+    window.addEventListener('keydown', markKey, true);
+    document.addEventListener('copy', copyH); document.addEventListener('cut', cutH); document.addEventListener('paste', pasteH);
     const beforeUnload = (e: BeforeUnloadEvent) => { if (!window.vneHost && store.sessions.some((x) => x.dirty)) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', beforeUnload);
-    return () => { window.removeEventListener('keydown', onKey); off?.(); window.removeEventListener('beforeunload', beforeUnload); };
+    return () => {
+      window.removeEventListener('keydown', onKey); off?.(); window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('keydown', markKey, true);
+      document.removeEventListener('copy', copyH); document.removeEventListener('cut', cutH); document.removeEventListener('paste', pasteH);
+    };
   }, []);
 
   return (

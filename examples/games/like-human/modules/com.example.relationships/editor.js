@@ -53,4 +53,37 @@ export function activateEditor(api) {
       return ctx.onChange(render);
     },
   });
+
+  // An exporter (Export dialog → "Other exports"): a Markdown report of every
+  // place in the story that reads or changes affection — handy for balancing routes.
+  api.exporters.register({
+    id: 'report',
+    label: 'rel.report',
+    run(ctx) {
+      const p = ctx.project();
+      const name = (id) => p.characters.find((c) => c.id === id)?.name || '?';
+      const lines = [`# ${ctx.t('rel.report')} — ${p.name}`, ''];
+      const walk = (blocks, where) => {
+        for (const b of blocks || []) {
+          if (b.type === `${api.id}/change`) lines.push(`- ${where}: ${name(b.args.character)} ${Number(b.args.delta) >= 0 ? '+' : ''}${b.args.delta}`);
+          walk(b.body, where); walk(b.else, where);
+        }
+      };
+      for (const n of Object.values(p.nodes)) {
+        const chapter = p.chapters.find((c) => c.id === n.chapterId)?.name || '';
+        const where = `${chapter} › ${n.name}`;
+        if (n.type === `${api.id}/branch`) lines.push(`- ${where}: ${ctx.t('rel.node.branch')} (${name(n.data.characterId)} ≥ ${n.data.threshold ?? '★'})`);
+        for (const m of n.modules || []) if (m.component === `${api.id}/onEnter` && m.enabled) lines.push(`- ${where}: ${ctx.t('rel.comp.onEnter')} ${name(m.data.characterId)} ${Number(m.data.delta) >= 0 ? '+' : ''}${m.data.delta}`);
+        for (const st of n.data?.scripts || []) walk(st.body, where);
+        walk(n.data?.actions, where);
+      }
+      if (lines.length === 2) lines.push(ctx.t('rel.report.empty'));
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], { type: 'text/markdown' }));
+      a.download = `${p.name} - affection.md`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      ctx.toast(ctx.t('rel.report.done'), 'success');
+    },
+  });
 }
