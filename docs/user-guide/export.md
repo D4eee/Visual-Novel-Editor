@@ -2,6 +2,8 @@
 
 **Export** (top bar, **Ctrl/⌘+E**) turns the project into a game that runs without the editor.
 
+An exported game contains the game player (`player.js`), the project data (`game.js`), the assets it uses and its runtime modules. The player renders every scene in real time — layers, keyframe animation, particles, video, transitions and WebGL effects — with the same runtime as the editor's preview, so what you see in the preview is what players see. Nothing has to be pre-rendered, and the web, macOS and Windows builds draw identically.
+
 ## Settings
 
 | Setting | Notes |
