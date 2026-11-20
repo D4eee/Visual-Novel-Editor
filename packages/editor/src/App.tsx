@@ -1,3 +1,4 @@
+import { PresetManagerHost } from './effects/userPresets';
 import { useEffect } from 'react';
 import { useStore, useSession, useT, store } from './state/store';
 import type { ProjectSession } from './state/session';
@@ -86,6 +87,7 @@ export function App() {
     <div className="app">
       <TopBar />
       {s ? <SessionView key={s.id} session={s} /> : <Home />}
+      <PresetManagerHost session={s || null} />
       <DialogHost />
       {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'settings' && s && <ProjectSettingsDialog session={s} onClose={() => st.open(null)} />}

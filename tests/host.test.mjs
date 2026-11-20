@@ -175,3 +175,30 @@ test('packaged app: examples open as a personal copy, bundled modules are listed
   for (const id of ['com.example.relationships', 'com.example.timed-choices', 'com.example.speech-bubble', 'com.example.wobble', 'com.example.retro-fx', 'com.example.extra-blocks', 'com.example.dice-check']) assert.ok(ids.has(id), id);
   assert.ok(mods.every((m) => m.compatible), JSON.stringify(mods.filter((m) => !m.compatible).map((m) => [m.manifest.id, m.problems])));
 });
+
+test('effect preset library: save, list, export, import, delete', async () => {
+  const dir = tmp();
+  const host = V.createHost({ mode: 'electron', distDir: path.join(root, 'dist'), examplesDir: path.join(root, 'examples'), userDataDir: path.join(dir, 'ud'), urlBase: 'vne-fs://fs/' });
+  const p = V.createProject('P');
+  const preset = V.presetFromEffect(p, { kind: 'inline', graph: { id: 'g', name: 'Blur', params: [], nodes: [{ id: 'a', type: 'fx.input', x: 0, y: 0, values: {} }, { id: 'b', type: 'fx.output', x: 1, y: 0, values: {} }], edges: [] } }, 'Soft / blur');
+  assert.deepEqual(await host.methods['effectPresets.list'](), []);
+  await host.methods['effectPresets.save']({ preset });
+  let list = await host.methods['effectPresets.list']();
+  assert.equal(list.length, 1);
+  assert.equal(list[0].name, 'Soft / blur');
+  const out = path.join(dir, 'out'); mkdirSync(out);
+  const { path: file } = await host.methods['effectPresets.export']({ id: preset.id, dir: out });
+  assert.ok(file.endsWith('.vnefx') && !path.basename(file).includes('/'));
+  // A second export does not overwrite the first.
+  const { path: file2 } = await host.methods['effectPresets.export']({ id: preset.id, dir: out });
+  assert.notEqual(file, file2);
+  await host.methods['effectPresets.delete']({ id: preset.id });
+  assert.equal((await host.methods['effectPresets.list']()).length, 0);
+  writeFileSync(path.join(out, 'bad.vnefx'), '{"format":"x"}');
+  const r = await host.methods['effectPresets.import']({ paths: [file, path.join(out, 'bad.vnefx')] });
+  assert.equal(r.imported.length, 1);
+  assert.equal(r.errors.length, 1);
+  list = await host.methods['effectPresets.list']();
+  assert.equal(list[0].id, preset.id);
+  await assert.rejects(() => host.methods['effectPresets.delete']({ id: '../x' }), /Invalid preset id/);
+});

@@ -38,7 +38,7 @@ function PromptDialog({ title, label, value, resolve }: { title: string; label: 
   const [v, setV] = useState(value);
   return (
     <Modal title={title} onClose={() => resolve(null)} width={420} footer={<><div className="grow" /><Button onClick={() => resolve(null)}>{t('common.cancel')}</Button><Button kind="primary" onClick={() => resolve(v.trim() || null)}>{t('common.ok')}</Button></>}>
-      <Field label={label}><input className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { if (e.key === 'Enter') resolve(v.trim() || null); }} /></Field>
+      <Field label={label}><input className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); resolve(v.trim() || null); } }} /></Field>
     </Modal>
   );
 }

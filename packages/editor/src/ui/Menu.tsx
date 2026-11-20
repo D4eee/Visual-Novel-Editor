@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Icon } from './Icon';
 import { cx } from './controls';
+import { store } from '../state/store';
 
 export interface MenuItem {
   label?: string;
@@ -93,7 +94,7 @@ function MenuPanel({ state: s }: { state: MenuState }) {
     <div className="menu" ref={ref} style={{ left: pos.x, top: pos.y }} role="menu">
       {s.title && <div className="menu-title">{s.title}</div>}
       {s.search && (
-        <input className="menu-search" autoFocus placeholder="Search…" value={query}
+        <input className="menu-search" autoFocus placeholder={store.t('menu.search')} value={query}
           onChange={(e) => { setQuery(e.target.value); setActive(0); }}
           onKeyDown={(e) => {
             e.stopPropagation();

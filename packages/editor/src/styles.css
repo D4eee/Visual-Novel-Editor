@@ -847,3 +847,22 @@ body.dragging-block .blk-slot-layer { box-shadow: 0 0 0 1px rgba(255,255,255,.35
 .preview.docked { z-index: 20; }
 .preview.docked .preview-debug, .preview.docked .preview-bar .muted.small { display: none; }
 .tl-lane { cursor: grab; } body.panning .tl-lane { cursor: grabbing; }
+
+/* Effect presets */
+.fxp-bar { display: flex; gap: 6px; flex-wrap: wrap; }
+.preset.mine { border-style: dashed; }
+.fxp-manager .fxp-body { display: grid; grid-template-columns: 260px 1fr; gap: 14px; min-height: 340px; }
+.fxp-list { display: flex; flex-direction: column; gap: 4px; border-right: 1px solid var(--line); padding-right: 12px; overflow: auto; max-height: 460px; }
+.fxp-list > .text-input, .fxp-list > input { margin-bottom: 6px; }
+.fxp-item { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; background: none; border: 0; color: var(--text); text-align: left; cursor: pointer; font: inherit; }
+.fxp-item .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fxp-item:hover { background: var(--panel-3); }
+.fxp-item.active { background: var(--accent-soft); color: var(--text); }
+.fxp-detail { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.fxp-name input, input.fxp-name { font-size: 16px; font-weight: 600; }
+.fxp-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
+.fxp-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.fxp-actions { display: flex; gap: 8px; align-items: center; margin-top: auto; }
+.fxp-chain { display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; }
+.fxp-chain .chip.missing { border-color: var(--err); color: var(--err); }
+.fxp-manager .fxp-body { min-height: 300px; }
