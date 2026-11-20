@@ -25,5 +25,6 @@
   "rel.issue.noChar": "好感分支：请选择角色。",
   "rel.report": "好感度报告",
   "rel.report.empty": "没有找到改变好感度的地方。",
-  "rel.report.done": "好感度报告已下载。"
+  "rel.report.done": "好感度报告已下载。",
+  "rel.block.affectionOf": "{character} 的好感度"
 }

@@ -324,7 +324,7 @@ export interface Block {
   else?: Block[];
 }
 
-export type ArgValue = VarValue | null | Expr;
+export type ArgValue = VarValue | null | Expr | BlockRef;
 
 /* ------------------------------------------------------------------ */
 /* Expressions (shared by conditions, choices, scripts and events)    */
@@ -336,6 +336,16 @@ export type Expr =
   | { k: 'op'; op: BinaryOp; a: Expr; b: Expr }
   | { k: 'not'; a: Expr }
   | { k: 'fn'; fn: string; args: Expr[] };
+
+/**
+ * A reporter or boolean block placed in another block's slot (Scratch-style).
+ * Stored as the slot's value; evaluated when the outer block runs.
+ */
+export interface BlockRef { k: 'block'; block: Block }
+
+export function isBlockRef(v: unknown): v is BlockRef {
+  return !!v && typeof v === 'object' && (v as any).k === 'block' && !!(v as any).block && typeof (v as any).block.type === 'string';
+}
 
 export type BinaryOp =
   | '+' | '-' | '*' | '/' | '%'

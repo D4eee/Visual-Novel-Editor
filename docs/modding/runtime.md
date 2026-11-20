@@ -193,3 +193,34 @@ Since project format 2, a scene's dialogue and choices are layers:
 Outputs are ordered by the choices' positions on the canvas (top to bottom, then left to right). Older projects are migrated when they are opened. In a node module, read choices with `node.data.layers.filter((l) => l.type === 'core.choice')` and pick one at run time with `ctx.scene.pickChoice(id)` (see `examples/extensions/timed-choices`).
 
 Property type `expr` shows the expression editor in the inspector. While a game runs in the editor's preview, the debugger receives a `block` event (`{ blockId, nodeId }`) before each script block runs; the Interactions tab uses it to light up running blocks.
+
+## Reporter and condition blocks (API 1.1)
+
+Besides triggers and actions, a block can be a **value** (`shape: 'reporter'`) or a **condition** (`shape: 'boolean'`). Give it a synchronous `report(ctx, args)` instead of `run`. Players drop it into the slots of other blocks; arguments arrive already evaluated, including blocks nested inside them.
+
+```js
+api.blocks.register({
+  id: 'affectionOf', category: 'variables', shape: 'reporter', label: 'rel.block.affectionOf',
+  args: [{ id: 'character', type: 'character' }],
+  report: (ctx, a) => ctx.runtime.system(`${api.id}/affection`)?.get(a.character) ?? 0,
+});
+```
+
+## Blocks for your element types
+
+Blocks with a `layer` argument are listed under each element in the Interactions palette, pre-filled with that element. Set `layerTypes` on the block to offer it only for your element type (and `layerTypes` on the argument to accept only those elements in the slot):
+
+```js
+const BUBBLE = [`${api.id}/bubble`];
+api.blocks.register({
+  id: 'say', category: 'looks', shape: 'statement', label: 'bubble.block.say', layerTypes: BUBBLE,
+  args: [{ id: 'layer', type: 'layer', layerTypes: BUBBLE }, { id: 'text', type: 'expr' }, { id: 'seconds', type: 'number', default: 2 }],
+  async run(ctx, a) { ctx.scene.setProp(a.layer, 'text', String(a.text)); ctx.scene.setVisible(a.layer, true); await ctx.wait(a.seconds); },
+});
+```
+
+Use `layerTypes: ['*']` for blocks that suit every element, also non-visual ones such as audio. Without `layerTypes`, a block is offered for every visible element. The generic blocks (*set property*, *property of*, *tween*) automatically list your layer type's properties.
+
+## Shapes, hit tests and sensing
+
+A layer type can define `hitTest(layer, props, x, y, size)` (local coordinates) for a precise shape; clicks, hover, *When the mouse enters* and *mouse inside?* use it. The scene API has sensing helpers: `scene.contains(layer, x?, y?)` (default: the mouse), `scene.touching(a, b)`, `scene.isVisible(layer)`, `scene.bounds(layer)`, `scene.timer` / `scene.resetTimer()`. `ctx.runtime.input` holds the mouse position (stage pixels), `down` and the held `keys` (`KeyboardEvent.code`).

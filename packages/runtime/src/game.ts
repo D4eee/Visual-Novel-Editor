@@ -110,6 +110,10 @@ export class GameRuntime {
   private shakeFx: { until: number; intensity: number; start: number } | null = null;
   private flashEl: HTMLDivElement;
   private disposed = false;
+  /** Pointer and keyboard state for sensing blocks (mouse x/y in stage pixels). */
+  readonly input = { x: 0, y: 0, down: false, keys: new Set<string>() };
+  private pointerUpHandler = () => { this.input.down = false; };
+  private blurHandler = () => { this.input.down = false; this.input.keys.clear(); };
   private keyHandler: (e: KeyboardEvent) => void;
   private keyUpHandler: (e: KeyboardEvent) => void;
   private storageKey: string;
@@ -148,8 +152,10 @@ export class GameRuntime {
     this.stage.overlay.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.stage.overlay.addEventListener('wheel', (e) => { if (e.deltaY < 0 && !this.ui.isOpen) this.ui.open('log'); }, { passive: true });
     this.keyHandler = (e) => this.onKey(e);
-    this.keyUpHandler = (e) => { if (e.key === 'Control') this.skipMode = false; };
+    this.keyUpHandler = (e) => { this.input.keys.delete(e.code); if (e.key === 'Control') this.skipMode = false; };
     window.addEventListener('keydown', this.keyHandler);
+    window.addEventListener('pointerup', this.pointerUpHandler);
+    window.addEventListener('blur', this.blurHandler);
     window.addEventListener('keyup', this.keyUpHandler);
 
     this.createSystems();
@@ -173,6 +179,8 @@ export class GameRuntime {
       i18n: this.i18n,
       mode: this.opts.mode,
       get scene() { return rt.scene; },
+      /** Mouse position (stage pixels), button and held keys. */
+      get input() { return rt.input; },
       get currentNodeId() { return rt.currentNodeId; },
       get time() { return rt.clock; },
       system: (id: string) => rt.systems.get(id),
@@ -591,6 +599,7 @@ export class GameRuntime {
   /* ----------------------------------------------------------------- */
 
   private onPointerDown(e: PointerEvent): void {
+    if (e.button === 0) { const q = this.stage.toStage(e.clientX, e.clientY); this.input.x = q.x; this.input.y = q.y; this.input.down = true; }
     if (e.button !== 0 || this.ui.isOpen || this.transition) return;
     const p = this.stage.toStage(e.clientX, e.clientY);
     if (this.scene && !this.scene.isExited) {
@@ -604,8 +613,9 @@ export class GameRuntime {
   }
 
   private onPointerMove(e: PointerEvent): void {
-    if (!this.scene || this.ui.isOpen) return;
     const p = this.stage.toStage(e.clientX, e.clientY);
+    this.input.x = p.x; this.input.y = p.y;
+    if (!this.scene || this.ui.isOpen) return;
     if ((e.target as HTMLElement | null)?.closest?.('.vne-textbox')) { this.stage.overlay.style.cursor = ''; return; }
     this.stage.overlay.style.cursor = this.scene.pointerMove(p.x, p.y);
   }
@@ -616,6 +626,7 @@ export class GameRuntime {
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
     if (!this.stage.wrap.isConnected) return;
     if (this.opts.mode === 'preview' && !this.stage.container.closest('[data-preview-focus="true"]')) return;
+    if (!e.repeat) this.input.keys.add(e.code);
     if (e.key === 'Escape') { if (this.ui.isOpen) this.ui.closeAll(); else if (this.opts.mode === 'game' && !this.ui.titleVisible) this.ui.open('menu'); e.preventDefault(); return; }
     if (this.ui.isOpen || !this.scene) return;
     if (e.key === 'Control') { this.skipMode = true; this.scene.advance(); return; }
@@ -673,6 +684,8 @@ export class GameRuntime {
     for (const [id, s] of this.systems) try { s?.dispose?.(); } catch (err) { console.error(id, err); }
     this.audio.dispose();
     window.removeEventListener('keydown', this.keyHandler);
+    window.removeEventListener('pointerup', this.pointerUpHandler);
+    window.removeEventListener('blur', this.blurHandler);
     window.removeEventListener('keyup', this.keyUpHandler);
     this.ui.dispose();
     this.narrative.dispose();

@@ -93,7 +93,7 @@ export function layerCorners(view: SceneView, layer: Layer): { x: number; y: num
   return [apply(m, 0, 0), apply(m, s.width, 0), apply(m, s.width, s.height), apply(m, 0, s.height)];
 }
 
-function effectiveVisible(view: SceneView, layer: Layer): boolean {
+export function effectiveVisible(view: SceneView, layer: Layer): boolean {
   let cur: Layer | undefined = layer;
   const guard = new Set<string>();
   while (cur && !guard.has(cur.id)) {
@@ -114,13 +114,30 @@ export function hitTest(view: SceneView, x: number, y: number, filter?: (l: Laye
     if (l.type === 'core.group') continue;
     if (filter && !filter(l)) continue;
     if (!effectiveVisible(view, l)) continue;
-    const m = invert(worldMatrix(view, l.id));
-    if (!m) continue;
-    const p = apply(m, x, y);
-    const s = layerSize(view, l, view.props(l));
-    if (p.x >= 0 && p.y >= 0 && p.x <= s.width && p.y <= s.height) return l;
+    if (layerContains(view, l, x, y)) return l;
   }
   return null;
+}
+
+/** True if the stage point is inside the layer (its shape when the layer type defines `hitTest`, else its rectangle). */
+export function layerContains(view: SceneView, l: Layer, x: number, y: number): boolean {
+  const m = invert(worldMatrix(view, l.id));
+  if (!m) return false;
+  const p = apply(m, x, y);
+  const props = view.props(l);
+  const s = layerSize(view, l, props);
+  if (!(p.x >= 0 && p.y >= 0 && p.x <= s.width && p.y <= s.height)) return false;
+  const def = view.engine.layerTypes.get(l.type);
+  if (!def?.hitTest) return true;
+  try { return !!def.hitTest(l, props, p.x, p.y, s); } catch { return true; }
+}
+
+/** Axis-aligned bounding box of a layer on the stage. */
+export function layerBounds(view: SceneView, l: Layer): { x: number; y: number; width: number; height: number } {
+  const c = layerCorners(view, l);
+  const xs = c.map((q) => q.x), ys = c.map((q) => q.y);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 
 /** Resolve a layer's effect graph (inline or referenced) and its parameters. */

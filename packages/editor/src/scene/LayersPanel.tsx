@@ -4,6 +4,7 @@ import { newId, createLayer, remapIds } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { layerTree, deleteLayers, duplicateLayers, updateScene, sceneOf } from './sceneOps';
+import { elementUsage } from './sceneOps';
 import { addLayerMenu, reorder } from './CompositionCanvas';
 import { IconButton, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
@@ -74,6 +75,8 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
 
   const icon = (l: Layer) => session.engine.layerTypes.get(l.type)?.icon || 'layers';
 
+  // Elements and Interactions are bound: each element shows how many scripts use it.
+  const usage = elementUsage(session.engine, scene.scripts, new Set(scene.layers.map((l) => l.id)));
   return (
     <div className="layers-panel" onKeyDown={(e) => {
       if ((e.target as HTMLElement).closest('input')) return;
@@ -91,7 +94,7 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
         {rows.map(({ layer: l, depth }) => {
           const def = session.engine.layerTypes.get(l.type);
           const animated = scene.animations.some((a) => a.tracks.some((tr) => tr.layerId === l.id));
-          const scripted = scene.scripts.some((s) => JSON.stringify(s).includes(l.id));
+          const scripted = usage.byElement.get(l.id) || 0;
           return (
             <div key={l.id} role="treeitem" aria-selected={sel.has(l.id)} tabIndex={0}
               className={cx('layer-row', sel.has(l.id) && 'active', !l.visible && 'hidden', drop?.id === l.id && `drop-${drop.pos}`, !def && 'missing')}
@@ -134,7 +137,12 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
               ) : <span className="layer-name" title={def ? t(def.label) : t('layer.missingType', { type: l.type })}>{l.name}</span>}
               {!def && <Icon name="warning" size={12} className="err" />}
               {animated && <Icon name="keyframe" size={11} className="layer-flag" />}
-              {scripted && <Icon name="script" size={11} className="layer-flag" />}
+              {scripted > 0 && (
+                <button type="button" className="layer-flag script-badge" title={t('layer.scriptsBadge', { n: scripted })}
+                  onClick={(e) => { e.stopPropagation(); session.setSceneUI(nodeId, { selectedLayers: [l.id], bottomTab: 'behaviors' }); }}>
+                  <Icon name="script" size={11} />{scripted > 1 ? scripted : null}
+                </button>
+              )}
               {l.effect && <Icon name="sparkles" size={11} className="layer-flag" />}
               <span className="layer-tools">
                 <IconButton icon={l.locked ? 'lock' : 'unlock'} size={13} title={t('layer.toggleLock')} active={l.locked} onClick={(e) => { e.stopPropagation(); toggle(l.id, 'locked'); }} />

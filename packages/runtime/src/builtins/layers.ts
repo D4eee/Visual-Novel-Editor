@@ -371,25 +371,32 @@ export function registerBuiltinLayers(engine: Engine): void {
     props: visual([
       { key: 'width', type: 'number', label: 'prop.width', default: 200, min: 1, unit: 'px', animatable: true, group: 'size' },
       { key: 'height', type: 'number', label: 'prop.height', default: 200, min: 1, unit: 'px', animatable: true, group: 'size' },
+      { key: 'shape', type: 'select', label: 'prop.regionShape', default: 'rect', group: 'size', options: [{ value: 'rect', label: 'region.rect' }, { value: 'ellipse', label: 'region.ellipse' }, { value: 'polygon', label: 'region.polygon' }] },
+      // Polygon corners as fractions of width/height: [[x, y], ...]. Edited on the canvas.
+      { key: 'points', type: 'json', label: 'prop.points', default: [[0.5, 0], [1, 0.38], [0.81, 1], [0.19, 1], [0, 0.38]], hidden: true },
       { key: 'cursor', type: 'select', label: 'prop.cursor', default: 'pointer', options: [{ value: 'pointer', label: 'cursor.pointer' }, { value: 'default', label: 'cursor.default' }, { value: 'zoom-in', label: 'cursor.zoom' }] },
       { key: 'highlight', type: 'boolean', label: 'prop.highlightHover', default: false },
     ]),
     size: (_l, p) => ({ width: num(p.width, 100), height: num(p.height, 100) }),
+    hitTest: (_l, p, x, y, s) => regionContains(p, x, y, s.width, s.height),
     createInstance: () => ({ hover: false }),
     draw(rc, l, p) {
       const w = num(p.width, 100), h = num(p.height, 100);
       const inst = rc.view.instance(l.id);
+      const ctx = rc.ctx as CanvasRenderingContext2D;
       if (rc.mode === 'edit') {
-        rc.ctx.fillStyle = 'rgba(80, 200, 255, 0.12)';
-        rc.ctx.fillRect(0, 0, w, h);
-        rc.ctx.strokeStyle = 'rgba(80, 200, 255, 0.9)';
-        rc.ctx.setLineDash([10, 6]);
-        rc.ctx.lineWidth = 2;
-        rc.ctx.strokeRect(1, 1, w - 2, h - 2);
-        rc.ctx.setLineDash([]);
+        regionPath(ctx, p, w, h);
+        ctx.fillStyle = 'rgba(80, 200, 255, 0.12)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(80, 200, 255, 0.9)';
+        ctx.setLineDash([10, 6]);
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.setLineDash([]);
       } else if (p.highlight && inst?.hover) {
-        rc.ctx.fillStyle = 'rgba(255,255,255,0.12)';
-        rc.ctx.fillRect(0, 0, w, h);
+        regionPath(ctx, p, w, h);
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fill();
       }
     },
   });
@@ -629,3 +636,44 @@ function createParticles(layer: Layer) {
     },
   };
 }
+
+/* Detection regions (hotspots) ------------------------------------------------ */
+
+/** Polygon corners in pixels (points are stored as fractions of the region's size). */
+export function regionPoints(p: Record<string, any>, w: number, h: number): [number, number][] {
+  const pts = Array.isArray(p.points) ? p.points : [];
+  return pts.filter((q: any) => Array.isArray(q) && q.length >= 2).map((q: any) => [num(q[0], 0) * w, num(q[1], 0) * h]);
+}
+
+export function regionPath(ctx: CanvasRenderingContext2D, p: Record<string, any>, w: number, h: number): void {
+  ctx.beginPath();
+  if (p.shape === 'ellipse') ctx.ellipse(w / 2, h / 2, Math.max(0.5, w / 2 - 1), Math.max(0.5, h / 2 - 1), 0, 0, Math.PI * 2);
+  else if (p.shape === 'polygon') {
+    const pts = regionPoints(p, w, h);
+    if (pts.length < 3) { ctx.rect(1, 1, w - 2, h - 2); return; }
+    pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+    ctx.closePath();
+  } else ctx.rect(1, 1, w - 2, h - 2);
+}
+
+/** Is the local point (0..w, 0..h) inside the region's shape? */
+export function regionContains(p: Record<string, any>, x: number, y: number, w: number, h: number): boolean {
+  if (p.shape === 'ellipse') {
+    const rx = w / 2, ry = h / 2;
+    if (rx <= 0 || ry <= 0) return false;
+    const dx = (x - rx) / rx, dy = (y - ry) / ry;
+    return dx * dx + dy * dy <= 1;
+  }
+  if (p.shape === 'polygon') {
+    const pts = regionPoints(p, w, h);
+    if (pts.length < 3) return true;
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const [xi, yi] = pts[i], [xj, yj] = pts[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-9) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  return x >= 0 && y >= 0 && x <= w && y <= h;
+}
+

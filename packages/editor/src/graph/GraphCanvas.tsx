@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef, useState, KeyboardEvent as RKeyboardEvent, memo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState, KeyboardEvent as RKeyboardEvent, ClipboardEvent as RClipboardEvent, memo } from 'react';
 import { Icon } from '../ui/Icon';
 import { cx } from '../ui/controls';
 
@@ -45,6 +45,12 @@ export interface GraphCanvasProps {
   onCanvasDoubleClick?: (world: { x: number; y: number }, screen: { x: number; y: number }) => void;
   onContextMenu?: (target: { kind: 'node' | 'edge' | 'canvas' | 'port'; id?: string; port?: string; side?: 'in' | 'out' }, e: React.MouseEvent | PointerEvent, world: { x: number; y: number }) => void;
   onKeyDown?: (e: RKeyboardEvent) => void;
+  /** Clipboard events (Cmd/Ctrl+C/X/V and the Edit menu) while the canvas has focus. */
+  onCopy?: (e: RClipboardEvent) => void;
+  onCut?: (e: RClipboardEvent) => void;
+  onPaste?: (e: RClipboardEvent) => void;
+  /** Latest pointer position in world coordinates (paste goes there). */
+  onPointerWorld?: (p: { x: number; y: number }) => void;
   portsCompatible?: (from: GPort, to: GPort) => boolean;
   grid?: number;
   emptyHint?: ReactNode;
@@ -260,6 +266,10 @@ export function GraphCanvas(p: GraphCanvasProps) {
         p.onCanvasDoubleClick?.(toWorld(e.clientX, e.clientY), { x: e.clientX, y: e.clientY });
       }}
       onKeyDown={p.onKeyDown}
+      onCopy={p.onCopy}
+      onCut={p.onCut}
+      onPaste={p.onPaste}
+      onPointerMove={p.onPointerWorld ? (e) => p.onPointerWorld!(toWorld(e.clientX, e.clientY)) : undefined}
       style={{ backgroundPosition: `${v.x}px ${v.y}px`, backgroundSize: `${grid * 2 * v.zoom}px ${grid * 2 * v.zoom}px` }}
     >
       <div className="graph-world" style={{ transform: `translate(${v.x}px, ${v.y}px) scale(${v.zoom})` }}>
@@ -333,6 +343,7 @@ const NodeView = memo(function NodeView({ n, selected, onDown, onPortDown, onDou
       onDoubleClick={(e) => { if (!(e.target as HTMLElement).closest('input, textarea, select, button')) { e.stopPropagation(); onDouble?.(n.id); } }}
       onContextMenu={onContext}
       title={n.tooltip}
+      data-tip-delay={1000}
     >
       <div className="gnode-head">
         {n.icon && <Icon name={n.icon} size={15} className="gnode-icon" />}

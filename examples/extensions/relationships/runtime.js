@@ -91,6 +91,15 @@ export function activate(api) {
   });
 
   api.blocks.register({
+    id: 'affectionOf',
+    category: 'variables',
+    shape: 'reporter',
+    label: 'rel.block.affectionOf',
+    color: '#ff6f9f',
+    args: [{ id: 'character', type: 'character' }],
+    report: (ctx, a) => ctx.runtime.system(SYSTEM)?.get?.(a.character) ?? 0,
+  });
+  api.blocks.register({
     id: 'whenReaches',
     category: 'events',
     shape: 'hat',

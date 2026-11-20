@@ -22,7 +22,10 @@ Open a scene node to get its **Composition** workspace: the canvas in the middle
 | Particles | Snow, rain, dust, sparkles, petals |
 | Dialogue | The scene's lines (one per scene). Select it to write the lines in the inspector |
 | Choice | One choice button. Its position, size, colors and animation are edited like any layer; its condition and effects are in the inspector |
+| Detection area | An invisible rectangle, ellipse or polygon that reacts to the mouse (see [Interactions](scripting.md#detection-areas)) |
 | Module layers | Added by modules, e.g. *Speech bubble* from the example modules |
+
+**Add layer** groups the elements: *Media* (image, video, audio — pick a file from the library or import a new one), *Shapes* (rectangle, ellipse, triangle, line), *Text* (text, dialogue), *Interactive* (choice, button, detection area), then effects, structure and module elements. Elements can also be created from **Interactions** (*New element*). Copy, cut and paste elements with **Ctrl/⌘+C / X / V** — across scenes and projects too.
 
 On the canvas: the mouse wheel zooms, dragging empty space pans, dragging a layer moves it, corner handles to scale, the round handle to rotate. **Shift** keeps proportions while scaling, locks movement to one axis and rotates in 15° steps; **Alt** temporarily disables snapping; arrow keys nudge (Shift ×10). Snapping to edges and centers can be switched off below the canvas. **Ctrl/⌘+G** groups layers. Lock and hide layers in the Layers list; drag to reorder or re-parent.
 

@@ -21,5 +21,7 @@
   "bubble.preset.classic": "Classic",
   "bubble.preset.night": "Night",
   "bubble.preset.thought": "Thought",
-  "bubble.preset.shout": "Shout"
+  "bubble.preset.shout": "Shout",
+  "bubble.block.say": "{layer} says {text} for {seconds} s",
+  "bubble.block.textOf": "text of {layer}"
 }

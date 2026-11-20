@@ -1,5 +1,5 @@
 import type { Block, BlockDef, Engine, Expr, Project, ScriptStack, VarValue } from '@vne/core';
-import { evaluate, isExpr, builtinFunctions } from '@vne/core';
+import { evaluate, isExpr, isBlockRef, builtinFunctions } from '@vne/core';
 import type { VarStore } from './state';
 
 export interface RuntimeEvent { type: string; [k: string]: any }
@@ -57,6 +57,7 @@ export class ScriptContext {
   get cancelled() { return this.token.cancelled; }
 
   evaluate(v: any): VarValue {
+    if (isBlockRef(v)) return reportBlock(this, v.block);
     if (isExpr(v)) return evaluate(v as Expr, this.host.vars, this.host.engine.functionTable(builtinFunctions));
     return v as VarValue;
   }
@@ -93,12 +94,30 @@ export class ScriptContext {
   }
 }
 
+/** Value of a reporter/boolean block placed in a slot. Unknown or failing reporters give 0 / false and report the error. */
+export function reportBlock(ctx: ScriptContext, block: Block): VarValue {
+  const def = ctx.engine.blocks.get(block.type);
+  if (!def?.report) {
+    ctx.host.reportError('script', new Error(def ? `Block "${block.type}" has no value` : `Unknown block "${block.type}" (is its module installed?)`), { blockId: block.id });
+    return 0;
+  }
+  ctx.host.trace?.(block.id);
+  try {
+    const v = def.report(ctx, evaluateArgs(ctx, def, block), block);
+    return def.shape === 'boolean' ? !!v : (v ?? 0);
+  } catch (err) {
+    if (err instanceof StopThread) throw err;
+    ctx.host.reportError(def.owner && def.owner !== 'core' ? `module:${def.owner}` : 'script', err, { blockId: block.id, block: block.type });
+    return def.shape === 'boolean' ? false : 0;
+  }
+}
+
 export function evaluateArgs(ctx: ScriptContext, def: BlockDef, block: Block): Record<string, any> {
   const out: Record<string, any> = {};
   for (const a of def.args) {
     let v = block.args?.[a.id];
     if (v === undefined || v === null) v = a.default ?? null;
-    out[a.id] = a.type === 'expr' || isExpr(v) ? (v === null ? null : ctx.evaluate(v)) : v;
+    out[a.id] = isBlockRef(v) ? reportBlock(ctx, v.block) : a.type === 'expr' || isExpr(v) ? (v === null ? null : ctx.evaluate(v)) : v;
     if (a.type === 'number' && out[a.id] !== null) out[a.id] = Number(out[a.id]) || 0;
     if (a.type === 'boolean') out[a.id] = out[a.id] === true || out[a.id] === 'true' || out[a.id] === 1;
   }

@@ -21,4 +21,22 @@ export function activate(api) {
       ctx.runtime.toast(api.i18n.t('my.helloToast', { name: args.name }));
     },
   });
+
+  // A value block ("reporter"): players drop it into slots of other blocks.
+  // Blocks with a `layer` argument also appear under each element in the
+  // Interactions palette; `layerTypes` limits them to some element types.
+  api.blocks.register({
+    id: 'distance',
+    category: 'sensing',
+    shape: 'reporter',
+    label: 'my.distance',         // "distance from mouse to {layer}"
+    layerTypes: ['*'],
+    args: [{ id: 'layer', type: 'layer' }],
+    report(ctx, args) {
+      const b = ctx.scene?.bounds(args.layer);
+      if (!b) return 0;
+      const { x, y } = ctx.runtime.input;
+      return Math.round(Math.hypot(b.x + b.width / 2 - x, b.y + b.height / 2 - y));
+    },
+  });
 }

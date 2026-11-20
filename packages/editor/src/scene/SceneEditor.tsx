@@ -3,7 +3,8 @@ import type { SceneData, ScriptStack } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { sceneOf, updateScene } from './sceneOps';
-import { CompositionCanvas } from './CompositionCanvas';
+import { CompositionCanvas, addLayerMenu } from './CompositionCanvas';
+import { openMenu } from '../ui/Menu';
 import { LayersPanel } from './LayersPanel';
 import { Timeline } from './Timeline';
 import { EffectsPanel } from '../effects/EffectsPanel';
@@ -82,15 +83,7 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
   const stacks: WStack[] = scene.scripts.map((s) => ({ ...s }));
   const layer = scene.layers.find((l) => l.id === ui.selectedLayers[0]);
   const testing = !!(session.ui.preview?.docked && session.ui.preview.nodeId === nodeId);
-  const quick = layer && session.engine.layerTypes.get(layer.type)?.visual && layer.type !== 'core.background';
-  const addHat = (type: string) => {
-    const hat = newBlock(session.engine.blocks.get(type)!);
-    hat.args.layer = layer!.id;
-    const id = `scr_${Math.random().toString(36).slice(2, 14)}`;
-    const n = scene.scripts.length;
-    updateScene(session, nodeId, t('script.addScript'), (s) => { s.scripts.push({ id, x: 16 + (n % 3) * 360, y: 16 + Math.floor(n / 3) * 260, enabled: true, hat, body: [] }); });
-    session.setSceneUI(nodeId, { scriptId: id });
-  };
+  const { width: W, height: H } = session.project.settings.resolution;
   return (
     <BlockWorkspace
       stacks={stacks}
@@ -105,17 +98,15 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
         s.scripts = list as unknown as ScriptStack[];
       })}
       running={session.runningBlocks}
+      selectedLayer={layer?.id || null}
+      onSelectLayer={(id) => session.setSceneUI(nodeId, { selectedLayers: [id] })}
+      onNewElement={(e) => openMenu(e, addLayerMenu(session, nodeId, t, { x: W / 2, y: H / 2 }, { fromScripts: true }))}
       header={(
         <div className="blk-test-bar">
           {testing
             ? <Button small icon="stop" onClick={() => session.setUI({ preview: null })}>{t('script.stopTest')}</Button>
             : <Button small kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now(), docked: true } })} title={t('script.testHint')}>{t('script.test')}</Button>}
           {testing && <Button small kind="ghost" icon="refresh" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now(), docked: true } })}>{t('preview.restart')}</Button>}
-          {quick && <>
-            <span className="muted small">{layer!.name}:</span>
-            <Button small onClick={() => addHat('core.whenLayerClicked')}>{t('script.whenClicked')}</Button>
-            <Button small kind="ghost" onClick={() => addHat('core.whenHoverStart')}>{t('script.whenHovered')}</Button>
-          </>}
         </div>
       )}
     />
