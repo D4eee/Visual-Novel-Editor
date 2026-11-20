@@ -19,6 +19,7 @@ const MAP: Record<string, IconType> = {
   sliders: L.LuSlidersHorizontal, monitor: L.LuMonitor, apple: L.LuLaptop, windows: L.LuAppWindow, web: L.LuGlobe, external: L.LuExternalLink,
   power: L.LuPower, box: L.LuBox, hash: L.LuHash, text: L.LuTextCursorInput, quote: L.LuQuote, crop: L.LuCrop, anchor: L.LuAnchor, magic: L.LuWand,
   filter: L.LuFilter, curve: L.LuSpline, command: L.LuCommand, skipBack: L.LuSkipBack, star: L.LuStar,
+  bookmark: L.LuBookmark, bookmarkPlus: L.LuBookmarkPlus, library: L.LuLibrary,
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {

@@ -12,3 +12,4 @@ export * from './migrate';
 export * from './i18n';
 export * from './modules';
 export * from './elements';
+export * from './effectPresets';

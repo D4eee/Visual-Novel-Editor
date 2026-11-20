@@ -1,7 +1,7 @@
 {
   "name": "visual-novel-editor",
   "productName": "Visual Novel Editor (Web)",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Visual Novel Editor — web edition: the editor runs in your browser with a small local Node.js server. Story flow graph, scene composition, timeline animation, procedural effects, visual scripting, modules and one-click game export.",
   "license": "MIT",
   "private": true,

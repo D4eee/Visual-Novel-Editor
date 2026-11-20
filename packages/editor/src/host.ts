@@ -25,6 +25,7 @@ export interface HostInfo {
   examplesDir: string;
   /** Packaged app: examples open as a personal copy. */
   examplesReadOnly?: boolean;
+  effectPresetsDir?: string;
 }
 
 export class HostError extends Error {}

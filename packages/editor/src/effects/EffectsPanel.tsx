@@ -6,6 +6,7 @@ import { useSession, useT, store } from '../state/store';
 import { sceneOf, updateScene } from '../scene/sceneOps';
 import { GraphCanvas, GNode, GEdge, View, fitView } from '../graph/GraphCanvas';
 import { EFFECT_PRESETS } from './presets';
+import { effectMenuItems, saveEffectAsPreset, applyEffectPreset, useEffectPresets } from './userPresets';
 import { Button, IconButton, NumberInput, ColorInput, Select, Toggle, Empty, TextInput, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu, MenuItem } from '../ui/Menu';
@@ -30,6 +31,10 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
   const [sel, setSel] = useState<{ nodes: string[]; edges: string[] }>({ nodes: [], edges: [] });
   const ref = useRef<HTMLDivElement>(null);
   const engine = session.engine;
+  const mine = useEffectPresets();
+  // Fit the view after a preset replaces the graph (the graph renders on the next pass).
+  const frameRef = useRef<() => void>(() => {});
+  const refit = () => setTimeout(() => frameRef.current(), 30);
 
   if (!layer) return <Empty icon="sparkles" title={t('effects.selectLayer')}>{t('effects.selectLayerText')}</Empty>;
 
@@ -49,7 +54,7 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
   const applyPreset = (id: string) => {
     const p = EFFECT_PRESETS.find((x) => x.id === id)!;
     updateScene(session, nodeId, t('effects.add'), (s) => { const l = s.layers.find((x) => x.id === layer.id)!; l.effect = { kind: 'inline', graph: p.make() }; });
-    setTimeout(() => frame(), 30);
+    refit();
   };
 
   if (!graph) {
@@ -58,6 +63,12 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
         <div className="preset-grid">
           {EFFECT_PRESETS.map((p) => <button key={p.id} type="button" className="preset" onClick={() => applyPreset(p.id)}><Icon name={p.id === 'empty' ? 'plus' : 'sparkles'} size={16} /><span>{t(p.label)}</span></button>)}
         </div>
+        {!!mine?.length && <>
+          <div className="row-label">{t('fxp.mine')}</div>
+          <div className="preset-grid">
+            {mine.map((p) => <button key={p.id} type="button" className="preset mine" title={p.description} onClick={() => { applyEffectPreset(session, nodeId, [layer.id], p); refit(); }}><Icon name="bookmark" size={16} /><span>{p.name}</span></button>)}
+          </div>
+        </>}
         {session.project.effectGraphs.length > 0 && (
           <div className="row-inline">
             <span className="muted small">{t('effects.useShared')}</span>
@@ -127,6 +138,8 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
     const r = ref.current?.getBoundingClientRect();
     if (r) setView(fitView(graph.nodes.map((n) => ({ x: n.x, y: n.y, width: 220 })), r.width, r.height, 40));
   };
+  frameRef.current = frame;
+
 
   const deleteSel = () => edit(t('effects.delete'), (g) => {
     g.nodes = g.nodes.filter((n) => !sel.nodes.includes(n.id));
@@ -141,8 +154,11 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
           <div className="fx-shared"><Icon name="link" size={13} /> {t('effects.sharedGraph', { name: linked.name })}
             <Button small kind="ghost" onClick={() => updateScene(session, nodeId, t('effects.unlink'), (s) => { const l = s.layers.find((x) => x.id === layer.id)!; l.effect = { kind: 'inline', graph: JSON.parse(JSON.stringify(linked)) }; })}>{t('effects.makeLocal')}</Button>
           </div>
-        ) : (
-          <Button small icon="upload" kind="ghost" title={t('effects.shareHint')} onClick={async () => {
+        ) : null}
+        <div className="fxp-bar">
+          <Button small icon="bookmarkPlus" title={t('fxp.saveAsHint')} onClick={() => saveEffectAsPreset(session, layer)}>{t('fxp.saveAs')}</Button>
+          <Button small kind="ghost" icon="bookmark" title={t('fxp.loadHint')} onClick={(e) => { const at = { clientX: e.clientX, clientY: e.clientY }; openMenu(at, effectMenuItems(session, nodeId, [layer.id], () => refit(), false), { search: true }); }}>{t('fxp.load')}</Button>
+          {!linked && <IconButton icon="upload" size={14} title={`${t('effects.share')} — ${t('effects.shareHint')}`} onClick={async () => {
             const name = await store.prompt(t('effects.share'), t('common.name'), graph.name || layer.name);
             if (!name) return;
             const gid = newId('fxg');
@@ -152,8 +168,8 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
               d.effectGraphs.push({ ...JSON.parse(JSON.stringify(l.effect.graph)), id: gid, name });
               l.effect = { kind: 'ref', graphId: gid, params: {} };
             });
-          }}>{t('effects.share')}</Button>
-        )}
+          }} />}
+        </div>
         <div className="row-label">{t('effects.params')}<IconButton icon="plus" size={13} title={t('effects.addParam')} onClick={() => edit(t('effects.addParam'), (g) => { g.params.push({ id: `p${g.params.length + 1}`, name: `Param ${g.params.length + 1}`, type: 'number', default: 1, min: 0, max: 10 }); })} /></div>
         {graph.params.map((p, i) => <ParamRow key={p.id} p={p} onChange={(np) => edit(t('effects.editParam'), (g) => { g.params[i] = np; })} onRemove={() => edit(t('effects.removeParam'), (g) => { g.params.splice(i, 1); })} t={t} />)}
         {!graph.params.length && <div className="muted small">{t('effects.paramsHint')}</div>}

@@ -173,3 +173,34 @@ test('semver ranges used by module compatibility', () => {
   assert.ok(!V.satisfies('2.0.0', '^1.0.0'));
   assert.equal(V.checkCompatibility({ id: 'a.b', version: '1.0.0', engine: '>=9.0.0', api: '^1.0.0' }).ok, false);
 });
+
+test('effect presets: save from an element, parse, apply as a fresh copy', () => {
+  const p = V.createProject('Presets');
+  const graph = { id: 'g1', name: 'Glow', params: [{ id: 'glow', name: 'Glow', type: 'number', default: 18, min: 0, max: 80 }],
+    nodes: [{ id: 'a', type: 'fx.input', x: 0, y: 0, values: {} }, { id: 'b', type: 'com.example.retro-fx/crt', x: 200, y: 0, values: {} }, { id: 'c', type: 'fx.output', x: 400, y: 0, values: {} }],
+    edges: [{ id: 'e1', from: { node: 'a', port: 'image' }, to: { node: 'b', port: 'image' } }, { id: 'e2', from: { node: 'b', port: 'image' }, to: { node: 'c', port: 'image' } }] };
+  p.effectGraphs = [graph];
+  // A linked effect: the element's parameter value becomes the preset default.
+  const preset = V.presetFromEffect(p, { kind: 'ref', graphId: 'g1', params: { glow: 42 } }, 'My glow');
+  assert.equal(preset.format, 'vne.effect-preset');
+  assert.equal(preset.name, 'My glow');
+  assert.equal(preset.graph.params[0].default, 42);
+  assert.deepEqual(preset.requires, ['com.example.retro-fx']);
+  assert.equal(graph.params[0].default, 18, 'the project graph is not changed');
+  // Round trip through a file.
+  const back = V.parseEffectPreset(JSON.stringify(preset));
+  assert.equal(back.id, preset.id);
+  assert.throws(() => V.parseEffectPreset('{"format":"other"}'), /Not an effect preset/);
+  assert.throws(() => V.parseEffectPreset('nope'), /Not a JSON file/);
+  // Applying twice gives independent copies with consistent edges; parameter ids are kept.
+  const e1 = V.effectFromPreset(back), e2 = V.effectFromPreset(back);
+  assert.equal(e1.kind, 'inline');
+  assert.notEqual(e1.graph.nodes[0].id, e2.graph.nodes[0].id);
+  const ids = new Set(e1.graph.nodes.map((n) => n.id));
+  assert.ok(e1.graph.edges.every((e) => ids.has(e.from.node) && ids.has(e.to.node)));
+  assert.equal(e1.graph.params[0].id, 'glow');
+  // Warnings: a module node that is not available.
+  const w = V.presetWarnings(p, back, (t) => t.startsWith('fx.'), []);
+  assert.deepEqual(w.missingModules, ['com.example.retro-fx']);
+  assert.equal(w.missingVariables, false);
+});
