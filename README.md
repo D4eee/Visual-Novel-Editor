@@ -1,4 +1,6 @@
-# Visual Novel Editor
+# Visual Novel Editor — Desktop edition
+
+> Branch `desktop`: the desktop application (Electron) for macOS and Windows. The browser edition is on the [`web`](https://github.com/D4eee/Visual-Novel-Editor/tree/web) branch; the full source and history are on [`main`](https://github.com/D4eee/Visual-Novel-Editor/tree/main).
 
 A standalone, extensible visual novel engine for macOS and Windows: a story flow graph, layered scene composition, keyframe animation, procedural effect graphs, Scratch-style visual scripting, a module SDK, and one-click export of games as a macOS `.app` or a Windows `.exe`.
 
@@ -51,7 +53,6 @@ Requires Node.js 20+.
 ```bash
 npm install
 npm start            # build and launch the desktop editor (Electron)
-npm run serve        # or: run the editor in a browser at http://127.0.0.1:5199
 npm test             # unit tests
 ```
 
@@ -60,7 +61,6 @@ npm test             # unit tests
 ```bash
 npm run app:mac      # desktop app for this Mac → release/Visual Novel Editor-mac-<arch>/Visual Novel Editor.app (signed ad hoc)
 npm run app:win      # desktop app for Windows x64 → release/…-win-x64.zip
-npm run app:web      # web edition → release/Visual-Novel-Editor-<version>-web.zip
 npm run dist:mac     # installer builds with electron-builder (.dmg / .zip, arm64 + x64)
 npm run dist:win     # Windows installer (.exe) and zip
 ```

@@ -2,7 +2,7 @@
   "name": "visual-novel-editor",
   "productName": "Visual Novel Editor",
   "version": "0.2.0",
-  "description": "A standalone, extensible visual novel engine: story flow graph, scene composition, timeline animation, procedural effects, visual scripting and one-click export to macOS and Windows.",
+  "description": "Visual Novel Editor — desktop edition (Electron app for macOS and Windows): story flow graph, scene composition, timeline animation, procedural effects, visual scripting, modules and one-click game export.",
   "license": "MIT",
   "private": true,
   "author": "Visual Novel Editor contributors",
@@ -19,7 +19,6 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch --dev",
     "start": "npm run build && electron .",
-    "serve": "npm run build && node dist/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test tests/*.test.mjs",
     "check-i18n": "node scripts/check-i18n.mjs",
@@ -30,8 +29,7 @@
     "dist:win": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --win",
     "docs:api": "node scripts/gen-api-docs.mjs",
     "app:mac": "npm run build && node scripts/fetch-runtime-templates.mjs && node scripts/package-desktop.mjs",
-    "app:win": "npm run build && node scripts/fetch-runtime-templates.mjs && node scripts/package-desktop.mjs --target win-x64 --zip",
-    "app:web": "npm run build && node scripts/package-web.mjs"
+    "app:win": "npm run build && node scripts/fetch-runtime-templates.mjs && node scripts/package-desktop.mjs --target win-x64 --zip"
   },
   "dependencies": {},
   "devDependencies": {
