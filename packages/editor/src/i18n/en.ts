@@ -337,4 +337,5 @@ export const en: Record<string, string> = {
   'block.startElement': "Start {layer} and wait {wait}",
   'block.stopElement': "Stop {layer}",
   'script.stopTest': "Stop",
+  'home.openExampleCopyHint': "Open your own copy of the example (created on first open; the original stays unchanged)",
 };

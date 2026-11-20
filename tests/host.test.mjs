@@ -150,3 +150,28 @@ test('pack-module output installs through the module store', async () => {
   assert.ok(existsSync(path.join(proj, 'modules/com.yourname.my-module/runtime.js')));
   assert.equal((await store.list(proj)).find((x) => x.manifest.id === 'com.yourname.my-module').scope, 'project');
 });
+
+test('packaged app: examples open as a personal copy, bundled modules are listed', async () => {
+  const dir = tmp();
+  const mk = (ro) => V.createHost({ mode: 'electron', distDir: path.join(root, 'dist'), examplesDir: path.join(root, 'examples'), userDataDir: path.join(dir, ro ? 'ud-ro' : 'ud'), urlBase: 'vne-fs://fs/', examplesReadOnly: ro });
+  const ro = mk(true);
+  const info = await ro.methods.info();
+  assert.equal(info.examplesReadOnly, true);
+  const a = await ro.methods['examples.workingCopy']({ id: 'like-human' });
+  assert.equal(a.path, path.join(dir, 'ud-ro', 'examples', 'like-human'));
+  assert.ok(existsSync(path.join(a.path, 'project.vne.json')));
+  assert.ok(existsSync(path.join(a.path, 'modules', 'com.example.timed-choices', 'runtime.js')), 'project modules are copied');
+  // Second open reuses the copy (keeps the user's changes).
+  writeFileSync(path.join(a.path, 'marker.txt'), 'x');
+  const b = await ro.methods['examples.workingCopy']({ id: 'like-human' });
+  assert.equal(b.path, a.path);
+  assert.ok(existsSync(path.join(b.path, 'marker.txt')));
+  // From source, the example itself is opened.
+  const rw = mk(false);
+  assert.equal((await rw.methods['examples.workingCopy']({ id: 'like-human' })).path, path.join(root, 'examples', 'games', 'like-human'));
+  // Every bundled example module is listed and compatible, for the copy too.
+  const mods = await ro.methods['modules.list']({ path: a.path });
+  const ids = new Set(mods.map((m) => m.manifest.id));
+  for (const id of ['com.example.relationships', 'com.example.timed-choices', 'com.example.speech-bubble', 'com.example.wobble', 'com.example.retro-fx', 'com.example.extra-blocks', 'com.example.dice-check']) assert.ok(ids.has(id), id);
+  assert.ok(mods.every((m) => m.compatible), JSON.stringify(mods.filter((m) => !m.compatible).map((m) => [m.manifest.id, m.problems])));
+});

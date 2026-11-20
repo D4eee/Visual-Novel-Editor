@@ -4,9 +4,14 @@
 
 ## 1. 安装与启动
 
-- **macOS**：打开 `.dmg`，把 *Visual Novel Editor* 拖进「应用程序」。这个版本没有经过苹果公证，第一次打开时请右键点应用 →「打开」。
-- **Windows**：运行安装程序，或者解压免安装版。
+从 [Releases 页面](https://github.com/D4eee/Visual-Novel-Editor/releases)下载：
+
+- **macOS 桌面版**：解压 `…-mac-arm64.zip`（Apple 芯片）或 `…-mac-x64.zip`（Intel），把 *Visual Novel Editor.app* 拖进「应用程序」。这个版本没有经过苹果公证，第一次打开前在「终端」运行一次：`xattr -cr "/Applications/Visual Novel Editor.app" && codesign --force --deep --sign - "/Applications/Visual Novel Editor.app"`，之后像普通应用一样双击打开。
+- **Windows 桌面版**：解压 `…-win-x64.zip`，运行 *Visual Novel Editor.exe*。
+- **Web 版**：解压 `…-web.zip`，双击 *Start Visual Novel Editor.command*（macOS）或 *start-windows.bat*（Windows），编辑器会在浏览器里打开；需要 Node.js 20 以上。
 - **从源码运行**：`npm install`，然后 `npm start`（见仓库首页 README）。
+
+桌面版内置示例游戏、示例模组和导出游戏所需的全部文件，可以离线使用。在首页「打开」示例时，打开的是你自己的副本，原示例不会被改动。
 
 界面语言默认跟随系统（中文或英文），随时可以用右上角的语言按钮切换。
 

@@ -1,7 +1,7 @@
 {
   "name": "visual-novel-editor",
   "productName": "Visual Novel Editor",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A standalone, extensible visual novel engine: story flow graph, scene composition, timeline animation, procedural effects, visual scripting and one-click export to macOS and Windows.",
   "license": "MIT",
   "private": true,
@@ -28,7 +28,10 @@
     "dist": "npm run build && node scripts/fetch-runtime-templates.mjs && electron-builder",
     "dist:mac": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --mac",
     "dist:win": "npm run build && node scripts/fetch-runtime-templates.mjs --all && electron-builder --win",
-    "docs:api": "node scripts/gen-api-docs.mjs"
+    "docs:api": "node scripts/gen-api-docs.mjs",
+    "app:mac": "npm run build && node scripts/fetch-runtime-templates.mjs && node scripts/package-desktop.mjs",
+    "app:win": "npm run build && node scripts/fetch-runtime-templates.mjs && node scripts/package-desktop.mjs --target win-x64 --zip",
+    "app:web": "npm run build && node scripts/package-web.mjs"
   },
   "dependencies": {},
   "devDependencies": {

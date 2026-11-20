@@ -129,7 +129,10 @@ export interface ZipInput { name: string; data?: Buffer; file?: string; mode?: n
 
 /** Write a zip from files on disk or buffers (no ZIP64; fine for module packages and game folders < 4 GB). */
 export async function writeZip(out: string, inputs: ZipInput[]): Promise<void> {
-  const chunks: Buffer[] = [];
+  // Streamed to disk entry by entry, so large folders (packaged apps) do not have to fit in memory.
+  await fsp.mkdir(path.dirname(out), { recursive: true });
+  const fh = await fsp.open(out, 'w');
+  try {
   const central: Buffer[] = [];
   let offset = 0;
   for (const inp of inputs) {
@@ -152,7 +155,7 @@ export async function writeZip(out: string, inputs: ZipInput[]): Promise<void> {
     local.writeUInt32LE(data.length, 22);
     local.writeUInt16LE(nameBuf.length, 26);
     local.writeUInt16LE(0, 28);
-    chunks.push(local, nameBuf, body);
+    await fh.write(Buffer.concat([local, nameBuf, body]));
     const cd = Buffer.alloc(46);
     cd.writeUInt32LE(0x02014b50, 0);
     cd.writeUInt16LE((3 << 8) | 20, 4);
@@ -177,8 +180,10 @@ export async function writeZip(out: string, inputs: ZipInput[]): Promise<void> {
   end.writeUInt16LE(inputs.length, 10);
   end.writeUInt32LE(cdBuf.length, 12);
   end.writeUInt32LE(offset, 16);
-  await fsp.mkdir(path.dirname(out), { recursive: true });
-  await fsp.writeFile(out, Buffer.concat([...chunks, cdBuf, end]));
+  await fh.write(Buffer.concat([cdBuf, end]));
+  } finally {
+    await fh.close();
+  }
 }
 
 /** Zip a whole folder (keeps symlinks and executable bits). */

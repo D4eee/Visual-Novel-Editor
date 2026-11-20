@@ -63,7 +63,7 @@ export function Home() {
                 <div><b>{e.name}</b><div className="muted small">{e.description}</div></div>
                 <div className="row-inline">
                   <Button small icon="duplicate" onClick={() => st.open({ kind: 'newProject', ...( { template: e.path, name: e.name } as any) })}>{t('home.useExample')}</Button>
-                  <Button small kind="ghost" icon="folderOpen" onClick={() => st.openProject(e.path)} title={t('home.openExampleHint')}>{t('home.openExample')}</Button>
+                  <Button small kind="ghost" icon="folderOpen" onClick={async () => { const r = await call('examples.workingCopy', { id: e.id }); st.openProject(r.path); }} title={st.info?.examplesReadOnly ? t('home.openExampleCopyHint') : t('home.openExampleHint')}>{t('home.openExample')}</Button>
                 </div>
               </div>
             ))}

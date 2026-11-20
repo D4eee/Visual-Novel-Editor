@@ -4,9 +4,14 @@ This walk-through builds a tiny two-route story, previews it and exports it.
 
 ## 1. Install and launch
 
-- **macOS** – open the `.dmg` and drag *Visual Novel Editor* to Applications. The build is not notarized: the first time, right-click the app → **Open**.
-- **Windows** – run the installer (`Visual Novel Editor Setup.exe`) or unzip the portable build.
+Download from the [releases page](https://github.com/D4eee/Visual-Novel-Editor/releases):
+
+- **macOS (desktop)** – unzip `…-mac-arm64.zip` (Apple Silicon) or `…-mac-x64.zip` (Intel) and move *Visual Novel Editor.app* to Applications. The build is not notarized: before the first launch run once in Terminal `xattr -cr "/Applications/Visual Novel Editor.app" && codesign --force --deep --sign - "/Applications/Visual Novel Editor.app"`. Then open it like any app.
+- **Windows (desktop)** – unzip `…-win-x64.zip` and run *Visual Novel Editor.exe*.
+- **Web edition** – unzip `…-web.zip` and double-click *Start Visual Novel Editor.command* (macOS) or *start-windows.bat* (Windows); needs Node.js 20+. The editor opens in your browser.
 - **From source** – `npm install`, then `npm start` (see the main README).
+
+The desktop editions include the example games, the example modules and everything needed to export games, and work offline. Opening an example from the Home screen opens your own copy of it.
 
 The interface follows your system language (English or Simplified Chinese). Switch any time with the language button in the top-right corner.
 

@@ -6,6 +6,7 @@
  *   dist/desktop/       Electron main + preload for the editor
  *   dist/player-shell/  Electron main + preload for exported games
  *   dist/server.js      browser-mode host (npm run serve)
+ *   dist/tools/         zip helpers used by the packaging scripts
  *   sdk/dist/           public SDK helpers and typings for module authors
  *
  * Usage: node scripts/build.mjs [--watch] [--dev]
@@ -43,6 +44,8 @@ const builds = [
   { ...common, entryPoints: { main: path.join(root, 'packages/desktop/src/main.ts'), preload: path.join(root, 'packages/desktop/src/preload.ts') }, outdir: path.join(dist, 'desktop'), format: 'cjs', platform: 'node', target: ['node20'], external: ['electron'] },
   { ...common, entryPoints: { main: path.join(root, 'packages/desktop/src/player-main.ts'), preload: path.join(root, 'packages/desktop/src/player-preload.ts') }, outdir: path.join(dist, 'player-shell'), format: 'cjs', platform: 'node', target: ['node20'], external: ['electron'], minify: true, sourcemap: false },
   { ...common, entryPoints: { server: path.join(root, 'packages/host/src/server.ts') }, outdir: dist, format: 'cjs', platform: 'node', target: ['node20'] },
+  // Zip helpers for the packaging scripts (scripts/package-*.mjs).
+  { ...common, entryPoints: { zip: path.join(root, 'packages/host/src/zip.ts') }, outdir: path.join(dist, 'tools'), format: 'esm', platform: 'node', target: ['node20'], minify: false, sourcemap: false, outExtension: { '.js': '.mjs' } },
   // Test bundle (node --test tests/): the source packages as one ES module.
   { ...common, entryPoints: { vne: path.join(root, 'tests/lib.ts') }, outdir: path.join(dist, 'test'), format: 'esm', platform: 'node', target: ['node20'], minify: false, sourcemap: false, outExtension: { '.js': '.mjs' }, banner: { js: "import { createRequire as __cr } from 'node:module'; const require = __cr(import.meta.url);" } },
   { ...common, entryPoints: { index: path.join(root, 'sdk/src/index.ts') }, outdir: path.join(root, 'sdk/dist'), format: 'esm', platform: 'neutral', target: ['es2022'], minify: false, sourcemap: false, bundle: true },

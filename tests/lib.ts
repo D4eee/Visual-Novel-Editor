@@ -7,3 +7,4 @@ export * as exporter from '../packages/host/src/exporter';
 export { ModuleStore } from '../packages/host/src/modules';
 export { TemplateStore, templateName } from '../packages/host/src/templates';
 export { importAssets, missingAssets } from '../packages/host/src/assets';
+export { createHost } from '../packages/host/src/api';

@@ -39,7 +39,26 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
       const cid = (p.nodeId && project.nodes[p.nodeId]?.chapterId) || session.ui.chapterId;
       return chapterEntry(project, cid)?.id || null;
     }
-    return p.nodeId && project.nodes[p.nodeId] ? p.nodeId : session.currentNodeId || startNode(project)?.id || null;
+    const id = p.nodeId && project.nodes[p.nodeId] ? p.nodeId : session.currentNodeId || startNode(project)?.id || null;
+    return runnableFrom(id);
+  };
+  /**
+   * Data-only nodes (e.g. a dice roll that feeds another node) and comments cannot
+   * run on their own: start at the node that consumes their output instead, or at
+   * the start of the chapter.
+   */
+  const runnableFrom = (id: string | null): string | null => {
+    const seen = new Set<string>();
+    let cur = id;
+    while (cur && !seen.has(cur)) {
+      seen.add(cur);
+      const node = project.nodes[cur];
+      if (!node) break;
+      if (session.engine.nodeTypes.get(node.type)?.run) return cur;
+      cur = project.edges.find((e) => e.from.node === cur)?.to.node || null;
+    }
+    const cid = (id && project.nodes[id]?.chapterId) || session.ui.chapterId;
+    return chapterEntry(project, cid)?.id || startNode(project)?.id || null;
   };
 
   useEffect(() => {

@@ -23,6 +23,8 @@ export interface HostInfo {
   nativeDialogs: boolean;
   electronVersion: string;
   examplesDir: string;
+  /** Packaged app: examples open as a personal copy. */
+  examplesReadOnly?: boolean;
 }
 
 export class HostError extends Error {}

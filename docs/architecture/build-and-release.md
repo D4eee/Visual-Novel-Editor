@@ -20,9 +20,31 @@
 | `npm run check-i18n` | Report interface strings missing from either language |
 | `npm run docs:api` | Regenerate `docs/api/README.md` from the SDK typings |
 | `npm run fetch-runtimes` | Download and verify the Electron runtimes used as export templates (`resources/runtime-templates/`) |
+| `npm run app:mac` | Package the desktop editor for this Mac (`release/Visual Novel Editor-mac-<arch>/Visual Novel Editor.app`), no electron-builder needed; signed ad hoc on a Mac |
+| `npm run app:win` | Package the desktop editor for Windows x64 (`release/…-win-x64.zip`) |
+| `npm run app:web` | Package the web edition (`release/Visual-Novel-Editor-<version>-web.zip`, needs only Node.js to run) |
 | `npm run dist:mac` | Build the macOS editor (`release/*.dmg`, `*.zip`, arm64 + x64) with all export runtimes bundled |
 | `npm run dist:win` | Build the Windows editor (`release/*Setup*.exe`, `*.zip`) with all export runtimes bundled |
 | `npm run pack-module -- <folder>` | Package a module as `.vnemod` |
+
+## Desktop package layout
+
+`scripts/package-desktop.mjs` builds the same layout as electron-builder (asar disabled), from the official Electron zip:
+
+```
+Visual Novel Editor.app/Contents/            (Windows: the folder next to Visual Novel Editor.exe)
+  MacOS/Visual Novel Editor                  renamed executable, so app.isPackaged is true
+  Resources/app/{package.json, dist/}        editor code (desktop shell, editor UI, game player)
+  Resources/examples/                        example games + example modules (read-only)
+  Resources/sdk/, Resources/templates/       module SDK and the new-module template
+  Resources/runtime-templates/               Electron zips for exporting macOS/Windows games offline
+```
+
+In a packaged app the bundled examples are read-only: **Open** on the Home screen opens a personal copy in the user data folder (`~/Library/Application Support/Visual Novel Editor/examples/`), created on first open. Modules load from three places, as in development: the project's `modules/` folder, the user's module library (`…/Visual Novel Editor/modules`, where `.vnemod` files are installed) and the bundled example modules. The desktop main process turns Electron's asar file handling off (`process.noAsar`), because exporting copies Electron runtimes that contain `.asar` files.
+
+## Branches
+
+`main` holds the full source and history. `desktop` and `web` are cut from `main` for each release and contain only one edition each; fixes are made on `main` and merged into them.
 
 ## Reproducibility
 
@@ -43,6 +65,6 @@ Exported games are signed separately (see the user guide's [export page](../user
 ## Release checklist
 
 1. `npm ci` (or `npm install` the first time), `npm test`, `npm run check-i18n`
-2. `npm run dist:mac` on a Mac, `npm run dist:win` on Windows.
+2. `npm run app:mac` / `app:win` / `app:web` (any OS) or `npm run dist:mac` / `dist:win` (installers).
 3. Smoke test each build: create a project from the example, preview it, export macOS/Windows/Web and launch the exported games.
-4. Tag the release and attach the artifacts.
+4. Update the `desktop` and `web` branches from `main`, tag the release and attach the artifacts.

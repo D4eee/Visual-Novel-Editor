@@ -20,6 +20,8 @@ export interface HostConfig {
   /** Base for file URLs, e.g. "http://127.0.0.1:5199/fs/" or "vne-fs://fs/". */
   urlBase: string;
   templateDirs?: string[];
+  /** Bundled examples are read-only (packaged app): "Open" works on a copy in the user data folder. */
+  examplesReadOnly?: boolean;
   dialogs?: {
     pickFolder(opts: { title?: string; defaultPath?: string }): Promise<string | null>;
     pickFiles(opts: { title?: string; filters?: { name: string; extensions: string[] }[]; multiple?: boolean }): Promise<string[]>;
@@ -51,7 +53,7 @@ export function createHost(cfg: HostConfig) {
 
   const methods: Record<string, (args: any) => Promise<any>> = {
     async info() {
-      return { mode: cfg.mode, platform: process.platform, arch: process.arch, home: os.homedir(), userDataDir: cfg.userDataDir, libraryDir, urlBase: cfg.urlBase, nativeDialogs: !!cfg.dialogs, electronVersion: ELECTRON_VERSION, examplesDir: cfg.examplesDir };
+      return { mode: cfg.mode, platform: process.platform, arch: process.arch, home: os.homedir(), userDataDir: cfg.userDataDir, libraryDir, urlBase: cfg.urlBase, nativeDialogs: !!cfg.dialogs, electronVersion: ELECTRON_VERSION, examplesDir: cfg.examplesDir, examplesReadOnly: !!cfg.examplesReadOnly };
     },
     async 'recent.list'() { return recent.list(); },
     async 'recent.remove'({ path: p }) { await recent.remove(p); return true; },
@@ -78,6 +80,16 @@ export function createHost(cfg: HostConfig) {
         try { const p: Project = await readJson(pf); out.push({ id: ent.name, name: p.name, description: p.settings?.description || '', path: path.join(dir, ent.name) }); } catch { /* skip */ }
       }
       return out;
+    },
+
+    /** Folder to open for an example: the example itself, or (read-only examples) the user's own copy of it. */
+    async 'examples.workingCopy'({ id }) {
+      const src = path.join(cfg.examplesDir, 'games', path.basename(String(id)));
+      if (!(await exists(path.join(src, PROJECT_FILE)))) throw new Error(`Example "${id}" not found`);
+      if (!cfg.examplesReadOnly) return { path: src };
+      const dest = path.join(cfg.userDataDir, 'examples', path.basename(String(id)));
+      if (!(await exists(path.join(dest, PROJECT_FILE)))) await copyProjectFolder(src, dest);
+      return { path: dest };
     },
 
     async 'project.create'({ dir, json, template }) {

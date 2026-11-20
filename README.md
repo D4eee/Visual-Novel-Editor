@@ -17,6 +17,33 @@ A standalone, extensible visual novel engine for macOS and Windows: a story flow
 - **Reliability** – stable ids, versioned file format with migration, autosave, crash recovery, backups, undo/redo.
 - **Languages** – complete English and Simplified Chinese interface.
 
+## Download
+
+Ready-made builds are attached to the [GitHub releases](https://github.com/D4eee/Visual-Novel-Editor/releases):
+
+| Edition | File | Needs |
+| --- | --- | --- |
+| **Desktop – macOS (Apple Silicon)** | `Visual-Novel-Editor-<version>-mac-arm64.zip` | nothing else |
+| **Desktop – macOS (Intel)** | `Visual-Novel-Editor-<version>-mac-x64.zip` | nothing else |
+| **Desktop – Windows (x64)** | `Visual-Novel-Editor-<version>-win-x64.zip` | nothing else |
+| **Web** (editor in your browser) | `Visual-Novel-Editor-<version>-web.zip` | Node.js 20+ |
+
+The desktop editions are complete applications: example games, the seven example modules and the runtimes for exporting macOS/Windows games are built in, so everything works offline. They are not notarized: on a Mac, unzip, move *Visual Novel Editor.app* to Applications and run once in Terminal
+
+```bash
+xattr -cr "/Applications/Visual Novel Editor.app" && codesign --force --deep --sign - "/Applications/Visual Novel Editor.app"
+```
+
+(builds made with `npm run app:mac` on your own Mac are signed automatically). On Windows, unzip and run *Visual Novel Editor.exe*.
+
+### Branches
+
+| Branch | Contents |
+| --- | --- |
+| `main` | Full source of both editions, development history |
+| `desktop` | The desktop edition: source and packaging for the Electron app |
+| `web` | The web edition: source and packaging for the browser editor (local Node server) |
+
 ## Run from source
 
 Requires Node.js 20+.
@@ -31,11 +58,14 @@ npm test             # unit tests
 ## Build the editor
 
 ```bash
-npm run dist:mac     # on macOS → release/*.dmg, *.zip (arm64 + x64)
-npm run dist:win     # on Windows → release/*.exe installer and zip
+npm run app:mac      # desktop app for this Mac → release/Visual Novel Editor-mac-<arch>/Visual Novel Editor.app (signed ad hoc)
+npm run app:win      # desktop app for Windows x64 → release/…-win-x64.zip
+npm run app:web      # web edition → release/Visual-Novel-Editor-<version>-web.zip
+npm run dist:mac     # installer builds with electron-builder (.dmg / .zip, arm64 + x64)
+npm run dist:win     # Windows installer (.exe) and zip
 ```
 
-`dist` downloads the Electron runtimes used as templates for exported games (checked against Electron's SHA256 sums) and ships them inside the editor, so exporting games works offline. See [docs/architecture/build-and-release.md](docs/architecture/build-and-release.md).
+`app:*` work on any OS without extra tools (`node scripts/package-desktop.mjs --target mac-arm64 --target mac-x64 --target win-x64 --zip` builds all three). `app:*` and `dist` download the Electron runtimes used as templates for exported games (checked against Electron's SHA256 sums) and ships them inside the editor, so exporting games works offline. See [docs/architecture/build-and-release.md](docs/architecture/build-and-release.md).
 
 ## Repository layout
 

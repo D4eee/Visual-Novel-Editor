@@ -10,6 +10,11 @@ import { pathToFileURL } from 'node:url';
 import { createHost } from '../../host/src/api';
 import { within, mimeOf } from '../../host/src/fsutil';
 
+// The editor is not packed into an asar archive, and exporting copies Electron
+// runtimes that contain .asar files: Electron's asar file handling must be off
+// so they are treated as plain files ("Invalid package …default_app.asar").
+(process as any).noAsar = true;
+
 // Packaged: resources/app/dist/desktop/main.js (asar is disabled so exported-game templates can be copied as plain files).
 const DIST = path.resolve(__dirname, '..');
 const RESOURCES = app.isPackaged ? (process as any).resourcesPath as string : path.resolve(__dirname, '..', '..', 'resources');
@@ -27,6 +32,7 @@ const host = createHost({
   userDataDir: app.getPath('userData'),
   urlBase: 'vne-fs://fs/',
   templateDirs: [path.join(RESOURCES, 'runtime-templates')],
+  examplesReadOnly: app.isPackaged,
   dialogs: {
     async pickFolder(o) {
       const w = BrowserWindow.getFocusedWindow();

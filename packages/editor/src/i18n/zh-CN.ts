@@ -319,4 +319,5 @@ export const zhCN: Record<string, string> = {
   'block.startElement': "启动 {layer} 并等待 {wait}",
   'block.stopElement': "停止 {layer}",
   'script.stopTest': "停止",
+  'home.openExampleCopyHint': "打开示例的个人副本（首次打开时创建，原示例保持不变）",
 };
