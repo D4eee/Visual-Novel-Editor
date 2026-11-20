@@ -1,5 +1,7 @@
 import type { Layer, SceneData } from '@vne/core';
-import { newId } from '@vne/core';
+import { newId, sceneLines, choiceLayers, DIALOGUE_LAYER, CHOICE_LAYER } from '@vne/core';
+import { DialogueLines } from './DialoguePanel';
+import { ChoiceEffects } from './choices';
 import { animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
@@ -22,7 +24,6 @@ export function SceneInspector({ session, nodeId }: { session: ProjectSession; n
     return (
       <div className="inspector-body">
         <div className="insp-title"><Icon name="layers" size={16} /> {t('inspector.nLayers', { n: layers.length })}</div>
-        <div className="muted small">{t('inspector.multiLayerHint')}</div>
       </div>
     );
   }
@@ -48,18 +49,27 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
   return (
     <div className="inspector-body">
       <div className="insp-title">
-        <span className="type-chip"><Icon name={def?.icon || 'layers'} size={14} />{def ? t(def.label) : layer.type}</span>
+        <span className="type-chip" title={def?.visual ? t('inspector.keyTip') : undefined}><Icon name={def?.icon || 'layers'} size={14} />{def ? t(def.label) : layer.type}</span>
         {ui.record && <span className="rec-chip"><Icon name="record" size={12} />{t('timeline.recording')}</span>}
       </div>
       <Field label={t('common.name')}><TextInput value={layer.name} onChange={(v) => updateScene(session, nodeId, t('common.rename'), (s) => { s.layers.find((l) => l.id === layer.id)!.name = v; })} /></Field>
       {!def && <div className="issue error"><Icon name="error" size={14} />{t('layer.missingType', { type: layer.type })}</div>}
-      {ui.clipId && <div className="muted small tip"><Icon name="keyframe" size={12} /> {t('inspector.keyTip')}</div>}
+      {layer.type === DIALOGUE_LAYER && <DialogueLines session={session} nodeId={nodeId} layerId={layer.id} />}
       <PropEditor defs={defs} values={values} idPrefix={`layer.${layer.type}`} ctx={ctx}
         onChange={(k, v, tr) => {
           const patch: Record<string, any> = { [k]: v };
           if (k === 'characterId') patch.portraitId = null;
           setLayerProps(session, nodeId, layer.id, patch, tr ? { mergeKey: `p-${layer.id}-${k}` } : {});
+          // A choice keeps its layer name in step with its text until renamed by hand.
+          if (layer.type === CHOICE_LAYER && k === 'text' && layer.name === String(layer.props.text ?? '')) {
+            updateScene(session, nodeId, t('choice.edit'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.name = String(v).slice(0, 40) || l.name; }, `p-${layer.id}-name`);
+          }
         }} />
+      {layer.type === CHOICE_LAYER && (
+        <Section id="insp.choice.effects" title={t('choice.effects')} tip={t('choice.effectsHint')}>
+          <ChoiceEffects session={session} nodeId={nodeId} layer={layer} />
+        </Section>
+      )}
       {fxParams.length > 0 && (
         <Section id="insp.fxparams" title={t('effects.params')}>
           {fxParams.map((p) => (
@@ -71,15 +81,15 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
           ))}
         </Section>
       )}
-      <Section id="insp.layer.blend" title={t('group.compositing')} defaultOpen={false}>
+      {def?.visual !== false && <Section id="insp.layer.blend" title={t('group.compositing')} defaultOpen={false}>
         <Field label={t('prop.blend')}>
           <Select value={layer.blend || 'normal'} options={['normal', 'multiply', 'screen', 'overlay', 'lighter', 'darken', 'lighten', 'color-dodge', 'color-burn', 'soft-light', 'hard-light', 'difference'].map((b) => ({ value: b, label: t(`blend.${b === 'normal' ? 'source-over' : b}`) }))}
             onChange={(v) => updateScene(session, nodeId, t('layer.edit'), (s) => { s.layers.find((l) => l.id === layer.id)!.blend = v === 'normal' ? undefined : v; })} />
         </Field>
         <Field label={t('effects.title')}>
-          <Button small icon="sparkles" onClick={() => session.setSceneUI(nodeId, { bottomTab: 'effects' })}>{layer.effect ? t('effects.edit') : t('effects.add')}</Button>
+          <Button small icon="sparkles" onClick={() => session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true })}>{layer.effect ? t('effects.edit') : t('effects.add')}</Button>
         </Field>
-      </Section>
+      </Section>}
       {custom.map((c) => <ModuleInspector key={c.id} session={session} nodeId={nodeId} layer={layer} def={c} />)}
     </div>
   );
@@ -128,15 +138,13 @@ function SceneProps({ session, nodeId, scene }: { session: ProjectSession; nodeI
           </>
         )}
       </Section>
-      <Section id="scene.flow" title={t('scene.progression')}>
+      <Section id="scene.flow" title={t('scene.progression')} tip={t('scene.progressTip')}>
         <Toggle value={scene.hideTextbox} onChange={(v) => upd(t('scene.edit'), (s) => { s.hideTextbox = v; })} label={t('scene.hideTextbox')} />
-        {!scene.dialogue.length && !scene.choices.length && (
+        {!sceneLines(scene).length && !choiceLayers(scene).length && (
           <Field label={t('scene.hold')} hint={t('scene.holdHint')}><NumberInput value={scene.holdSeconds} min={0} step={0.5} unit="s" onChange={(v) => upd(t('scene.edit'), (s) => { s.holdSeconds = v; }, 'hold')} /></Field>
         )}
-        <div className="muted small">{scene.choices.length ? t('scene.progressChoices', { n: scene.choices.length }) : t('scene.progressDefault')}</div>
       </Section>
-      <Section id="scene.vars" title={t('vars.sceneTitle')} actions={<IconButton icon="plus" size={14} title={t('vars.add')} onClick={() => upd(t('vars.add'), (s) => { s.localVariables.push({ id: newId('var'), name: `local${s.localVariables.length + 1}`, type: 'number', initial: 0, scope: 'game' }); })} />}>
-        {!scene.localVariables.length && <div className="muted small">{t('vars.sceneEmpty')}</div>}
+      <Section id="scene.vars" title={t('vars.sceneTitle')} tip={t('vars.sceneEmpty')} actions={<IconButton icon="plus" size={14} title={t('vars.add')} onClick={() => upd(t('vars.add'), (s) => { s.localVariables.push({ id: newId('var'), name: `local${s.localVariables.length + 1}`, type: 'number', initial: 0, scope: 'game' }); })} />}>
         {scene.localVariables.map((v, i) => (
           <div key={v.id} className="var-row">
             <TextInput value={v.name} onChange={(x) => upd(t('vars.edit'), (s) => { s.localVariables[i].name = x; })} ariaLabel={t('common.name')} />
@@ -146,7 +154,6 @@ function SceneProps({ session, nodeId, scene }: { session: ProjectSession; nodeI
           </div>
         ))}
       </Section>
-      <div className="muted small tip"><Icon name="info" size={13} /> {t('inspector.sceneTip')}</div>
     </div>
   );
 }

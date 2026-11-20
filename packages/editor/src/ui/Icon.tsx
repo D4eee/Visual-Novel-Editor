@@ -13,7 +13,7 @@ const MAP: Record<string, IconType> = {
   chevronUp: L.LuChevronUp, grip: L.LuGripVertical, more: L.LuEllipsis, book: L.LuBookOpen, workflow: L.LuWorkflow, variable: L.LuVariable,
   database: L.LuDatabase, warning: L.LuTriangleAlert, error: L.LuCircleAlert, info: L.LuInfo, globe: L.LuGlobe, keyframe: L.LuDiamond,
   record: L.LuCircleDot, repeat: L.LuRepeat, timeline: L.LuChartNoAxesGantt, script: L.LuBlocks, wand: L.LuWandSparkles, message: L.LuMessageSquareText,
-  list: L.LuList, upload: L.LuUpload, download: L.LuDownload, link: L.LuLink, unlink: L.LuUnlink, refresh: L.LuRefreshCw, maximize: L.LuMaximize2,
+  list: L.LuList, choice: L.LuListChecks, upload: L.LuUpload, download: L.LuDownload, link: L.LuLink, unlink: L.LuUnlink, refresh: L.LuRefreshCw, maximize: L.LuMaximize2,
   fit: L.LuScan, grid: L.LuGrid3X3, magnet: L.LuMagnet, home: L.LuHouse, logo: L.LuFeather, bug: L.LuBug, keyboard: L.LuKeyboard,
   arrowUp: L.LuArrowUp, arrowDown: L.LuArrowDown, arrowRight: L.LuArrowRight, panel: L.LuPanelRight, panelLeft: L.LuPanelLeft, palette: L.LuPalette,
   sliders: L.LuSlidersHorizontal, monitor: L.LuMonitor, apple: L.LuLaptop, windows: L.LuAppWindow, web: L.LuGlobe, external: L.LuExternalLink,

@@ -67,7 +67,7 @@ export class Registry<T extends Registrable> {
 export type PropType =
   | 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select'
   | 'asset' | 'character' | 'portrait' | 'variable' | 'layer' | 'animation'
-  | 'choice' | 'node' | 'font' | 'vector' | 'json';
+  | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr';
 
 export interface PropDef {
   key: string;
@@ -316,7 +316,8 @@ export class Engine {
   layerProps(type: string): PropDef[] {
     const def = this.layerTypes.get(type);
     const base = def ? def.props : [];
-    const ext = this.properties.list().filter((p) => p.layerTypes === '*' || p.layerTypes.includes(type)).map((p) => p.prop);
+    // "*" means every visual layer (dialogue, audio and other non-visual elements are not drawn).
+    const ext = this.properties.list().filter((p) => (p.layerTypes === '*' ? def?.visual !== false : p.layerTypes.includes(type))).map((p) => p.prop);
     return [...base, ...ext];
   }
 

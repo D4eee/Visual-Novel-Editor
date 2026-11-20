@@ -18,6 +18,8 @@ export interface ScriptHost {
   nextFrame(signal: CancelToken): Promise<void>;
   emit(event: RuntimeEvent): void;
   reportError(source: string, err: unknown, extra?: Record<string, any>): void;
+  /** Called before each block runs (editor test runs highlight running blocks). */
+  trace?(blockId: string): void;
 }
 
 export class CancelToken {
@@ -112,6 +114,7 @@ export async function runBlocks(ctx: ScriptContext, blocks: Block[]): Promise<vo
       continue;
     }
     if (!def.run) continue;
+    ctx.host.trace?.(b.id);
     try {
       await def.run(ctx, evaluateArgs(ctx, def, b), b);
     } catch (err) {
@@ -188,6 +191,7 @@ export class ScriptEngine {
     const token = new CancelToken();
     this.threads.add(token);
     const ctx = new ScriptContext(this.host, token, stack.id, event);
+    if (stack.hat) this.host.trace?.(stack.hat.id);
     return runBlocks(ctx, stack.body)
       .catch((err) => { if (!(err instanceof StopThread)) this.host.reportError('script', err, { stackId: stack.id }); })
       .finally(() => this.threads.delete(token));

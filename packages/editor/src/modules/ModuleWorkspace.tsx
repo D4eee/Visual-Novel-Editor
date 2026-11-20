@@ -48,8 +48,7 @@ export function ModuleWorkspace({ session, nodeId }: { session: ProjectSession; 
     <div className="module-workspace">
       <div className="mw-head">
         <div>
-          <h3>{t('workspace.modules')}</h3>
-          <div className="muted small">{t('modules.workspaceIntro')}</div>
+          <h3 title={t('modules.workspaceIntro')}>{t('workspace.modules')}</h3>
         </div>
         <div className="grow" />
         <Button kind="primary" icon="plus" onClick={addMenu}>{t('modules.attach')}</Button>

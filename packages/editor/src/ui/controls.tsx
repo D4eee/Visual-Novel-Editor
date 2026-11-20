@@ -196,17 +196,19 @@ export function Checkbox({ value, onChange, label }: { value: boolean; onChange:
   );
 }
 
+/** A labelled control. `hint` is shown as a delayed tooltip on the label, not as text. */
 export function Field({ label, children, hint, wide, actions }: { label: ReactNode; children: ReactNode; hint?: ReactNode; wide?: boolean; actions?: ReactNode }) {
+  const tip = typeof hint === 'string' ? hint : undefined;
   return (
     <div className={cx('field', wide && 'field-wide')}>
-      <div className="field-label">{label}{actions && <span className="field-actions">{actions}</span>}</div>
+      <div className={cx('field-label', tip && 'has-tip')} title={tip}>{label}{actions && <span className="field-actions">{actions}</span>}</div>
       <div className="field-control">{children}</div>
-      {hint && <div className="field-hint">{hint}</div>}
+      {hint && !tip && <div className="field-hint">{hint}</div>}
     </div>
   );
 }
 
-export function Section({ title, children, defaultOpen = true, actions, id }: { title: ReactNode; children: ReactNode; defaultOpen?: boolean; actions?: ReactNode; id?: string }) {
+export function Section({ title, children, defaultOpen = true, actions, id, tip }: { title: ReactNode; children: ReactNode; defaultOpen?: boolean; actions?: ReactNode; id?: string; tip?: string }) {
   const key = id ? `vne.section.${id}` : null;
   const [open, setOpen] = useState(() => {
     if (!key) return defaultOpen;
@@ -215,7 +217,7 @@ export function Section({ title, children, defaultOpen = true, actions, id }: { 
   return (
     <section className={cx('section', open && 'open')}>
       <header className="section-head">
-        <button type="button" className="section-toggle" onClick={() => { setOpen(!open); if (key) try { localStorage.setItem(key, open ? '0' : '1'); } catch { /* ignore */ } }} aria-expanded={open}>
+        <button type="button" className="section-toggle" title={tip} onClick={() => { setOpen(!open); if (key) try { localStorage.setItem(key, open ? '0' : '1'); } catch { /* ignore */ } }} aria-expanded={open}>
           <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} />
           <span>{title}</span>
         </button>

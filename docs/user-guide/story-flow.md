@@ -36,7 +36,7 @@ Modules can add more node types (for example the *Affection Branch* from the Rel
 
 ## Choices and their outputs
 
-A scene with choices has one output per choice. Each choice has a permanent id, so reordering or renaming choices never breaks connections, and deleting a choice removes only its own connection. Choices can be:
+A scene with choices has one output per choice (choices are **Choice** elements on the scene canvas; outputs are ordered top to bottom and labelled C1, C2 …; hover an output for a second to see the choice). Adding a choice adds its output immediately — the first choice takes over the *Next* connection. Each choice has a permanent id, so reordering or renaming choices never breaks connections, and deleting a choice removes only its own connection. Choices can be:
 
 - **conditional** – shown only when an expression is true, or shown disabled (the *When unavailable* setting);
 - **hidden** – revealed later by a script (*Show choice* block);

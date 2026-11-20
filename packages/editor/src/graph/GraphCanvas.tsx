@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useMemo, useRef, useState, KeyboardEvent as RKeyb
 import { Icon } from '../ui/Icon';
 import { cx } from '../ui/controls';
 
-export interface GPort { id: string; label?: string; type: string; color: string; multiple?: boolean }
+export interface GPort { id: string; label?: string; type: string; color: string; multiple?: boolean; /** Hover card text (shown after 1 s). */ tip?: string }
 export interface GNode {
   id: string; x: number; y: number; width: number; title: string; subtitle?: string; color: string; icon?: string;
   inputs: GPort[]; outputs: GPort[]; body?: ReactNode; className?: string; badge?: ReactNode; status?: 'error' | 'warning' | null;
@@ -362,10 +362,10 @@ const NodeView = memo(function NodeView({ n, selected, onDown, onPortDown, onDou
                 <div className="gport-cell out">
                   {op && (
                     <>
-                      {op.label && <span className="gport-label" title={op.label}>{op.label}</span>}
+                      {op.label && <span className={cx('gport-label', op.tip && 'id-tag')} title={op.tip || op.label} data-tip-delay={op.tip ? 1000 : undefined}>{op.label}</span>}
                       <span className={cx('gport', 'out', connectedOut.has(`${n.id}:${op.id}`) && 'connected', portClass(op, 'out'), hover?.node === n.id && hover.port === op.id && 'hover')}
                         data-node={n.id} data-port={op.id} data-side="out" style={{ ['--port-color' as any]: op.color }}
-                        onPointerDown={(e) => onPortDown(e, n, op, 'out')} onContextMenu={(e) => onPortContext(e, op.id, 'out')} title={op.label || op.type} />
+                        onPointerDown={(e) => onPortDown(e, n, op, 'out')} onContextMenu={(e) => onPortContext(e, op.id, 'out')} title={op.tip || op.label || op.type} data-tip-delay={op.tip ? 1000 : undefined} />
                     </>
                   )}
                 </div>

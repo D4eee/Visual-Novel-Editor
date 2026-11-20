@@ -1,13 +1,42 @@
 import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION, Project } from './types';
-import { defaultSettings } from './defaults';
+import { defaultSettings, TRANSFORM_DEFAULTS } from './defaults';
+import { CHOICE_STYLE, DIALOGUE_LAYER, CHOICE_LAYER } from './elements';
 
 /**
  * Project format migrations. Each entry upgrades a project from `from` to `from + 1`.
  * Migrations must only add or reshape data — they never delete unknown fields.
  */
 export const migrations: { from: number; describe: string; run(p: any): void }[] = [
-  // Example for the future:
-  // { from: 1, describe: 'Split textbox style into themes', run(p) { ... } },
+  {
+    // Format 2: dialogue and choices become scene elements. Ids are kept, so
+    // choice connections (c:<choice id>), scripts and references stay valid.
+    from: 1,
+    describe: 'Dialogue and choices became scene elements',
+    run(p) {
+      const res = p.settings?.resolution || { width: 1280, height: 720 };
+      for (const n of Object.values<any>(p.nodes || {})) {
+        if (n.type !== 'core.scene' || !n.data) continue;
+        const d = n.data;
+        if (!Array.isArray(d.layers)) d.layers = [];
+        const lines = Array.isArray(d.dialogue) ? d.dialogue : [];
+        const choices = Array.isArray(d.choices) ? d.choices : [];
+        if (lines.length) d.layers.push({ id: `${n.id}_dialogue`, type: DIALOGUE_LAYER, name: 'Dialogue', parentId: null, visible: true, locked: false, props: { lines } });
+        const top = res.height * 0.3, gap = CHOICE_STYLE.height + 16;
+        choices.forEach((c: any, i: number) => {
+          d.layers.push({
+            id: c.id, type: CHOICE_LAYER, name: String(c.text || `Choice ${i + 1}`).slice(0, 40), parentId: null, visible: true, locked: false,
+            props: {
+              ...TRANSFORM_DEFAULTS, ...CHOICE_STYLE, x: res.width / 2, y: top + i * gap,
+              text: c.text || '', condition: c.condition ?? null, hidden: !!c.hidden, unavailable: c.unavailable || 'hide',
+              effects: Array.isArray(c.effects) ? c.effects : [], animationId: c.animationId ?? null,
+            },
+          });
+        });
+        delete d.dialogue;
+        delete d.choices;
+      }
+    },
+  },
 ];
 
 export class ProjectFormatError extends Error {
@@ -64,7 +93,7 @@ export function fillDefaults(p: any): void {
     if (!Array.isArray(n.modules)) n.modules = [];
     if (!n.chapterId || !p.chapters.some((c: any) => c.id === n.chapterId)) n.chapterId = p.chapters[0].id;
     if (n.type === 'core.scene' && n.data) {
-      for (const k of ['layers', 'animations', 'dialogue', 'choices', 'scripts', 'localVariables']) if (!Array.isArray(n.data[k])) n.data[k] = [];
+      for (const k of ['layers', 'animations', 'scripts', 'localVariables']) if (!Array.isArray(n.data[k])) n.data[k] = [];
       for (const a of n.data.animations) { if (!Array.isArray(a.tracks)) a.tracks = []; if (!Array.isArray(a.media)) a.media = []; }
     }
   }

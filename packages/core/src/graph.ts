@@ -1,5 +1,6 @@
 import type { Engine, PortDef } from './registry';
-import type { Choice, Project, SceneData, StoryEdge, StoryNode, Id, JumpData } from './types';
+import type { Project, SceneData, StoryEdge, StoryNode, Id, JumpData } from './types';
+import { sceneChoices, choiceLayers } from './elements';
 import { newId, remapIds } from './util';
 
 export const SCENE_DEFAULT_PORT = 'next';
@@ -132,24 +133,32 @@ export function pasteNodes(draft: Project, clip: Clip, chapterId: Id, offset: { 
 /* ------------------------------------------------------------------ */
 
 export function scenePorts(data: SceneData): PortDef[] {
-  if (!data.choices || data.choices.length === 0) return [{ id: SCENE_DEFAULT_PORT, type: 'flow', label: 'port.next' }];
-  return data.choices.map((c) => ({ id: choicePort(c.id), type: 'flow', label: c.text }));
+  const choices = sceneChoices(data);
+  if (!choices.length) return [{ id: SCENE_DEFAULT_PORT, type: 'flow', label: 'port.next' }];
+  return choices.map((c) => ({ id: choicePort(c.id), type: 'flow', label: c.text }));
+}
+
+/** Ids of the choice elements of a scene, in port order. */
+export function sceneChoiceIds(project: Project, nodeId: Id): string[] {
+  const n = project.nodes[nodeId];
+  return n && n.type === 'core.scene' ? choiceLayers(n.data as SceneData).map((l) => l.id) : [];
 }
 
 /**
- * Call after a scene's choices changed (inside the same draft update). Keeps connections:
- * - choices keep their edges because ports use stable choice ids, regardless of text or order;
+ * Call after a scene's choice elements changed (inside the same draft update), with
+ * the choice ids from before the change. Keeps connections:
+ * - choices keep their edges because ports use stable ids, regardless of text, order or position;
  * - adding the first choice moves the default "next" connection onto it;
  * - removing the last choice moves its connection back to "next";
  * - edges of deleted choices are removed.
  */
-export function syncSceneChoiceEdges(draft: Project, nodeId: Id, before: Choice[]): void {
+export function syncSceneChoiceEdges(draft: Project, nodeId: Id, before: string[]): void {
   const node = draft.nodes[nodeId];
   if (!node) return;
-  const after: Choice[] = (node.data as SceneData).choices || [];
+  const after = choiceLayers(node.data as SceneData).map((l) => l.id);
   const outgoing = draft.edges.filter((e) => e.from.node === nodeId);
   if (before.length === 0 && after.length > 0) {
-    for (const e of outgoing) if (e.from.port === SCENE_DEFAULT_PORT) e.from.port = choicePort(after[0].id);
+    for (const e of outgoing) if (e.from.port === SCENE_DEFAULT_PORT) e.from.port = choicePort(after[0]);
   } else if (before.length > 0 && after.length === 0) {
     const survivorId = outgoing.find((e) => e.from.port.startsWith('c:'))?.id;
     draft.edges = draft.edges.filter((e) => !(e.from.node === nodeId && e.from.port.startsWith('c:') && e.id !== survivorId));
@@ -157,7 +166,7 @@ export function syncSceneChoiceEdges(draft: Project, nodeId: Id, before: Choice[
     if (s) s.from.port = SCENE_DEFAULT_PORT;
     return;
   }
-  const valid = new Set(after.map((c) => choicePort(c.id)));
+  const valid = new Set(after.map((id) => choicePort(id)));
   if (after.length === 0) valid.add(SCENE_DEFAULT_PORT);
   draft.edges = draft.edges.filter((e) => e.from.node !== nodeId || valid.has(e.from.port));
 }

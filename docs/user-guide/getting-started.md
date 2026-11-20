@@ -32,8 +32,8 @@ Want to look around first? Under **Examples**, *Like Human* uses every feature. 
 2. In **Assets** (left rail), drop a background image and a character image onto the panel to import them.
 3. Drag the background asset onto the canvas — it becomes a background layer.
 4. In **Variables & characters**, add a character, give it a name and color, and add a portrait using the character image. Back in the scene, **Add layer → Character** and pick the character.
-5. In the **Dialogue & choices** dock, type a line. **Enter** adds the next line, **Tab** switches speaker.
-6. Add two choices with **Add choice**: *“Go left”* and *“Go right”*.
+5. **Add layer → Dialogue**, then type a line in the inspector. **Enter** adds the next line, **Tab** switches speaker.
+6. **Add layer → Choice** twice and name the choices *“Go left”* and *“Go right”* (the text is in the inspector). Place them on the canvas where they should appear.
 
 Each choice becomes its own output port on the scene node.
 

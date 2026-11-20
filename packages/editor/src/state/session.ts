@@ -20,10 +20,12 @@ export interface SceneUI {
   showTextbox: boolean;
   snap: boolean;
   scriptId: string | null;
+  /** The effect graph editor of the selected element is open. */
+  effectsOpen?: boolean;
 }
 
 export const defaultSceneUI = (): SceneUI => ({
-  selectedLayers: [], clipId: null, time: 0, playing: false, bottomTab: 'dialogue', selectedLine: null, view: null,
+  selectedLayers: [], clipId: null, time: 0, playing: false, bottomTab: 'timeline', selectedLine: null, view: null,
   record: false, subTab: 'composition', selectedKeys: [], showTextbox: true, snap: true, scriptId: null,
 });
 
@@ -38,7 +40,7 @@ export interface SessionUI {
   logicTab: Record<string, 'logic' | 'modules'>;
   inspectorOpen: boolean;
   problemsOpen: boolean;
-  preview: { scope: 'scene' | 'chapter' | 'game'; nodeId: string | null; key: number } | null;
+  preview: { scope: 'scene' | 'chapter' | 'game'; nodeId: string | null; key: number; /** Shown in place of the scene canvas (Interactions test runs). */ docked?: boolean } | null;
   graphFocus: { nodeId: string; key: number } | null;
   /** Pan/zoom per chapter (kept out of the undo history; written to the project on save). */
   views: Record<string, { x: number; y: number; zoom: number }>;
@@ -68,6 +70,16 @@ export class ProjectSession {
   moduleRecords: ModuleRecord[] = [];
   installed: InstalledModuleInfo[] = [];
   moduleErrors: ModuleError[] = [];
+  /** Blocks that ran recently in the preview (highlighted in Interactions). */
+  runningBlocks = new Set<string>();
+  private runningTimer = 0;
+
+  markBlockRunning(blockId: string): void {
+    this.runningBlocks.add(blockId);
+    this.bump();
+    clearTimeout(this.runningTimer);
+    this.runningTimer = window.setTimeout(() => { this.runningBlocks = new Set(); this.bump(); }, 700);
+  }
   ext = new EditorExtensions();
   assets: AssetLoader;
   ui: SessionUI;

@@ -70,7 +70,7 @@ Project window
 │  └─ Module panels
 ├─ Workspace tabs
 │  ├─ Chapter / All chapters: story flow graph
-│  ├─ Scene: Composition (layers · canvas · inspector · dock: Dialogue & choices / Timeline / Interactions / Effects) · Modules
+│  ├─ Scene: Composition (layers · canvas · inspector · dock: Timeline (keys, media, per-element effects) / Interactions (scripts + Test)) · Modules
 │  ├─ Logic nodes: generated form · Modules
 │  ├─ Reusable behavior: block workspace
 │  └─ Module workspaces
@@ -83,7 +83,7 @@ Dialogs: New project · Project settings · Module manager · Export · Quick op
 ## 5. Core workflows
 
 1. **Plan** — create chapters; add scenes and logic nodes in the graph; connect; validate continuously.
-2. **Write** — open a scene; write lines with speakers and portraits; add choices (each becomes an output); conditions and effects on choices.
+2. **Write** — open a scene; write lines with speakers and portraits; add choice elements (each becomes an output); conditions and effects on choices.
 3. **Stage** — import assets; drag onto the canvas; arrange layers; characters with portraits; compositions for reuse.
 4. **Animate** — clips on the timeline; keyframes with record mode; curves; media clips.
 5. **Polish** — effect graphs from presets; transitions; particles.

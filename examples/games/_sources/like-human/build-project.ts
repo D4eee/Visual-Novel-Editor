@@ -11,7 +11,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  createProject, createSceneData, createLayer, I18n, validateProject, serializeProject,
+  createProject, createSceneData, createLayer, I18n, validateProject, serializeProject, loadProject,
   type Project, type StoryNode, type Layer, type AnimationClip, type Track, type Block, type ScriptStack, type Choice, type Expr, type DialogueLine, type EffectGraph,
 } from '@vne/core';
 import { createEngine, ModuleHost } from '@vne/runtime';
@@ -135,8 +135,9 @@ function clip(name: string, duration: number, tracks: [string, string, K[]][], e
 }
 const B = (type: string, args: Record<string, any> = {}, body?: Block[]): Block => ({ id: uid('blk'), type, args, ...(body ? { body } : {}) });
 function stack(hat: Block, body: Block[], x = 40, y = 40): ScriptStack { return { id: uid('stk'), x, y, enabled: true, hat, body }; }
-function scene(chapterId: string, id: string, name: string, number: string, x: number, y: number, build: (d: ReturnType<typeof createSceneData>) => void): StoryNode {
-  const d = createSceneData(number);
+function scene(chapterId: string, id: string, name: string, number: string, x: number, y: number, build: (d: any) => void): StoryNode {
+  // Written in the classic shape (lines + choices); converted to dialogue and choice elements by the format migration below.
+  const d: any = { ...createSceneData(number), dialogue: [], choices: [] };
   build(d);
   return node('core.scene', chapterId, id, name, x, y, d);
 }
@@ -379,6 +380,13 @@ const E2 = node('core.ending', ch2.id, 'nod_end_machine', 'Ending: Just a Machin
 edge(S8.id, 'next', E1.id);
 edge(S9.id, 'next', E2.id);
 node('core.comment', ch2.id, 'nod_note2', 'Note', 940, 480, { text: 'Memory has a Timed Choices module (Modules tab) and uses the shared “Old film” effect.\nThe pink node is an Affection Branch from the Relationships module.', width: 440, height: 110 });
+
+/* ---------------------------------------------------------------- convert lines and choices into scene elements */
+{
+  const migrated = loadProject({ ...JSON.parse(JSON.stringify(p)), formatVersion: 1 }).project;
+  for (const k of Object.keys(p)) delete (p as any)[k];
+  Object.assign(p, migrated);
+}
 
 /* ---------------------------------------------------------------- validate with modules loaded */
 const i18n = new I18n('en');

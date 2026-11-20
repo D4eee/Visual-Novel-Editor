@@ -79,8 +79,6 @@ export function createSceneData(number = '1'): SceneData {
     background: '#1b1d2a',
     layers: [],
     animations: [],
-    dialogue: [],
-    choices: [],
     scripts: [],
     localVariables: [],
     transition: null,

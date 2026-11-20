@@ -62,7 +62,7 @@ export interface Issue { severity: 'error' | 'warning' | 'info'; code: string; m
 
 ```ts
 export type PropType = 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select' | 'asset' | 'character' | 'portrait'
-  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'json';
+  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr';
 
 export interface PropDef {
   key: string;

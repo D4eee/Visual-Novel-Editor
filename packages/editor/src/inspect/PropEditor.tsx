@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 import type { PropDef, Project, SceneData } from '@vne/core';
+import { sceneChoices } from '@vne/core';
+import { ExprInput } from '../script/ExprInput';
 import { NumberInput, TextInput, ColorInput, Select, Toggle, Field, Section, IconButton, cx } from '../ui/controls';
 import { AssetPicker } from './AssetPicker';
 
@@ -70,7 +72,10 @@ export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; 
       control = <Select value={value || ''} placeholder={t('common.choose')} options={(ctx.scene?.animations || []).map((x) => ({ value: x.id, label: x.name }))} onChange={(v) => onChange(v)} />;
       break;
     case 'choice':
-      control = <Select value={value || ''} placeholder={t('common.choose')} options={(ctx.scene?.choices || []).map((x) => ({ value: x.id, label: x.text || '—' }))} onChange={(v) => onChange(v)} />;
+      control = <Select value={value || ''} placeholder={t('common.choose')} options={(ctx.scene ? sceneChoices(ctx.scene) : []).map((x) => ({ value: x.id, label: x.text || '—' }))} onChange={(v) => onChange(v)} />;
+      break;
+    case 'expr':
+      control = <ExprInput value={value || null} ctx={{ project: ctx.project, scene: ctx.scene || undefined, t } as any} placeholder={t('choice.alwaysAvailable')} onChange={(e) => onChange(e)} />;
       break;
     case 'node':
       control = <Select value={value || ''} placeholder={t('common.choose')} options={Object.values(ctx.project.nodes).filter((n) => n.type !== 'core.comment').map((n) => ({ value: n.id, label: n.name, group: ctx.project.chapters.find((c) => c.id === n.chapterId)?.name }))} onChange={(v) => onChange(v)} />;

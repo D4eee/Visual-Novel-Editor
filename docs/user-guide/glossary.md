@@ -9,7 +9,8 @@
 | Port | 端口 | A connection point on a node (inputs left, outputs right) |
 | Connection / edge | 连线 | A link from an output port to an input port |
 | Start | 开始 | Where the game begins |
-| Scene / Page | 场景 / 页面 | A playable page with layers, dialogue and choices |
+| Scene / Page | 场景 / 页面 | A playable page made of elements (layers), including its dialogue and choices |
+| Element / Layer | 元素 / 图层 | Anything in a scene: picture, character, text, media, dialogue, choice; has properties, keyframes and effects |
 | Event | 事件 | Runs actions when the story passes through |
 | Condition | 条件 | Branches on an expression (True / False) |
 | Jump In / Jump Out | 跳转入口 / 跳转出口 | A numbered pair that continues the story elsewhere, also across chapters |

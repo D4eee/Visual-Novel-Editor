@@ -1,6 +1,6 @@
 {
   "format": "vne.project",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "engineVersion": "0.1.0",
   "id": "prj_like_human",
   "name": "Like Human",
@@ -241,6 +241,151 @@
               "persist": true
             },
             "effect": null
+          },
+          {
+            "id": "scn_boot_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_00u",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "…Signal detected. Visual input online.",
+                  "speakerName": "SYSTEM"
+                },
+                {
+                  "id": "ln_00v",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_surprised",
+                  "text": "Oh! You’re awake. Can you hear me?"
+                },
+                {
+                  "id": "ln_00w",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "I’m Mika. I built you — well, most of you."
+                },
+                {
+                  "id": "ln_00x",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "Try something for me. Say anything. Or… do anything."
+                }
+              ]
+            }
+          },
+          {
+            "id": "cho_hello",
+            "type": "core.choice",
+            "name": "Hello, Mika.",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 216,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "Hello, Mika.",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [
+                {
+                  "varId": "var_empathy",
+                  "op": "add",
+                  "value": 1
+                }
+              ],
+              "animationId": null
+            }
+          },
+          {
+            "id": "cho_silent",
+            "type": "core.choice",
+            "name": "( Stay silent )",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 292,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "( Stay silent )",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [],
+              "animationId": null
+            }
+          },
+          {
+            "id": "cho_hand",
+            "type": "core.choice",
+            "name": "Take her hand.",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 368,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "Take her hand.",
+              "condition": null,
+              "hidden": true,
+              "unavailable": "hide",
+              "effects": [
+                {
+                  "varId": "var_empathy",
+                  "op": "add",
+                  "value": 2
+                }
+              ],
+              "animationId": null
+            }
           }
         ],
         "animations": [
@@ -357,74 +502,6 @@
                 ]
               }
             ]
-          }
-        ],
-        "dialogue": [
-          {
-            "id": "ln_00u",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "…Signal detected. Visual input online.",
-            "speakerName": "SYSTEM"
-          },
-          {
-            "id": "ln_00v",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_surprised",
-            "text": "Oh! You’re awake. Can you hear me?"
-          },
-          {
-            "id": "ln_00w",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "I’m Mika. I built you — well, most of you."
-          },
-          {
-            "id": "ln_00x",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "Try something for me. Say anything. Or… do anything."
-          }
-        ],
-        "choices": [
-          {
-            "id": "cho_hello",
-            "text": "Hello, Mika.",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [
-              {
-                "varId": "var_empathy",
-                "op": "add",
-                "value": 1
-              }
-            ],
-            "animationId": null
-          },
-          {
-            "id": "cho_silent",
-            "text": "( Stay silent )",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [],
-            "animationId": null
-          },
-          {
-            "id": "cho_hand",
-            "text": "Take her hand.",
-            "condition": null,
-            "hidden": true,
-            "unavailable": "hide",
-            "effects": [
-              {
-                "varId": "var_empathy",
-                "op": "add",
-                "value": 2
-              }
-            ],
-            "animationId": null
           }
         ],
         "scripts": [
@@ -629,31 +706,40 @@
               "dim": 0
             },
             "effect": null
+          },
+          {
+            "id": "scn_first_words_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_01f",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "You did it! Your voice module works."
+                },
+                {
+                  "id": "ln_01g",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "Empathy calibration: {empathy}.",
+                  "speakerName": "SYSTEM"
+                },
+                {
+                  "id": "ln_01h",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "Come on. There’s something I want to show you."
+                }
+              ]
+            }
           }
         ],
         "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_01f",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "You did it! Your voice module works."
-          },
-          {
-            "id": "ln_01g",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "Empathy calibration: {empathy}.",
-            "speakerName": "SYSTEM"
-          },
-          {
-            "id": "ln_01h",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "Come on. There’s something I want to show you."
-          }
-        ],
-        "choices": [],
         "scripts": [],
         "localVariables": [],
         "transition": null,
@@ -820,30 +906,39 @@
                 ]
               }
             }
+          },
+          {
+            "id": "scn_silence_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_01t",
+                  "speakerId": "chr_seven",
+                  "portraitId": "por_seven_glitch",
+                  "text": "[ERROR] Response buffer empty."
+                },
+                {
+                  "id": "ln_01u",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_sad",
+                  "text": "Nothing? …That’s okay. Silence is an answer too."
+                },
+                {
+                  "id": "ln_01v",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "Let’s run the calibration anyway."
+                }
+              ]
+            }
           }
         ],
         "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_01t",
-            "speakerId": "chr_seven",
-            "portraitId": "por_seven_glitch",
-            "text": "[ERROR] Response buffer empty."
-          },
-          {
-            "id": "ln_01u",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_sad",
-            "text": "Nothing? …That’s okay. Silence is an answer too."
-          },
-          {
-            "id": "ln_01v",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "Let’s run the calibration anyway."
-          }
-        ],
-        "choices": [],
         "scripts": [
           {
             "id": "stk_01z",
@@ -1058,6 +1153,31 @@
               "radius": 12
             },
             "effect": null
+          },
+          {
+            "id": "scn_shutdown_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_029",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "Calibration failed. Entering sleep mode.",
+                  "speakerName": "SYSTEM"
+                },
+                {
+                  "id": "ln_02a",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_sad",
+                  "text": "Goodnight, Seven. We’ll try again."
+                }
+              ]
+            }
           }
         ],
         "animations": [
@@ -1091,22 +1211,6 @@
             ]
           }
         ],
-        "dialogue": [
-          {
-            "id": "ln_029",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "Calibration failed. Entering sleep mode.",
-            "speakerName": "SYSTEM"
-          },
-          {
-            "id": "ln_02a",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_sad",
-            "text": "Goodnight, Seven. We’ll try again."
-          }
-        ],
-        "choices": [],
         "scripts": [],
         "localVariables": [],
         "transition": null,
@@ -1318,6 +1422,106 @@
               "persist": true
             },
             "effect": null
+          },
+          {
+            "id": "scn_rooftop_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_02r",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "This is the city I grew up in."
+                },
+                {
+                  "id": "ln_02s",
+                  "speakerId": "chr_seven",
+                  "portraitId": "por_seven_neutral",
+                  "text": "It is very loud. And very bright. And wet."
+                },
+                {
+                  "id": "ln_02t",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "Ha! That’s the rain. Do you like it?"
+                }
+              ]
+            }
+          },
+          {
+            "id": "cho_like_you",
+            "type": "core.choice",
+            "name": "I like it, because you are here.",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 216,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "I like it, because you are here.",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [],
+              "animationId": null
+            }
+          },
+          {
+            "id": "cho_learning",
+            "type": "core.choice",
+            "name": "I do not understand “like” yet.",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 292,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "I do not understand “like” yet.",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [
+                {
+                  "varId": "var_empathy",
+                  "op": "add",
+                  "value": 1
+                }
+              ],
+              "animationId": null
+            }
           }
         ],
         "animations": [
@@ -1380,52 +1584,6 @@
                 ]
               }
             ]
-          }
-        ],
-        "dialogue": [
-          {
-            "id": "ln_02r",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "This is the city I grew up in."
-          },
-          {
-            "id": "ln_02s",
-            "speakerId": "chr_seven",
-            "portraitId": "por_seven_neutral",
-            "text": "It is very loud. And very bright. And wet."
-          },
-          {
-            "id": "ln_02t",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "Ha! That’s the rain. Do you like it?"
-          }
-        ],
-        "choices": [
-          {
-            "id": "cho_like_you",
-            "text": "I like it, because you are here.",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [],
-            "animationId": null
-          },
-          {
-            "id": "cho_learning",
-            "text": "I do not understand “like” yet.",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [
-              {
-                "varId": "var_empathy",
-                "op": "add",
-                "value": 1
-              }
-            ],
-            "animationId": null
           }
         ],
         "scripts": [],
@@ -1550,24 +1708,33 @@
               "color": "#ffd27a"
             },
             "effect": null
+          },
+          {
+            "id": "scn_blush_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_02y",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_surprised",
+                  "text": "…Oh."
+                },
+                {
+                  "id": "ln_02z",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "Where did you learn to say things like that?"
+                }
+              ]
+            }
           }
         ],
         "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_02y",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_surprised",
-            "text": "…Oh."
-          },
-          {
-            "id": "ln_02z",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "Where did you learn to say things like that?"
-          }
-        ],
-        "choices": [],
         "scripts": [],
         "localVariables": [],
         "transition": null,
@@ -1695,24 +1862,33 @@
               "float": 6
             },
             "effect": null
+          },
+          {
+            "id": "scn_learning_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_034",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "That’s fine. Nobody really does."
+                },
+                {
+                  "id": "ln_035",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "You learn it by noticing what you miss when it’s gone."
+                }
+              ]
+            }
           }
         ],
         "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_034",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "That’s fine. Nobody really does."
-          },
-          {
-            "id": "ln_035",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "You learn it by noticing what you miss when it’s gone."
-          }
-        ],
-        "choices": [],
         "scripts": [],
         "localVariables": [],
         "transition": null,
@@ -1863,62 +2039,116 @@
               "color": "#ffd9a0"
             },
             "effect": null
-          }
-        ],
-        "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_03b",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_neutral",
-            "text": "When I was little, my father repaired old TVs in this room."
           },
           {
-            "id": "ln_03c",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "He said every machine has a little bit of its maker inside."
+            "id": "scn_memory_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_03b",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_neutral",
+                  "text": "When I was little, my father repaired old TVs in this room."
+                },
+                {
+                  "id": "ln_03c",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "He said every machine has a little bit of its maker inside."
+                },
+                {
+                  "id": "ln_03d",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_sad",
+                  "text": "Then he got sick. And the room got very quiet."
+                },
+                {
+                  "id": "ln_03e",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "She is reaching for your hand.",
+                  "speakerName": ""
+                }
+              ]
+            }
           },
-          {
-            "id": "ln_03d",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_sad",
-            "text": "Then he got sick. And the room got very quiet."
-          },
-          {
-            "id": "ln_03e",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "She is reaching for your hand.",
-            "speakerName": ""
-          }
-        ],
-        "choices": [
           {
             "id": "cho_hold",
-            "text": "Hold her hand.",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [
-              {
-                "varId": "var_empathy",
-                "op": "add",
-                "value": 1
-              }
-            ],
-            "animationId": null
+            "type": "core.choice",
+            "name": "Hold her hand.",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 216,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "Hold her hand.",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [
+                {
+                  "varId": "var_empathy",
+                  "op": "add",
+                  "value": 1
+                }
+              ],
+              "animationId": null
+            }
           },
           {
             "id": "cho_wait",
-            "text": "( Do nothing )",
-            "condition": null,
-            "hidden": false,
-            "unavailable": "hide",
-            "effects": [],
-            "animationId": null
+            "type": "core.choice",
+            "name": "( Do nothing )",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "x": 640,
+              "y": 292,
+              "scaleX": 1,
+              "scaleY": 1,
+              "rotation": 0,
+              "anchorX": 0.5,
+              "anchorY": 0.5,
+              "opacity": 1,
+              "width": 560,
+              "height": 60,
+              "fontSize": 24,
+              "textColor": "#ffffff",
+              "fill": "rgba(18,20,32,0.86)",
+              "hoverFill": "#5b5ff0",
+              "borderColor": "rgba(255,255,255,0.22)",
+              "radius": 12,
+              "text": "( Do nothing )",
+              "condition": null,
+              "hidden": false,
+              "unavailable": "hide",
+              "effects": [],
+              "animationId": null
+            }
           }
         ],
+        "animations": [],
         "scripts": [
           {
             "id": "stk_03h",
@@ -2129,6 +2359,37 @@
               "persist": true
             },
             "effect": null
+          },
+          {
+            "id": "scn_dawn_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_03y",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "We stayed until the sun came up.",
+                  "speakerName": ""
+                },
+                {
+                  "id": "ln_03z",
+                  "speakerId": "chr_seven",
+                  "portraitId": "por_seven_smile",
+                  "text": "Mika. I think this is what you call “happy”."
+                },
+                {
+                  "id": "ln_040",
+                  "speakerId": "chr_mika",
+                  "portraitId": "por_mika_smile",
+                  "text": "Yeah. I think it is."
+                }
+              ]
+            }
           }
         ],
         "animations": [
@@ -2200,28 +2461,6 @@
             ]
           }
         ],
-        "dialogue": [
-          {
-            "id": "ln_03y",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "We stayed until the sun came up.",
-            "speakerName": ""
-          },
-          {
-            "id": "ln_03z",
-            "speakerId": "chr_seven",
-            "portraitId": "por_seven_smile",
-            "text": "Mika. I think this is what you call “happy”."
-          },
-          {
-            "id": "ln_040",
-            "speakerId": "chr_mika",
-            "portraitId": "por_mika_smile",
-            "text": "Yeah. I think it is."
-          }
-        ],
-        "choices": [],
         "scripts": [
           {
             "id": "stk_043",
@@ -2340,25 +2579,34 @@
               "dim": 0
             },
             "effect": null
+          },
+          {
+            "id": "scn_rain_dialogue",
+            "type": "core.dialogue",
+            "name": "Dialogue",
+            "parentId": null,
+            "visible": true,
+            "locked": false,
+            "props": {
+              "lines": [
+                {
+                  "id": "ln_047",
+                  "speakerId": null,
+                  "portraitId": null,
+                  "text": "Mika went home early.",
+                  "speakerName": ""
+                },
+                {
+                  "id": "ln_048",
+                  "speakerId": "chr_seven",
+                  "portraitId": "por_seven_neutral",
+                  "text": "Rain: 100%. Understanding: 12%. Logging for tomorrow."
+                }
+              ]
+            }
           }
         ],
         "animations": [],
-        "dialogue": [
-          {
-            "id": "ln_047",
-            "speakerId": null,
-            "portraitId": null,
-            "text": "Mika went home early.",
-            "speakerName": ""
-          },
-          {
-            "id": "ln_048",
-            "speakerId": "chr_seven",
-            "portraitId": "por_seven_neutral",
-            "text": "Rain: 100%. Understanding: 12%. Logging for tomorrow."
-          }
-        ],
-        "choices": [],
         "scripts": [],
         "localVariables": [],
         "transition": null,
@@ -3216,14 +3464,14 @@
       "name": "Old film",
       "nodes": [
         {
-          "id": "fxn_h210ztfixt1b",
+          "id": "fxn_nrpxn91ypt9x",
           "type": "fx.input",
           "x": 40,
           "y": 80,
           "values": {}
         },
         {
-          "id": "fxn_rwbs6xdwvfst",
+          "id": "fxn_g35ulb4sxp3r",
           "type": "fx.sepia",
           "x": 260,
           "y": 80,
@@ -3232,7 +3480,7 @@
           }
         },
         {
-          "id": "fxn_tfi683btx3ts",
+          "id": "fxn_n19bp8cpflxd",
           "type": "fx.noise",
           "x": 260,
           "y": 260,
@@ -3244,7 +3492,7 @@
           }
         },
         {
-          "id": "fxn_58vx81a983qt",
+          "id": "fxn_011gzz35fluk",
           "type": "fx.blend",
           "x": 500,
           "y": 80,
@@ -3254,7 +3502,7 @@
           }
         },
         {
-          "id": "fxn_hnju4hcwl0r0",
+          "id": "fxn_9bwmn2x8v12d",
           "type": "fx.vignette",
           "x": 740,
           "y": 80,
@@ -3264,7 +3512,7 @@
           }
         },
         {
-          "id": "fxn_q0uey0o92n36",
+          "id": "fxn_4mc33w16bild",
           "type": "fx.output",
           "x": 980,
           "y": 80,
@@ -3273,57 +3521,57 @@
       ],
       "edges": [
         {
-          "id": "fxe_4gox04hazlyd",
+          "id": "fxe_1y1nguk7h0wl",
           "from": {
-            "node": "fxn_h210ztfixt1b",
+            "node": "fxn_nrpxn91ypt9x",
             "port": "image"
           },
           "to": {
-            "node": "fxn_rwbs6xdwvfst",
+            "node": "fxn_g35ulb4sxp3r",
             "port": "image"
           }
         },
         {
-          "id": "fxe_tu502xx2s7nk",
+          "id": "fxe_md9hsy0xb5jt",
           "from": {
-            "node": "fxn_rwbs6xdwvfst",
+            "node": "fxn_g35ulb4sxp3r",
             "port": "image"
           },
           "to": {
-            "node": "fxn_58vx81a983qt",
+            "node": "fxn_011gzz35fluk",
             "port": "a"
           }
         },
         {
-          "id": "fxe_t1047a98x0hb",
+          "id": "fxe_rym5d1yqmitv",
           "from": {
-            "node": "fxn_tfi683btx3ts",
+            "node": "fxn_n19bp8cpflxd",
             "port": "image"
           },
           "to": {
-            "node": "fxn_58vx81a983qt",
+            "node": "fxn_011gzz35fluk",
             "port": "b"
           }
         },
         {
-          "id": "fxe_69n44iyqo6hb",
+          "id": "fxe_iml9ilc39pko",
           "from": {
-            "node": "fxn_58vx81a983qt",
+            "node": "fxn_011gzz35fluk",
             "port": "image"
           },
           "to": {
-            "node": "fxn_hnju4hcwl0r0",
+            "node": "fxn_9bwmn2x8v12d",
             "port": "image"
           }
         },
         {
-          "id": "fxe_qubgiqvbk96x",
+          "id": "fxe_e8ziap7cgozb",
           "from": {
-            "node": "fxn_hnju4hcwl0r0",
+            "node": "fxn_9bwmn2x8v12d",
             "port": "image"
           },
           "to": {
-            "node": "fxn_q0uey0o92n36",
+            "node": "fxn_4mc33w16bild",
             "port": "image"
           }
         }

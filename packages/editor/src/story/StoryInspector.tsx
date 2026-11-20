@@ -4,7 +4,8 @@ import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { Field, TextInput, Select, Button, Section, Empty, IconButton } from '../ui/controls';
 import { NodeForm } from '../logic/NodeForms';
-import { ChoicesEditor } from '../scene/choices';
+import { ChoicesSummary } from '../scene/choices';
+import { sceneLines } from '@vne/core';
 import { Icon } from '../ui/Icon';
 import { nodeTypeLabel } from './nodeModel';
 import { IssueList } from '../problems/Problems';
@@ -48,14 +49,14 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
         {node.type === 'core.scene' && (
           <>
             <Section id="insp.scene.text" title={t('scene.dialogue')}>
-              {(node.data as SceneData).dialogue.slice(0, 3).map((l) => (
+              {sceneLines(node.data as SceneData).slice(0, 3).map((l) => (
                 <div key={l.id} className="line-preview"><b>{project.characters.find((c) => c.id === l.speakerId)?.name || l.speakerName || t('dialogue.narrator')}</b> {stripMarkup(l.text).slice(0, 80)}</div>
               ))}
-              {(node.data as SceneData).dialogue.length > 3 && <div className="muted small">{t('inspector.moreLines', { n: (node.data as SceneData).dialogue.length - 3 })}</div>}
-              {!(node.data as SceneData).dialogue.length && <div className="muted small">{t('dialogue.none')}</div>}
+              {sceneLines(node.data as SceneData).length > 3 && <div className="muted small">{t('inspector.moreLines', { n: sceneLines(node.data as SceneData).length - 3 })}</div>}
+              {!sceneLines(node.data as SceneData).length && <div className="muted small">{t('dialogue.none')}</div>}
             </Section>
             <Section id="insp.scene.choices" title={t('scene.choices')}>
-              <ChoicesEditor session={session} nodeId={node.id} compact />
+              <ChoicesSummary session={session} nodeId={node.id} />
             </Section>
           </>
         )}
@@ -90,12 +91,11 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
       <div className="stats">
         <div><b>{scenes.length}</b><span>{t('stats.scenes')}</span></div>
         <div><b>{nodes.length - scenes.length}</b><span>{t('stats.otherNodes')}</span></div>
-        <div><b>{scenes.reduce((s, n) => s + (n.data as SceneData).dialogue.length, 0)}</b><span>{t('stats.lines')}</span></div>
+        <div><b>{scenes.reduce((s, n) => s + sceneLines(n.data as SceneData).length, 0)}</b><span>{t('stats.lines')}</span></div>
       </div>
       <Button icon="play" onClick={() => session.setUI({ preview: { scope: 'chapter', nodeId: entry?.id || null, key: Date.now() } })} disabled={!entry}>{t('preview.chapter')}</Button>
       {issues.length > 0 ? <Section id="insp.ch.issues" title={t('problems.inChapter', { n: issues.length })}><IssueList session={session} issues={issues} /></Section>
         : <Empty icon="check" title={t('problems.noneInChapter')} />}
-      <div className="muted small tip"><Icon name="info" size={13} /> {t('inspector.graphTip')} <IconButton icon="keyboard" size={13} title={t('shortcuts.title')} onClick={() => (globalThis as any).__vneStore?.open({ kind: 'shortcuts' })} /></div>
     </div>
   );
 }

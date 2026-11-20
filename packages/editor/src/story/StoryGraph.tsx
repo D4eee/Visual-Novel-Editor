@@ -294,12 +294,11 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
       </div>
       <div className="graph-zoom">
         <IconButton icon="minus" title={t('graph.zoomOut')} onClick={() => setView({ ...view, zoom: Math.max(0.15, view.zoom / 1.2) })} />
-        <span className="zoom-label">{Math.round(view.zoom * 100)}%</span>
+        <span className="zoom-label" title={t('graph.hint')}>{Math.round(view.zoom * 100)}%</span>
         <IconButton icon="plus" title={t('graph.zoomIn')} onClick={() => setView({ ...view, zoom: Math.min(2.5, view.zoom * 1.2) })} />
         <IconButton icon="fit" title={`${t('graph.frameAll')} (F)`} onClick={frame} />
         <IconButton icon="book" title={t('graph.toggleOverview')} active={ui.overview} onClick={() => session.setUI({ overview: !ui.overview })} />
       </div>
-      <div className={cx('graph-hint', 'muted')}>{t('graph.hint')}</div>
     </div>
   );
 }

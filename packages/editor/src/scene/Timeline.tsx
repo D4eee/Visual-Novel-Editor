@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AnimationClip, Keyframe, SceneData, Track, Layer } from '@vne/core';
-import { newId, createAnimation } from '@vne/core';
+import { newId, createAnimation, DIALOGUE_LAYER } from '@vne/core';
+import { EFFECT_PRESETS } from '../effects/presets';
 import { normalizeTrack, clipEnd, sampleTrack, propKind, cubicBezier } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
@@ -34,6 +35,44 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
   // Pick the first clip automatically.
   useEffect(() => { if (!clip && scene.animations[0]) session.setSceneUI(nodeId, { clipId: scene.animations[0].id }); }, [clip, scene.animations.length]);
   useEffect(() => { localStorage.setItem('vne.timeline.pps', String(pps)); }, [pps]);
+
+  // Canvas-style navigation on the time lanes: wheel zooms around the cursor,
+  // dragging empty lane space pans. The layer column keeps normal scrolling.
+  const ppsRef = useRef(pps);
+  ppsRef.current = pps;
+  useEffect(() => {
+    const el = laneRef.current;
+    if (!el) return;
+    const wheel = (e: WheelEvent) => {
+      const r = el.getBoundingClientRect();
+      if (e.clientX - r.left < LEFT || e.shiftKey) return;
+      e.preventDefault();
+      const old = ppsRef.current;
+      const next = Math.max(20, Math.min(400, old * Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015))));
+      const tAt = (e.clientX - r.left + el.scrollLeft - LEFT) / old;
+      setPps(next);
+      requestAnimationFrame(() => { el.scrollLeft = Math.max(0, tAt * next + LEFT - (e.clientX - r.left)); });
+    };
+    const down = (e: PointerEvent) => {
+      const tg = e.target as HTMLElement;
+      if (e.button !== 0 || !tg.classList.contains('tl-lane')) return;
+      const sx = e.clientX, sy = e.clientY, l0 = el.scrollLeft, t0 = el.scrollTop;
+      let moved = false;
+      const move = (ev: PointerEvent) => {
+        if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return;
+        moved = true;
+        document.body.classList.add('panning');
+        el.scrollLeft = l0 - (ev.clientX - sx);
+        el.scrollTop = t0 - (ev.clientY - sy);
+      };
+      const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('panning'); };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    };
+    el.addEventListener('wheel', wheel, { passive: false });
+    el.addEventListener('pointerdown', down);
+    return () => { el.removeEventListener('wheel', wheel); el.removeEventListener('pointerdown', down); };
+  }, [!!clip]);
 
   // Playback loop (editor-side). Audio clips play in sync; the canvas samples the clip at the playhead.
   useEffect(() => {
@@ -90,21 +129,15 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
 
   if (!clip) {
     return (
-      <div className="timeline empty-tl">
-        <div className="empty">
-          <Icon name="timeline" size={26} className="empty-icon" />
-          <div className="empty-title">{t('timeline.emptyTitle')}</div>
-          <div className="empty-text">{t('timeline.emptyText')}</div>
-          <Button kind="primary" icon="plus" onClick={addClip}>{t('anim.add')}</Button>
-        </div>
+      <div className="timeline empty-tl compact">
+        <Button icon="plus" onClick={addClip} title={t('timeline.emptyText')}>{t('anim.add')}</Button>
       </div>
     );
   }
-
   const end = Math.max(clip.duration, clipEnd(clip));
   const width = Math.max(600, (end + 1) * pps);
   const selLayers = new Set(ui.selectedLayers);
-  const rowsLayers = layerTree(scene).map((r) => r.layer).filter((l) => clip.tracks.some((tr) => tr.layerId === l.id) || clip.media.some((m) => m.layerId === l.id) || selLayers.has(l.id));
+  const rowsLayers = layerTree(scene).map((r) => r.layer).filter((l) => l.type !== DIALOGUE_LAYER);
   const selectedKeys = new Set(ui.selectedKeys);
 
   const xToTime = (clientX: number) => {
@@ -289,24 +322,22 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
         <Toggle value={clip.loop} onChange={(v) => upd(t('anim.edit'), (c) => { c.loop = v; })} label={t('anim.loop')} />
         <Toggle value={clip.autoplay} onChange={(v) => upd(t('anim.edit'), (c) => { c.autoplay = v; })} label={t('anim.autoplay')} title={t('anim.autoplayHint')} />
         <span className="grow" />
-        <span className="muted small hint-keys"><Kbd>,</Kbd><Kbd>.</Kbd> {t('timeline.jumpKeys')}</span>
         <input type="range" min={20} max={400} value={pps} onChange={(e) => setPps(Number(e.target.value))} aria-label={t('timeline.zoom')} title={t('timeline.zoom')} className="tl-zoom" />
       </div>
       <div className="tl-body" ref={laneRef}>
         <div className="tl-inner" style={{ width: LEFT + width }}>
           <div className="tl-ruler-row">
             <div className="tl-left tl-corner">{t('timeline.layers')}</div>
-            <div className="tl-ruler" style={{ width }} onPointerDown={scrub}>
+            <div className="tl-ruler" style={{ width }} onPointerDown={scrub} title={`, .  ${t('timeline.jumpKeys')}`}>
               {ticks.map((x) => <div key={x} className={cx('tick', Math.abs(x - Math.round(x)) < 1e-6 && 'major')} style={{ left: x * pps }}>{Math.abs(x - Math.round(x)) < 1e-6 ? `${x}s` : ''}</div>)}
               <div className="tl-end" style={{ left: clip.duration * pps }} title={t('anim.duration')} />
             </div>
           </div>
-          {!rowsLayers.length && <div className="tl-hint muted">{t('timeline.selectLayer')}</div>}
           {rowsLayers.map((layer) => {
             const tracks = clip.tracks.filter((tr) => tr.layerId === layer.id);
             const media = clip.media.filter((m) => m.layerId === layer.id);
             const props = session.engine.layerProps(layer.type).filter((p) => p.animatable);
-            const fxParams = layer.effect?.kind === 'inline' ? layer.effect.graph.params : [];
+            const fxParams = layer.effect?.kind === 'inline' ? layer.effect.graph.params : layer.effect?.kind === 'ref' ? (session.project.effectGraphs.find((g) => g.id === (layer.effect as any).graphId)?.params || []) : [];
             const isMedia = layer.type === 'core.audio' || layer.type === 'core.video';
             const open = !collapsed.has(layer.id);
             const assetDur = Number(session.project.assets.find((a) => a.id === layer.props.assetId)?.meta.duration || 5);
@@ -321,11 +352,34 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
                       ...fxParams.filter((p) => !tracks.some((tr) => tr.prop === `fx.${p.id}`)).map((p) => ({ label: `${t('effects.param')}: ${p.name}`, icon: 'sparkles', onClick: () => addTrack(layer, `fx.${p.id}`) })),
                       ...(isMedia && !media.length ? [{ separator: true } as MenuItem, { label: t('timeline.addMedia'), icon: 'music', onClick: () => addMedia(layer) }] : []),
                     ], { search: props.length > 10 }); }} />
+                    {session.engine.layerTypes.get(layer.type)?.visual && (
+                      <IconButton icon="sparkles" size={13} active={!!layer.effect} title={layer.effect ? t('effects.edit') : t('effects.add')} onClick={(e) => {
+                        e.stopPropagation();
+                        if (layer.effect) { session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true }); return; }
+                        openMenu(e, EFFECT_PRESETS.map((p) => ({ label: t(p.label), icon: p.id === 'empty' ? 'plus' : 'sparkles', onClick: () => {
+                          const g = p.make();
+                          updateScene(session, nodeId, t('effects.add'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.effect = { kind: 'inline', graph: g }; });
+                          session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true });
+                        } })));
+                      }} />
+                    )}
                   </div>
                   <div className="tl-lane summary" style={{ width }}>
                     {[...new Set(tracks.flatMap((tr) => tr.keyframes.map((k) => k.t)))].map((x) => <span key={x} className="sum-key" style={{ left: x * pps }} />)}
                   </div>
                 </div>
+                {open && layer.effect && (
+                  <div className="tl-row">
+                    <div className="tl-left prop fx-row">
+                      <Icon name="sparkles" size={12} />
+                      <button type="button" className="link" onClick={() => session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true })}>
+                        {layer.effect.kind === 'inline' ? (layer.effect.graph.name || t('effects.title')) : (session.project.effectGraphs.find((g) => g.id === (layer.effect as any).graphId)?.name || t('effects.title'))}
+                      </button>
+                      <IconButton icon="close" size={12} title={t('effects.remove')} onClick={() => updateScene(session, nodeId, t('effects.remove'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.effect = null; })} />
+                    </div>
+                    <div className="tl-lane" style={{ width }} />
+                  </div>
+                )}
                 {open && media.map((m) => {
                   const dur = m.duration ?? Math.max(0.1, assetDur - m.trimIn);
                   return (

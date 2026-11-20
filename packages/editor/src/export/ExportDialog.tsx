@@ -161,8 +161,7 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
             ))}
           </Section>
           {session.ext.exporters.length > 0 && (
-            <Section id="export.extra" title={t('export.moduleExporters')}>
-              <div className="muted small">{t('export.moduleExportersHint')}</div>
+            <Section id="export.extra" title={t('export.moduleExporters')} tip={t('export.moduleExportersHint')}>
               {session.ext.exporters.map((x) => (
                 <Button key={`${x.moduleId}/${x.id}`} small icon="module" onClick={async () => {
                   try { await x.run(makeMountContext(session, x.moduleId)); } catch (err) { session.moduleError(x.moduleId, err, 'exporter'); }
@@ -177,7 +176,7 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
         </div>
       </div>
       {result && (
-        <div className="export-results">
+        <div className="export-results" title={t('export.signingNote')}>
           {result.outputs.map((o) => (
             <div key={o.path} className="result-row">
               <Icon name="check" size={14} className="ok" /><b>{t(TARGETS.find((x) => x.id === o.target)?.label || o.target)}</b>
@@ -185,7 +184,6 @@ export function ExportDialog({ session, onClose }: { session: ProjectSession; on
               {isElectron() && <Button small icon="folderOpen" onClick={() => call('shell.reveal', { path: o.path })}>{t('export.reveal')}</Button>}
             </div>
           ))}
-          <div className="muted small">{t('export.signingNote')}</div>
         </div>
       )}
       {(logs.length > 0 || error) && (

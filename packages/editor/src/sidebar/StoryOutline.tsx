@@ -1,3 +1,4 @@
+import { sceneChoices, sceneLines } from '@vne/core';
 import { useMemo, useState } from 'react';
 import type { SceneData, StoryNode } from '@vne/core';
 import { createChapter, nodesInChapter, deleteNodes } from '@vne/core';
@@ -32,7 +33,7 @@ export function StoryOutline({ session }: { session: ProjectSession }) {
       if (n.type === 'core.scene') {
         const d = n.data as SceneData;
         if (d.number === q || `#${d.number}` === q) return true;
-        return d.dialogue.some((l) => l.text.toLowerCase().includes(q)) || d.choices.some((c) => c.text.toLowerCase().includes(q));
+        return sceneLines(d).some((l) => l.text.toLowerCase().includes(q)) || sceneChoices(d).some((c) => c.text.toLowerCase().includes(q));
       }
       return false;
     }).slice(0, 80);
@@ -81,7 +82,7 @@ export function StoryOutline({ session }: { session: ProjectSession }) {
       <button key={n.id} type="button" className={cx('outline-node', active && 'active')} style={{ ['--node-color' as any]: def?.color || '#666' }}
         onClick={() => session.focusNode(n.id)} onDoubleClick={() => session.openNode(n.id)}
         draggable onDragStart={(e) => { e.dataTransfer.setData('application/x-vne-node', n.id); e.dataTransfer.effectAllowed = 'move'; }}
-        title={n.type === 'core.scene' ? stripMarkup((n.data as SceneData).dialogue[0]?.text || '') : undefined}>
+        title={n.type === 'core.scene' ? stripMarkup(sceneLines(n.data as SceneData)[0]?.text || '') : undefined}>
         <Icon name={def?.icon || 'module'} size={13} className="outline-icon" />
         {n.type === 'core.scene' && <span className="scene-num">{(n.data as SceneData).number}</span>}
         <span className="outline-name">{n.name}</span>
@@ -105,7 +106,7 @@ export function StoryOutline({ session }: { session: ProjectSession }) {
       ) : (
         <>
           <div className="side-head">
-            <span>{t('outline.chapters')}</span>
+            <span title={t('outline.dragTip')}>{t('outline.chapters')}</span>
             <IconButton icon="plus" size={14} title={t('chapter.add')} onClick={addChapter} />
           </div>
           <button type="button" className={cx('chapter-row', 'overview', ui.overview && session.ui.active === 0 && 'active')} onClick={() => session.setUI({ overview: true, active: 0 })}>
@@ -171,7 +172,6 @@ export function StoryOutline({ session }: { session: ProjectSession }) {
               </div>
             );
           })}
-          <div className="muted small pad tip">{t('outline.dragTip')}</div>
         </>
       )}
     </div>

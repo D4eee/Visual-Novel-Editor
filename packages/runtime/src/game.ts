@@ -34,6 +34,8 @@ export interface DebugEvents {
   var: { id: string; name: string; value: VarValue };
   state: { running: boolean };
   log: { message: string; time: number };
+  /** A script block started running (hats report their own id when they fire). */
+  block: { blockId: string; nodeId: string | null };
 }
 
 export interface SaveData {
@@ -595,7 +597,7 @@ export class GameRuntime {
       // Clicks on the text box (or other runtime UI) advance the story; they never reach layers underneath.
       const onUi = (e.target as HTMLElement | null)?.closest?.('.vne-textbox, .vne-quick, .vne-hud > *');
       if (!onUi && this.scene.pointerDown(p.x, p.y)) return;
-      if (this.narrative.choicesOpen) return;
+      if (this.scene.choicesOpen) return;
       if (this.autoMode) { this.autoMode = false; this.ui.refreshQuick(); }
       this.scene.advance();
     }
@@ -618,7 +620,7 @@ export class GameRuntime {
     if (this.ui.isOpen || !this.scene) return;
     if (e.key === 'Control') { this.skipMode = true; this.scene.advance(); return; }
     if (this.scene.key(e.code)) return;
-    if (this.narrative.choicesOpen && /^[1-9]$/.test(e.key)) { this.narrative.pickByIndex(Number(e.key) - 1); e.preventDefault(); return; }
+    if (this.scene.choicesOpen && /^[1-9]$/.test(e.key)) { this.scene.pickChoiceByIndex(Number(e.key) - 1); e.preventDefault(); return; }
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); this.scene.advance(); }
   }
 

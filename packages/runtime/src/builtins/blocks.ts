@@ -80,6 +80,29 @@ export function registerBuiltinBlocks(engine: Engine): void {
     run: (ctx: ScriptContext, a) => { ctx.runtime?.debugLog?.(String(a.value)); } });
 
   /* Looks -------------------------------------------------------------------- */
+  // Element blocks: drop any element into the slot. "Start" shows it, plays its media and every animation that moves it.
+  const clipsOf = (scene: any, layerId: string): string[] => {
+    const id = scene.layer(layerId)?.id;
+    return (scene.data.animations || []).filter((c: any) => c.tracks.some((tr: any) => tr.layerId === id) || c.media.some((m: any) => m.layerId === id)).map((c: any) => c.id);
+  };
+  B({ id: 'core.startElement', category: 'elements', shape: 'statement', label: 'block.startElement', args: [{ id: 'layer', type: 'layer' }, { id: 'wait', type: 'boolean', default: false }],
+    async run(ctx: ScriptContext, a) {
+      const s = needScene(ctx);
+      const l = s.layer(a.layer);
+      if (!l) throw new Error(`Element "${a.layer}" is not in this scene`);
+      s.setVisible(l.id, true);
+      if (l.type === 'core.audio' || l.type === 'core.video') s.media(l.id, 'play');
+      const runs = clipsOf(s, l.id).map((id) => s.playAnimation(id));
+      if (a.wait) await Promise.all(runs);
+    } });
+  B({ id: 'core.stopElement', category: 'elements', shape: 'statement', label: 'block.stopElement', args: [{ id: 'layer', type: 'layer' }],
+    run(ctx: ScriptContext, a) {
+      const s = needScene(ctx);
+      const l = s.layer(a.layer);
+      if (!l) return;
+      if (l.type === 'core.audio' || l.type === 'core.video') s.media(l.id, 'stop');
+      for (const id of clipsOf(s, l.id)) s.stopAnimation(id);
+    } });
   B({ id: 'core.show', category: 'looks', shape: 'statement', label: 'block.show', args: [{ id: 'layer', type: 'layer' }], run: (ctx: ScriptContext, a) => needScene(ctx).setVisible(a.layer, true) });
   B({ id: 'core.hide', category: 'looks', shape: 'statement', label: 'block.hide', args: [{ id: 'layer', type: 'layer' }], run: (ctx: ScriptContext, a) => needScene(ctx).setVisible(a.layer, false) });
   B({ id: 'core.setProp', category: 'looks', shape: 'statement', label: 'block.setProp', args: [{ id: 'layer', type: 'layer' }, { id: 'prop', type: 'prop', default: 'opacity' }, { id: 'value', type: 'expr', default: { k: 'lit', v: 1 } }],

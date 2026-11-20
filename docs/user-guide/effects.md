@@ -1,6 +1,6 @@
 # Effects
 
-Effects are **node graphs** attached to a layer: the layer's image flows from **Layer image** (input) through filters into **Output**. Open the **Effects** tab in the scene dock and select a layer.
+Effects are **node graphs** attached to a layer: the layer's image flows from **Layer image** (input) through filters into **Output**. Effects belong to an element. In the scene's **Timeline**, click ✦ on the element's row: pick a preset, or open the effect graph editor if the element already has one. To affect the whole screen, add a shape that covers the screen and give it the effect.
 
 ## Start from a preset
 
@@ -29,7 +29,7 @@ Add **parameters** to a graph to expose values as layer properties. Parameters c
 
 ## Custom shaders
 
-The *Shader* node runs a GLSL ES 1.0 fragment shader. Inputs: `uniform sampler2D u_image; uniform vec2 u_size; uniform float u_time; varying vec2 uv;`. Write to `gl_FragColor`. Compile errors are shown in the Effects panel; the layer is drawn unchanged until the shader compiles.
+The *Shader* node runs a GLSL ES 1.0 fragment shader. Inputs: `uniform sampler2D u_image; uniform vec2 u_size; uniform float u_time; varying vec2 uv;`. Write to `gl_FragColor`. Compile errors are shown in the effect editor; the layer is drawn unchanged until the shader compiles.
 
 ## Shared effects
 

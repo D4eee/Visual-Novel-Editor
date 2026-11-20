@@ -55,7 +55,6 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
   if (!graph) {
     return (
       <div className="effects-empty">
-        <div className="muted">{t('effects.intro', { layer: layer.name })}</div>
         <div className="preset-grid">
           {EFFECT_PRESETS.map((p) => <button key={p.id} type="button" className="preset" onClick={() => applyPreset(p.id)}><Icon name={p.id === 'empty' ? 'plus' : 'sparkles'} size={16} /><span>{t(p.label)}</span></button>)}
         </div>
@@ -191,7 +190,6 @@ export function EffectsPanel({ session, nodeId }: { session: ProjectSession; nod
         <div className="graph-toolbar small">
           <Button small icon="plus" onClick={(e) => openMenu(e, menuItems((type) => addNode(type)), { search: true })}>{t('effects.addNode')}</Button>
           <IconButton icon="fit" size={14} title={t('graph.frameAll')} onClick={frame} />
-          <span className="muted small">{t('effects.hint')}</span>
         </div>
       </div>
     </div>

@@ -2,14 +2,19 @@
 
 Interactions make scenes respond to the player. Open a scene's **Interactions** tab. Scripts are stacks of blocks: a yellow **trigger** ("When …") on top, then **actions** that run from top to bottom.
 
-Drag blocks from the palette (or click one to add it to the selected script). Drop blocks inside C-shaped blocks (*if*, *repeat*). Inputs inside blocks pick layers, animations, variables, choices, sounds and so on from the project — or accept expressions.
+Scripts sit on a canvas: the mouse wheel zooms, dragging empty space pans, and dragging a script's trigger moves it. Drag blocks from the palette (or click one to add it to the selected script). Drop blocks inside C-shaped blocks (*if*, *repeat*). Inputs inside blocks pick layers, animations, variables, choices, sounds and so on from the project — or accept expressions.
 
-Tip: select a button, hotspot or character layer and use the quick start (**When clicked…**) to create a script for it in one click.
+**Elements.** The first palette category lists every element of the scene. Drag an element like a variable into any element slot of a block — for example into *Start ( )* or *Stop ( )* — or drop it on the canvas to create a *When … is clicked* script for it. Each element also has its own *when clicked* trigger next to it. New elements appear here as soon as they are added.
+
+**Test.** **Test** plays the scene in place of the canvas while the scripts stay visible; each block lights up while it runs. **Stop** returns to editing.
+
+Tip: with an element selected, the buttons next to **Test** create *When clicked* / *When hovered* scripts for it in one click.
 
 ## Block categories
 
 | Category | Blocks |
 | --- | --- |
+| Elements | The scene's elements (drag them into slots), *Start* (show, play media and its timeline clips; optionally wait), *Stop* |
 | Events | When scene starts / ends, when *layer* is clicked, hover starts / ends, key pressed, animation finished, media ended, variable changes, line shown, dialogue ends, choice selected, message received, after *n* seconds, every *n* seconds |
 | Control | Wait, wait until, if, if / else, repeat, repeat until, forever, stop, broadcast message, run behavior, log |
 | Looks | Show, hide, set / change property, tween property, play / stop animation, set text, set image, set portrait, shake screen, flash screen |
@@ -32,7 +37,7 @@ When [Mika] is clicked
   Show choice [Take her hand.]
 ```
 
-The choice is marked *hidden* in the Choices list, so it only appears after the click.
+The choice element is marked *hidden* in its inspector, so it only appears after the click.
 
 ## Reusable behaviors
 

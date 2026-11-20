@@ -44,7 +44,8 @@ export function activate(api) {
       }
     },
     validate(data, node) {
-      const choices = node.data.choices || [];
+      // Choices are the scene's choice elements (layers of type core.choice).
+      const choices = (node.data.layers || []).filter((l) => l.type === 'core.choice');
       if (!choices.length) return [{ severity: 'warning', code: 'tc.noChoices', message: 'tc.issue.noChoices' }];
       if (data.defaultChoice && !choices.some((c) => c.id === data.defaultChoice)) return [{ severity: 'error', code: 'tc.missing', message: 'tc.issue.missing' }];
       return [];

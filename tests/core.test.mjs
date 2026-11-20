@@ -54,27 +54,46 @@ test('connecting a single output replaces the old edge; incompatible ports are r
   assert.equal(V.canConnect(engine, p, { node: b.id, port: 'next' }, { node: a.id, port: 'in' }).ok, true, 'loops back to an earlier scene are allowed');
 });
 
-test('choices get their own outputs with stable ids; deleting a choice removes only its edge', () => {
+const choiceLayer = (id, text, y) => ({ id, type: 'core.choice', name: text, parentId: null, visible: true, locked: false, props: { x: 640, y, text } });
+
+test('choice elements are the scene outputs, with stable ids; deleting one removes only its edge', () => {
   let p = sceneProject();
   const [, a, b] = Object.values(p.nodes);
   p = V.produce(p, (d) => {
-    const before = d.nodes[a.id].data.choices.slice();
-    d.nodes[a.id].data.choices.push({ id: 'c1', text: 'Left', condition: null, hidden: false, unavailable: 'hide', effects: [], animationId: null },
-      { id: 'c2', text: 'Right', condition: null, hidden: false, unavailable: 'hide', effects: [], animationId: null });
+    const before = V.sceneChoiceIds(d, a.id);
+    d.nodes[a.id].data.layers.push(choiceLayer('c2', 'Right', 300), choiceLayer('c1', 'Left', 200));
     V.syncSceneChoiceEdges(d, a.id, before);
   });
-  const ports = V.nodePorts(engine, p, p.nodes[a.id]).outputs.map((x) => x.id);
-  assert.deepEqual(ports, ['c:c1', 'c:c2']);
+  // Ports follow reading order on screen (top to bottom), ids stay stable.
+  assert.deepEqual(V.nodePorts(engine, p, p.nodes[a.id]).outputs.map((x) => x.id), ['c:c1', 'c:c2']);
+  // The old "next" connection moved onto the first choice.
+  assert.deepEqual(V.outgoing(p, a.id).map((e) => e.from.port), ['c:c1']);
+  p = V.produce(p, (d) => { V.connect(engine, d, { node: a.id, port: 'c:c2' }, { node: b.id, port: 'in' }); });
   p = V.produce(p, (d) => {
-    V.connect(engine, d, { node: a.id, port: 'c:c1' }, { node: b.id, port: 'in' });
-    V.connect(engine, d, { node: a.id, port: 'c:c2' }, { node: b.id, port: 'in' });
-  });
-  p = V.produce(p, (d) => {
-    const before = d.nodes[a.id].data.choices.slice();
-    d.nodes[a.id].data.choices = d.nodes[a.id].data.choices.filter((c) => c.id !== 'c1');
+    const before = V.sceneChoiceIds(d, a.id);
+    d.nodes[a.id].data.layers = d.nodes[a.id].data.layers.filter((l) => l.id !== 'c1');
     V.syncSceneChoiceEdges(d, a.id, before);
   });
   assert.deepEqual(V.outgoing(p, a.id).map((e) => e.from.port), ['c:c2']);
+});
+
+test('format 1 projects migrate: lines and choices become elements, connections and ids are kept', () => {
+  const p = sceneProject();
+  const raw = JSON.parse(V.serializeProject(p));
+  raw.formatVersion = 1;
+  const a = Object.values(raw.nodes).find((n) => n.type === 'core.scene');
+  a.data.dialogue = [{ id: 'l1', speakerId: null, text: 'Hello' }];
+  a.data.choices = [{ id: 'ch1', text: 'Go', condition: null, hidden: true, unavailable: 'hide', effects: [], animationId: null }];
+  const next = raw.edges.find((e) => e.from.node === a.id);
+  next.from.port = 'c:ch1';
+  const { project, migratedFrom } = V.loadProject(raw);
+  assert.equal(migratedFrom, 1);
+  const d = project.nodes[a.id].data;
+  assert.equal(d.dialogue, undefined);
+  assert.deepEqual(V.sceneLines(d).map((l) => l.text), ['Hello']);
+  assert.deepEqual(V.sceneChoices(d).map((c) => [c.id, c.text, c.hidden]), [['ch1', 'Go', true]]);
+  assert.deepEqual(V.nodePorts(engine, project, project.nodes[a.id]).outputs.map((x) => x.id), ['c:ch1']);
+  assert.deepEqual(V.validateProject(engine, project).filter((i) => i.severity === 'error'), []);
 });
 
 test('copy / paste gives new ids and keeps internal edges', () => {

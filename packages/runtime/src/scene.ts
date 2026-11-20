@@ -1,5 +1,5 @@
 import type { Layer, LayerInstance, SceneData, StoryNode, Choice, PropDef, ModuleInstance, ComponentDef } from '@vne/core';
-import { evaluateBool, applyVarOp, choicePort, Emitter } from '@vne/core';
+import { evaluateBool, applyVarOp, choicePort, Emitter, sceneLines, sceneChoices, CHOICE_LAYER } from '@vne/core';
 import type { Project } from '@vne/core';
 import { interpolateVars } from './text';
 import type { VarStore } from './state';
@@ -44,6 +44,8 @@ export class ScenePlayer {
   private jumpTo: number | null = null;
   private choicePickResolve: ((id: string) => void) | null = null;
   private choicesShown = false;
+  /** Choice elements currently offered to the player. */
+  private offered = new Map<string, { disabled: boolean }>();
   private hoverId: string | null = null;
   private drives = new Map<string, Record<string, any>>();
   private unsub: (() => void)[] = [];
@@ -59,7 +61,7 @@ export class ScenePlayer {
       this.layerState.set(l.id, { ...l.props });
       this.visibleState.set(l.id, l.visible);
     }
-    for (const c of this.data.choices) this.choiceVisible.set(c.id, !c.hidden);
+    for (const c of sceneChoices(this.data)) this.choiceVisible.set(c.id, !c.hidden);
     const engine = rt.engine;
     this.view = {
       engine, project: rt.project, assets: rt.assets, layers: this.data.layers, mode: 'play', time: 0, vars: rt.vars,
@@ -68,8 +70,9 @@ export class ScenePlayer {
         const d = this.drives.get(l.id);
         return d ? { ...base, ...d } : base;
       },
-      visible: (l: Layer) => this.visibleState.get(l.id) ?? l.visible,
+      visible: (l: Layer) => (l.type === CHOICE_LAYER ? this.offered.has(l.id) : true) && (this.visibleState.get(l.id) ?? l.visible),
       instance: (id: string) => this.instances.get(id),
+      choiceState: (id: string) => (this.offered.has(id) ? { hover: this.hoverId === id, disabled: !!this.offered.get(id)?.disabled } : null),
       pool: rt.pool, shaders: rt.shaders, errors: new Map(),
       reportError: (source, err) => rt.reportError(source, err, { nodeId: node.id }),
     };
@@ -87,6 +90,7 @@ export class ScenePlayer {
       nextFrame: (tok) => rt.nextFrame(tok),
       emit: (e) => this.dispatch(e),
       reportError: (source, err, extra) => rt.reportError(source, err, { ...extra, nodeId: node.id }),
+      trace: (blockId) => rt.debug.emit('block', { blockId, nodeId: node.id }),
     };
     this.scripts = new ScriptEngine(host, () => this.data.scripts);
   }
@@ -143,7 +147,7 @@ export class ScenePlayer {
     }
     this.scripts.start();
     this.dispatch({ type: 'scene.enter' });
-    this.lineIndex = Math.max(0, Math.min(this.resumeLine, this.data.dialogue.length));
+    this.lineIndex = Math.max(0, Math.min(this.resumeLine, this.lines.length));
     this.runNarrative().catch((err) => this.rt.reportError('scene', err, { nodeId: this.node.id }));
     return done;
   }
@@ -220,7 +224,7 @@ export class ScenePlayer {
   private currentTyping: { complete(): void; done: Promise<void>; finished: boolean } | null = null;
 
   gotoLine(lineId: string): void {
-    const i = this.data.dialogue.findIndex((l) => l.id === lineId);
+    const i = this.lines.findIndex((l) => l.id === lineId);
     if (i < 0) return;
     this.jumpTo = i;
     this.currentTyping?.complete();
@@ -229,11 +233,14 @@ export class ScenePlayer {
 
   setTextboxVisible(v: boolean): void {
     this.textboxVisible = v;
-    this.rt.narrative.setBoxVisible(v && this.lineIndex < this.data.dialogue.length);
+    this.rt.narrative.setBoxVisible(v && this.lineIndex < this.lines.length);
   }
 
+  /** The scene's dialogue lines (from its dialogue element). */
+  get lines() { return sceneLines(this.data); }
+
   private async runNarrative(): Promise<void> {
-    const lines = this.data.dialogue;
+    const lines = this.lines;
     const ui = this.rt.narrative;
     if (!lines.length) ui.setBoxVisible(false);
     while (!this.exited && this.lineIndex < lines.length) {
@@ -267,10 +274,11 @@ export class ScenePlayer {
     if (this.exited) return;
     this.dispatch({ type: 'dialogue.end' });
     if (this.exited) return;
-    if (this.data.choices.length) {
+    const choices = sceneChoices(this.data);
+    if (choices.length) {
       const picked = await this.askChoices();
       if (this.exited || picked === '__exit') return;
-      const choice = this.data.choices.find((c) => c.id === picked)!;
+      const choice = choices.find((c) => c.id === picked)!;
       for (const op of choice.effects) this.rt.vars.set(op.varId, applyVarOp(this.rt.vars.def(op.varId), this.rt.vars.get(op.varId), op));
       this.rt.backlogPush({ kind: 'choice', name: '', text: choice.text, nodeId: this.node.id });
       this.dispatch({ type: 'choice.selected', choiceId: choice.id });
@@ -288,7 +296,7 @@ export class ScenePlayer {
 
   availableChoices(): { choice: Choice; disabled: boolean }[] {
     const out: { choice: Choice; disabled: boolean }[] = [];
-    for (const c of this.data.choices) {
+    for (const c of sceneChoices(this.data)) {
       if (!this.choiceVisible.get(c.id)) continue;
       let ok = true;
       try { ok = evaluateBool(c.condition, this.rt.vars, this.rt.functions); }
@@ -301,22 +309,31 @@ export class ScenePlayer {
 
   private askChoices(): Promise<string> {
     this.choicesShown = true;
-    if (!this.data.dialogue.length) this.rt.narrative.setBoxVisible(false);
+    if (!this.lines.length) this.rt.narrative.setBoxVisible(false);
     return new Promise((res) => {
-      this.choicePickResolve = (id) => { this.choicePickResolve = null; this.choicesShown = false; this.rt.narrative.hideChoices(); res(id); };
+      this.choicePickResolve = (id) => { this.choicePickResolve = null; this.choicesShown = false; this.offered.clear(); res(id); };
       this.renderChoices();
     });
   }
 
   private renderChoices(): void {
     const list = this.availableChoices();
-    this.rt.narrative.showChoices(list.map(({ choice, disabled }) => ({ id: choice.id, text: interpolateVarsCompat(choice.text, this.rt.project, this.rt.vars), disabled })), (id) => this.choicePickResolve?.(id));
+    this.offered = new Map(list.map(({ choice, disabled }) => [choice.id, { disabled }]));
     if (!list.length) this.rt.reportError('choice', new Error('No choice is available here; the story cannot continue. Add a condition fallback or an always-available choice.'), { nodeId: this.node.id });
   }
 
   setChoiceVisible(choiceId: string, v: boolean): void {
     this.choiceVisible.set(choiceId, v);
     if (this.choicesShown) this.renderChoices();
+  }
+
+  /** True while the player is choosing. */
+  get choicesOpen(): boolean { return this.choicesShown; }
+
+  /** Keyboard 1–9: the n-th offered choice in reading order. */
+  pickChoiceByIndex(i: number): boolean {
+    const list = this.availableChoices().filter((c) => !c.disabled);
+    return list[i] ? this.pickChoice(list[i].choice.id) : false;
   }
 
   /** Programmatic choice selection (used by tests, modules and keyboard shortcuts). */
@@ -435,6 +452,7 @@ export class ScenePlayer {
   /* ----------------------------------------------------------------- */
 
   private isInteractive(l: Layer): boolean {
+    if (l.type === CHOICE_LAYER) return this.offered.has(l.id) && !this.offered.get(l.id)!.disabled;
     if (l.type === 'core.button' || l.type === 'core.hotspot') return true;
     return this.scripts.listens('layer.click', (a) => a.layer === l.id) || this.scripts.listens('layer.hoverEnter', (a) => a.layer === l.id);
   }
@@ -444,6 +462,7 @@ export class ScenePlayer {
     if (this.exited) return true;
     const hit = hitTest(this.view, x, y, (l) => this.isInteractive(l));
     if (!hit) return false;
+    if (hit.type === CHOICE_LAYER) { this.pickChoice(hit.id); return true; }
     if (hit.type === 'core.button' && this.layerState.get(hit.id)?.enabled === false) return true;
     this.dispatch({ type: 'layer.click', layerId: hit.id });
     return true;

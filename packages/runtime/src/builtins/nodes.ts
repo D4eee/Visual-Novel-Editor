@@ -1,5 +1,5 @@
 import type { Engine, Project, StoryNode, SceneData, EventData, ConditionData, JumpData, EndingData, RandomData, WaitData, CommentData } from '@vne/core';
-import { createSceneData, nextSceneNumber, nextJumpNumber, scenePorts, exprToString, newId, jumpOutsFor } from '@vne/core';
+import { createSceneData, nextSceneNumber, nextJumpNumber, scenePorts, exprToString, newId, jumpOutsFor, sceneLines } from '@vne/core';
 import { stripMarkup } from '../text';
 
 const IN = [{ id: 'in', type: 'flow', multiple: true }];
@@ -29,7 +29,7 @@ export function registerBuiltinNodes(engine: Engine): void {
     outputs: (n) => scenePorts(n.data as SceneData),
     summary(n) {
       const d = n.data as SceneData;
-      const first = d.dialogue[0];
+      const first = sceneLines(d)[0];
       return first ? stripMarkup(first.text).slice(0, 90) : '';
     },
     run: (node, ctx) => ctx.playScene(node),

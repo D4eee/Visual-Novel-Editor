@@ -182,3 +182,14 @@ Functions are called by their **local** name in conditions and expressions: `aff
 - `api.log.info/warn/error(...)` — shown in the preview's Events/Errors tabs
 - `api.storage` — namespaced persistent storage, only with the `"storage"` permission
 - `api.mode` — `'editor'`, `'preview'` or `'game'`
+
+## Dialogue and choices are elements (project format 2)
+
+Since project format 2, a scene's dialogue and choices are layers:
+
+- one layer of type `core.dialogue` holds the lines in `props.lines` (the same line objects as before);
+- each choice is a layer of type `core.choice`; the layer id is the choice id and the scene output is `c:<id>`. Its props include `text`, `condition` (an expression), `unavailable` (`'hide'` or `'disable'`), `hidden`, `animationId`, `effects` (variable operations) and its style (colors, size, radius).
+
+Outputs are ordered by the choices' positions on the canvas (top to bottom, then left to right). Older projects are migrated when they are opened. In a node module, read choices with `node.data.layers.filter((l) => l.type === 'core.choice')` and pick one at run time with `ctx.scene.pickChoice(id)` (see `examples/extensions/timed-choices`).
+
+Property type `expr` shows the expression editor in the inspector. While a game runs in the editor's preview, the debugger receives a `block` event (`{ blockId, nodeId }`) before each script block runs; the Interactions tab uses it to light up running blocks.

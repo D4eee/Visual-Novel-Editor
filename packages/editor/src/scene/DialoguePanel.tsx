@@ -1,30 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
-import type { DialogueLine, SceneData } from '@vne/core';
+import type { DialogueLine } from '@vne/core';
 import { createDialogueLine } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { sceneOf, updateScene } from './sceneOps';
-import { ChoicesEditor } from './choices';
-import { IconButton, Select, NumberInput, cx, Kbd } from '../ui/controls';
+import { IconButton, Select, NumberInput, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu } from '../ui/Menu';
 import { AssetPicker } from '../inspect/AssetPicker';
 
 /**
- * Writer-focused dialogue editor: type, press Enter for the next line, Tab to
- * cycle the speaker. Every line is previewed in the real text box on the canvas.
+ * Lines of a scene's dialogue element, edited in the inspector: type, Enter for
+ * the next line, Tab to cycle the speaker. The selected line is previewed in the
+ * real text box on the canvas.
  */
-export function DialoguePanel({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
+export function DialogueLines({ session, nodeId, layerId }: { session: ProjectSession; nodeId: string; layerId: string }) {
   useSession(session);
   const t = useT();
-  const scene = sceneOf(session, nodeId)!;
+  const sceneData = sceneOf(session, nodeId)!;
+  const layer = sceneData.layers.find((l) => l.id === layerId);
+  const scene = { dialogue: (Array.isArray(layer?.props.lines) ? layer!.props.lines : []) as DialogueLine[] };
   const ui = session.sceneUI(nodeId);
   const project = session.project;
   const [focusId, setFocusId] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const speakers = [{ value: '', label: t('dialogue.narrator') }, ...project.characters.map((c) => ({ value: c.id, label: c.name }))];
 
-  const upd = (label: string, fn: (s: SceneData) => void, mk?: string) => updateScene(session, nodeId, label, fn, mk);
+  // Edits operate on the dialogue element's lines.
+  const upd = (label: string, fn: (s: { dialogue: DialogueLine[] }) => void, mk?: string) => updateScene(session, nodeId, label, (sd) => {
+    const l = sd.layers.find((x) => x.id === layerId);
+    if (!l) return;
+    if (!Array.isArray(l.props.lines)) l.props.lines = [];
+    fn({ get dialogue() { return l.props.lines as DialogueLine[]; } });
+  }, mk);
   const insertAfter = (index: number, speakerId: string | null) => {
     const line = createDialogueLine('', speakerId);
     upd(t('dialogue.add'), (s) => { s.dialogue.splice(index + 1, 0, line); });
@@ -40,12 +48,8 @@ export function DialoguePanel({ session, nodeId }: { session: ProjectSession; no
   };
 
   return (
-    <div className="dialogue-panel">
+    <div className="dialogue-panel" title={`Enter: ${t('dialogue.newLine')} · Shift+Enter: ${t('dialogue.lineBreak')} · Tab: ${t('dialogue.nextSpeaker')}`}>
       <div className="dialogue-lines">
-        <div className="panel-head">
-          <span>{t('scene.dialogue')} <span className="muted">{scene.dialogue.length}</span></span>
-          <span className="muted small hint-keys"><Kbd>Enter</Kbd> {t('dialogue.newLine')} · <Kbd>Shift+Enter</Kbd> {t('dialogue.lineBreak')} · <Kbd>Tab</Kbd> {t('dialogue.nextSpeaker')}</span>
-        </div>
         <div className="lines">
           {scene.dialogue.map((l, i) => {
             const ch = project.characters.find((c) => c.id === l.speakerId);
@@ -100,12 +104,7 @@ export function DialoguePanel({ session, nodeId }: { session: ProjectSession; no
           <button type="button" className="add-line" onClick={() => insertAfter(scene.dialogue.length - 1, scene.dialogue[scene.dialogue.length - 1]?.speakerId ?? null)}>
             <Icon name="plus" size={14} /> {scene.dialogue.length ? t('dialogue.add') : t('dialogue.addFirst')}
           </button>
-          <div className="muted small markup-help">{t('dialogue.markupHelp')}</div>
         </div>
-      </div>
-      <div className="dialogue-choices" onFocus={() => session.setSceneUI(nodeId, { selectedLine: '__choices' })} onClick={() => session.setSceneUI(nodeId, { selectedLine: '__choices' })}>
-        <div className="panel-head"><span>{t('scene.choices')} <span className="muted">{scene.choices.length}</span></span><span className="muted small">{t('choice.graphSync')}</span></div>
-        <ChoicesEditor session={session} nodeId={nodeId} />
       </div>
     </div>
   );

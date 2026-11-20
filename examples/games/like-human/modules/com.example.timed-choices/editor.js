@@ -19,7 +19,7 @@ export function activateEditor(api) {
         if (!node) return;
         const inst = node.modules.find((m) => m.id === ctx.instanceId);
         const data = /** @type {any} */ (inst?.data || {});
-        const choices = node.data.choices || [];
+        const choices = (node.data.layers || []).filter((l) => l.type === 'core.choice').map((l) => ({ id: l.id, text: l.props.text }));
         el.innerHTML = '';
         const preview = h('div', { style: { height: '10px', borderRadius: '6px', background: 'rgba(255,255,255,.08)', overflow: 'hidden', margin: '6px 0 12px' } },
           h('div', { style: { width: '62%', height: '100%', background: data.color || '#ffcc66', animation: 'tcpreview 2.4s linear infinite' } }));

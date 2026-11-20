@@ -1,16 +1,17 @@
+import { PreviewPanel } from '../preview/PreviewPanel';
 import type { SceneData, ScriptStack } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { sceneOf, updateScene } from './sceneOps';
 import { CompositionCanvas } from './CompositionCanvas';
 import { LayersPanel } from './LayersPanel';
-import { DialoguePanel } from './DialoguePanel';
 import { Timeline } from './Timeline';
 import { EffectsPanel } from '../effects/EffectsPanel';
 import { BlockWorkspace, WStack, newBlock } from '../script/BlockEditor';
 import { ModuleWorkspace } from '../modules/ModuleWorkspace';
 import { Tabs, Button, useResizable } from '../ui/controls';
 import { Icon } from '../ui/Icon';
+import { Modal } from '../ui/Modal';
 
 export function SceneEditor({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
   useSession(session);
@@ -24,10 +25,8 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
   const chapter = session.project.chapters.find((c) => c.id === node.chapterId);
   const bottomPanels = session.ext.panels.filter((p) => p.location === 'bottom');
   const tabs = [
-    { id: 'dialogue', label: t('scene.dialogueChoices'), icon: 'message', badge: scene.dialogue.length || null },
     { id: 'timeline', label: t('scene.timeline'), icon: 'timeline', badge: scene.animations.length || null },
     { id: 'behaviors', label: t('scene.behaviors'), icon: 'script', badge: scene.scripts.length || null },
-    { id: 'effects', label: t('scene.effects'), icon: 'sparkles' },
     ...bottomPanels.map((p) => ({ id: p.id, label: t(p.title), icon: p.icon || 'module' })),
   ];
 
@@ -46,6 +45,11 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
         <div className="grow" />
         <Button small icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now() } })} title={t('preview.thisScene')}>{t('preview.thisScene')}</Button>
       </div>
+      {ui.effectsOpen && ui.selectedLayers[0] && (
+        <Modal title={t('effects.editFor', { layer: scene.layers.find((l) => l.id === ui.selectedLayers[0])?.name || '' })} icon={<Icon name="sparkles" size={16} />} width={1100} onClose={() => session.setSceneUI(nodeId, { effectsOpen: false })}>
+          <div className="effects-modal"><EffectsPanel session={session} nodeId={nodeId} /></div>
+        </Modal>
+      )}
       {ui.subTab === 'modules' ? <ModuleWorkspace session={session} nodeId={nodeId} /> : (
         <div className="scene-body">
           <div className="scene-top">
@@ -53,16 +57,16 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
               <LayersPanel session={session} nodeId={nodeId} />
             </div>
             <div className="resizer-x" onPointerDown={(e) => startLayers(e, 1)} role="separator" aria-orientation="vertical" />
-            <div className="scene-canvas"><CompositionCanvas session={session} nodeId={nodeId} /></div>
+            <div className="scene-canvas"><CompositionCanvas session={session} nodeId={nodeId} />
+              {session.ui.preview?.docked && session.ui.preview.nodeId === nodeId && <PreviewPanel key={session.ui.preview.key} session={session} />}
+            </div>
           </div>
           <div className="resizer-y" onPointerDown={(e) => startDock(e, -1, 'y')} role="separator" aria-orientation="horizontal" />
           <div className="scene-dock" style={{ height: dockH }}>
             <Tabs value={ui.bottomTab} onChange={(v) => session.setSceneUI(nodeId, { bottomTab: v })} tabs={tabs} className="dock-tabs" />
             <div className="dock-body">
-              {ui.bottomTab === 'dialogue' && <DialoguePanel session={session} nodeId={nodeId} />}
-              {ui.bottomTab === 'timeline' && <Timeline session={session} nodeId={nodeId} />}
+              {(ui.bottomTab === 'timeline' || !tabs.some((x) => x.id === ui.bottomTab)) && <Timeline session={session} nodeId={nodeId} />}
               {ui.bottomTab === 'behaviors' && <SceneScripts session={session} nodeId={nodeId} scene={scene} />}
-              {ui.bottomTab === 'effects' && <EffectsPanel session={session} nodeId={nodeId} />}
               {bottomPanels.filter((p) => p.id === ui.bottomTab).map((p) => <ModulePanelHost key={p.id} session={session} panel={p} nodeId={nodeId} />)}
             </div>
           </div>
@@ -77,7 +81,16 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
   const ui = session.sceneUI(nodeId);
   const stacks: WStack[] = scene.scripts.map((s) => ({ ...s }));
   const layer = scene.layers.find((l) => l.id === ui.selectedLayers[0]);
-  const quick = layer && (layer.type === 'core.button' || layer.type === 'core.hotspot' || layer.type === 'core.character' || layer.type === 'core.image');
+  const testing = !!(session.ui.preview?.docked && session.ui.preview.nodeId === nodeId);
+  const quick = layer && session.engine.layerTypes.get(layer.type)?.visual && layer.type !== 'core.background';
+  const addHat = (type: string) => {
+    const hat = newBlock(session.engine.blocks.get(type)!);
+    hat.args.layer = layer!.id;
+    const id = `scr_${Math.random().toString(36).slice(2, 14)}`;
+    const n = scene.scripts.length;
+    updateScene(session, nodeId, t('script.addScript'), (s) => { s.scripts.push({ id, x: 16 + (n % 3) * 360, y: 16 + Math.floor(n / 3) * 260, enabled: true, hat, body: [] }); });
+    session.setSceneUI(nodeId, { scriptId: id });
+  };
   return (
     <BlockWorkspace
       stacks={stacks}
@@ -91,24 +104,20 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
         for (const st of list) if (st.hat === null) st.hat = newBlock(session.engine.blocks.get('core.whenSceneStarts')!);
         s.scripts = list as unknown as ScriptStack[];
       })}
-      header={quick ? (
-        <div className="blk-header">
-          <Icon name="bolt" size={13} />
-          <span>{t('script.quickFor', { layer: layer!.name })}</span>
-          <Button small onClick={() => {
-            const hat = newBlock(session.engine.blocks.get('core.whenLayerClicked')!);
-            hat.args.layer = layer!.id;
-            const id = `scr_${Math.random().toString(36).slice(2, 14)}`;
-            updateScene(session, nodeId, t('script.addScript'), (s) => { s.scripts.push({ id, x: 0, y: 0, enabled: true, hat, body: [] }); });
-            session.setSceneUI(nodeId, { scriptId: id });
-          }}>{t('script.whenClicked')}</Button>
-          <Button small kind="ghost" onClick={() => {
-            const hat = newBlock(session.engine.blocks.get('core.whenHoverStart')!);
-            hat.args.layer = layer!.id;
-            updateScene(session, nodeId, t('script.addScript'), (s) => { s.scripts.push({ id: `scr_${Math.random().toString(36).slice(2, 14)}`, x: 0, y: 0, enabled: true, hat, body: [] }); });
-          }}>{t('script.whenHovered')}</Button>
+      running={session.runningBlocks}
+      header={(
+        <div className="blk-test-bar">
+          {testing
+            ? <Button small icon="stop" onClick={() => session.setUI({ preview: null })}>{t('script.stopTest')}</Button>
+            : <Button small kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now(), docked: true } })} title={t('script.testHint')}>{t('script.test')}</Button>}
+          {testing && <Button small kind="ghost" icon="refresh" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now(), docked: true } })}>{t('preview.restart')}</Button>}
+          {quick && <>
+            <span className="muted small">{layer!.name}:</span>
+            <Button small onClick={() => addHat('core.whenLayerClicked')}>{t('script.whenClicked')}</Button>
+            <Button small kind="ghost" onClick={() => addHat('core.whenHoverStart')}>{t('script.whenHovered')}</Button>
+          </>}
         </div>
-      ) : <div className="blk-header muted small"><Icon name="info" size={13} /> {t('script.sceneHint')}</div>}
+      )}
     />
   );
 }

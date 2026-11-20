@@ -1,3 +1,4 @@
+import { sceneLines } from '@vne/core';
 import { useEffect, useMemo, useState } from 'react';
 import type { SceneData } from '@vne/core';
 import { stripMarkup } from '@vne/runtime';
@@ -122,7 +123,7 @@ function QuickOpen() {
     const query = q.trim().toLowerCase();
     for (const n of Object.values(s.project.nodes)) {
       const def = s.engine.nodeTypes.get(n.type);
-      const text = n.type === 'core.scene' ? `#${(n.data as SceneData).number} ${stripMarkup((n.data as SceneData).dialogue[0]?.text || '')}` : '';
+      const text = n.type === 'core.scene' ? `#${(n.data as SceneData).number} ${stripMarkup(sceneLines(n.data as SceneData)[0]?.text || '')}` : '';
       const hay = `${n.name} ${text}`.toLowerCase();
       if (query && !hay.includes(query)) continue;
       out.push({ label: n.name, sub: `${s.project.chapters.find((c) => c.id === n.chapterId)?.name} · ${def ? t(def.label) : n.type}${text ? ` · ${text.slice(0, 60)}` : ''}`, icon: def?.icon || 'module', run: () => s.openNode(n.id) });

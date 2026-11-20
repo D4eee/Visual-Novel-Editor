@@ -10,7 +10,7 @@
 export type Id = string;
 
 export const PROJECT_FORMAT = 'vne.project';
-export const PROJECT_FORMAT_VERSION = 1;
+export const PROJECT_FORMAT_VERSION = 2;
 
 export interface Project {
   format: typeof PROJECT_FORMAT;
@@ -207,8 +207,7 @@ export interface SceneData {
   background: string;
   layers: Layer[];
   animations: AnimationClip[];
-  dialogue: DialogueLine[];
-  choices: Choice[];
+  /* Dialogue lines and choices are layers since format 2 (see elements.ts). */
   scripts: ScriptStack[];
   /** Variables that exist only while the scene is playing. */
   localVariables: VariableDef[];

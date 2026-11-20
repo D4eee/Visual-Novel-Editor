@@ -1,3 +1,4 @@
+import { sceneChoices } from '@vne/core';
 import { useEffect, useRef, useState } from 'react';
 import type { Asset, VarValue } from '@vne/core';
 import { chapterEntry, startNode, newId } from '@vne/core';
@@ -68,6 +69,7 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
       const refreshVars = () => setVars(rt!.vars.all().map((v) => ({ id: v.def.id, name: v.def.name, value: v.value as VarValue, scope: v.scope })));
       rt.debug.on('node', (e) => { setCurrent({ id: e.nodeId, name: e.name, type: e.type }); setPath([...rt!.path]); push({ time: Date.now(), text: `▶ ${e.name}`, kind: 'node' }); refreshVars(); });
       rt.debug.on('var', (e) => { refreshVars(); push({ time: Date.now(), text: `${e.name} = ${JSON.stringify(e.value)}`, kind: 'var' }); });
+      rt.debug.on('block', (b) => session.markBlockRunning(b.blockId));
       rt.debug.on('event', (e) => { if (e.type !== 'var.changed') push({ time: Date.now(), text: `${e.type}${e.layerId ? ` · ${layerName(e.layerId)}` : ''}${e.choiceId ? ` · ${choiceText(e.choiceId)}` : ''}${e.animId ? ` · ${animName(e.animId)}` : ''}`, kind: 'event' }); });
       rt.debug.on('error', (e) => { setErrors((x) => [...x, e]); push({ time: Date.now(), text: `${e.source}: ${e.message}`, kind: e.detail?.severity === 'warning' ? 'warning' : 'error' }); });
       rt.debug.on('log', (e) => push({ time: Date.now(), text: e.message, kind: 'log' }));
@@ -82,14 +84,14 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
   }, [run, scope, p.key]);
 
   const layerName = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const l = (n.data as any).layers.find((x: any) => x.id === id); if (l) return l.name; } return id; };
-  const choiceText = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const c = (n.data as any).choices.find((x: any) => x.id === id); if (c) return c.text; } return id; };
+  const choiceText = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const c = sceneChoices(n.data as any).find((x) => x.id === id); if (c) return c.text; } return id; };
   const animName = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const a = (n.data as any).animations.find((x: any) => x.id === id); if (a) return a.name; } return id; };
 
   const close = () => session.setUI({ preview: null });
   const errorCount = errors.filter((e) => e.detail?.severity !== 'warning').length;
 
   return (
-    <div className="preview" onKeyDown={(e) => { if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input')) { /* in-game Esc handled by runtime */ } }}>
+    <div className={cx('preview', p.docked && 'docked')} onKeyDown={(e) => { if (e.key === 'Escape' && !(e.target as HTMLElement).closest('input')) { /* in-game Esc handled by runtime */ } }}>
       <div className="preview-bar">
         <Icon name="play" size={15} />
         <b>{t('preview.title')}</b>

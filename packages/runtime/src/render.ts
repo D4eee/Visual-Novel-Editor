@@ -16,6 +16,8 @@ export interface SceneView {
   props(layer: Layer): Record<string, any>;
   visible(layer: Layer): boolean;
   instance(layerId: string): LayerInstance | undefined;
+  /** Playing scenes: how a choice element is shown (hover / disabled). Absent in the editor. */
+  choiceState?(layerId: string): { hover: boolean; disabled: boolean } | null;
   pool: CanvasPool;
   shaders: ShaderRunner;
   /** Effect diagnostics collected during the frame. */

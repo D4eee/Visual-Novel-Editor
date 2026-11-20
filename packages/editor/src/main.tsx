@@ -2,10 +2,13 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { store } from './state/store';
 import './styles.css';
+import { installTooltips } from './ui/Tooltip';
 
 // Used by module mount contexts and a few non-React helpers.
 (globalThis as any).__vneStore = store;
 (globalThis as any).__vneT = (k: string, p?: any) => store.t(k, p);
+
+installTooltips();
 
 async function boot() {
   const root = createRoot(document.getElementById('root')!);

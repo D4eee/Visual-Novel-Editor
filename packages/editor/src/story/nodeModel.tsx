@@ -1,3 +1,4 @@
+import { sceneLines, sceneChoices, exprToString } from '@vne/core';
 import type { Engine, Project, StoryNode, SceneData, JumpData, Issue, PortDef } from '@vne/core';
 import { nodePorts, jumpOutsFor, jumpInsFor, outgoing } from '@vne/core';
 import type { GNode, GEdge } from '../graph/GraphCanvas';
@@ -23,6 +24,19 @@ export function toGNode(engine: Engine, project: Project, n: StoryNode, t: (k: s
   const def = engine.nodeTypes.get(n.type);
   const ports = nodePorts(engine, project, n);
   const mapPort = (p: PortDef) => ({ id: p.id, label: p.label ? t(p.label) : undefined, type: p.type, color: portColor(engine, p.type), multiple: p.multiple });
+  // Scene choice outputs: a short id beside the port; the full choice appears on hover.
+  const choices = n.type === 'core.scene' ? sceneChoices(n.data as SceneData) : [];
+  const varName = (id: string) => project.variables.find((v) => v.id === id)?.name || (n.data as any)?.localVariables?.find((v: any) => v.id === id)?.name || '?';
+  const mapOut = (p: PortDef) => {
+    const i = choices.findIndex((c) => `c:${c.id}` === p.id);
+    if (i < 0) return mapPort(p);
+    const c = choices[i];
+    const lines = [`C${i + 1} · ${c.id}`, `${t('choice.text')}: ${c.text || '—'}`];
+    if (c.condition) lines.push(`${t('choice.condition')}: ${exprToString(c.condition, varName)}`);
+    if (c.hidden) lines.push(t('choice.hidden'));
+    if (c.effects.length) lines.push(`${t('choice.effects')}: ${c.effects.map((e) => `${varName(e.varId)} ${e.op === 'add' ? '+=' : e.op === 'sub' ? '−=' : e.op === 'toggle' ? '!' : '='} ${e.op === 'toggle' ? '' : e.value}`).join(', ')}`);
+    return { ...mapPort(p), label: `C${i + 1}`, tip: lines.join('\n') };
+  };
   const own = issues.filter((i) => i.target?.nodeId === n.id);
   const status = own.some((i) => i.severity === 'error') ? 'error' : own.some((i) => i.severity === 'warning') ? 'warning' : null;
   let subtitle = def ? t(def.label) : `${t('node.unknown')} · ${n.type}`;
@@ -37,7 +51,7 @@ export function toGNode(engine: Engine, project: Project, n: StoryNode, t: (k: s
         {summary ? <div className="gnode-summary">“{summary}”</div> : <div className="gnode-summary muted">{t('graph.emptyScene')}</div>}
         <div className="gnode-meta">
           {d.layers.length > 0 && <span title={t('scene.layers')}><Icon name="layers" size={12} /> {d.layers.length}</span>}
-          {d.dialogue.length > 0 && <span title={t('scene.lines')}><Icon name="message" size={12} /> {d.dialogue.length}</span>}
+          {sceneLines(d).length > 0 && <span title={t('scene.lines')}><Icon name="message" size={12} /> {sceneLines(d).length}</span>}
           {d.scripts.length > 0 && <span title={t('scene.scripts')}><Icon name="script" size={12} /> {d.scripts.length}</span>}
           {d.animations.length > 0 && <span title={t('scene.animations')}><Icon name="timeline" size={12} /> {d.animations.length}</span>}
         </div>
@@ -74,7 +88,7 @@ export function toGNode(engine: Engine, project: Project, n: StoryNode, t: (k: s
     color: n.color || def?.color || '#5b6275',
     icon: def?.icon || 'module',
     inputs: ports.inputs.map(mapPort),
-    outputs: ports.outputs.map(mapPort),
+    outputs: ports.outputs.map(mapOut),
     body,
     status,
     badge: modulesBadge,

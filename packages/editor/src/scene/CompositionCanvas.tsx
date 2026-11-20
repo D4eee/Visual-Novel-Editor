@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layer, LayerInstance, SceneData, Engine, Project } from '@vne/core';
+import { sceneLines } from '@vne/core';
 import { Stage, NarrativeUI, createEditView, drawScene, hitTest, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
@@ -101,21 +102,19 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     return () => { alive = false; cancelAnimationFrame(raf); };
   });
 
-  // Dialogue / choices preview in the real text box.
+  // Dialogue preview in the real text box (choices are elements drawn on the canvas).
+  const lines = sceneLines(scene);
   useEffect(() => {
     const n = narrRef.current;
     if (!n) return;
     n.applyStyle(project.settings.textbox);
-    const lines = scene.dialogue;
     const line = lines.find((l) => l.id === ui.selectedLine) || lines[0];
     if (!ui.showTextbox || scene.hideTextbox) { n.renderStatic(null, null, false); return; }
-    const showChoices = scene.choices.length > 0 && (!line || ui.selectedLine === '__choices');
-    if (showChoices) { n.renderStatic(null, scene.choices.filter((c) => !c.hidden).map((c) => ({ id: c.id, text: c.text, disabled: false })), false); return; }
     if (!line) { n.renderStatic(null, null, false); return; }
     const ch = project.characters.find((c) => c.id === line.speakerId);
     const pa = ch ? portraitAsset(project, ch.id, line.portraitId || null) : null;
     n.renderStatic({ name: line.speakerName || ch?.name || '', nameColor: ch?.color, portraitUrl: pa ? session.assets.url(pa) : null, text: interpolateVarsCompat(line.text, project, varsRef.current!) }, null, true);
-  }, [scene.dialogue, scene.choices, ui.selectedLine, ui.showTextbox, scene.hideTextbox, project.settings.textbox, project.characters]);
+  }, [lines, ui.selectedLine, ui.showTextbox, scene.hideTextbox, project.settings.textbox, project.characters]);
 
   /* --------------------------------------------------------------- */
   /* View: pan / zoom                                                 */
@@ -197,7 +196,8 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     let ids = selected;
     if (!handle) {
       const hit = hitTest(view, p.x, p.y, selectable);
-      if (!hit) { session.setSceneUI(nodeId, { selectedLayers: [] }); return; }
+      // Empty space: deselect and pan (like every canvas in the editor).
+      if (!hit) { session.setSceneUI(nodeId, { selectedLayers: [] }); e.preventDefault(); startPan(e); return; }
       if (e.shiftKey || e.metaKey || e.ctrlKey) ids = selected.includes(hit.id) ? selected.filter((x) => x !== hit.id) : [...selected, hit.id];
       else ids = selected.includes(hit.id) ? selected : [hit.id];
       session.setSceneUI(nodeId, { selectedLayers: ids });
@@ -385,13 +385,6 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
             </g>
           ))}
         </svg>
-        {!scene.layers.length && (
-          <div className="comp-empty">
-            <Icon name="layers" size={26} />
-            <div className="empty-title">{t('scene.emptyTitle')}</div>
-            <div className="muted">{t('scene.emptyText')}</div>
-          </div>
-        )}
       </div>
       <div className="comp-toolbar">
         <button type="button" className="btn btn-sm" onClick={(e) => openMenu(e, addLayerMenu(session, nodeId, t, { x: W / 2, y: H / 2 }))}><Icon name="plus" size={14} /><span>{t('layer.add')}</span></button>

@@ -1,4 +1,5 @@
 import type { Engine, Layer, LayerTypeDef, PropDef, Composition } from '@vne/core';
+import { CHOICE_STYLE } from '@vne/core';
 import { num, parseColor, colorToString } from '../math';
 import { parseRich, layoutRich, drawRich, interpolateVars, TextStyle } from '../text';
 import type { RenderContext, SceneView } from '../render';
@@ -314,6 +315,54 @@ export function registerBuiltinLayers(engine: Engine): void {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(String(p.text ?? ''), w / 2, h / 2 + 1, w - 16);
+    },
+  });
+
+  // Dialogue: the scene's lines, shown in the text box. Edited in the inspector, not on the canvas.
+  reg({
+    id: 'core.dialogue', label: 'layer.dialogue', icon: 'message', category: 'text', visual: false,
+    props: [{ key: 'lines', type: 'json', label: 'scene.lines', default: [], hidden: true }],
+  });
+
+  // Choice: one option of the scene. A button on the canvas and one output of the scene node.
+  reg({
+    id: 'core.choice', label: 'layer.choice', icon: 'choice', category: 'interactive', visual: true,
+    props: visual([
+      { key: 'text', type: 'string', label: 'choice.text', default: 'Choice' },
+      { key: 'condition', type: 'expr', label: 'choice.condition', default: null, group: 'choiceLogic', description: 'choice.conditionHint' },
+      { key: 'unavailable', type: 'select', label: 'choice.unavailable', default: 'hide', group: 'choiceLogic', options: [{ value: 'hide', label: 'choice.unavailable.hide' }, { value: 'disable', label: 'choice.unavailable.disable' }] },
+      { key: 'hidden', type: 'boolean', label: 'choice.hidden', default: false, group: 'choiceLogic', description: 'choice.hiddenHint' },
+      { key: 'animationId', type: 'animation', label: 'choice.animation', default: null, group: 'choiceLogic' },
+      { key: 'effects', type: 'json', label: 'choice.effects', default: [], hidden: true },
+      { key: 'width', type: 'number', label: 'prop.width', default: CHOICE_STYLE.width, min: 10, unit: 'px', animatable: true, group: 'size' },
+      { key: 'height', type: 'number', label: 'prop.height', default: CHOICE_STYLE.height, min: 10, unit: 'px', animatable: true, group: 'size' },
+      { key: 'fontSize', type: 'number', label: 'prop.fontSize', default: CHOICE_STYLE.fontSize, min: 6, animatable: true, group: 'style' },
+      { key: 'textColor', type: 'color', label: 'prop.textColor', default: CHOICE_STYLE.textColor, animatable: true, group: 'style' },
+      { key: 'fill', type: 'color', label: 'prop.fill', default: CHOICE_STYLE.fill, animatable: true, group: 'style' },
+      { key: 'hoverFill', type: 'color', label: 'prop.hoverFill', default: CHOICE_STYLE.hoverFill, group: 'style' },
+      { key: 'borderColor', type: 'color', label: 'prop.borderColor', default: CHOICE_STYLE.borderColor, group: 'style' },
+      { key: 'radius', type: 'number', label: 'prop.radius', default: CHOICE_STYLE.radius, min: 0, group: 'style' },
+    ]),
+    size: (_l, p) => ({ width: num(p.width, CHOICE_STYLE.width), height: num(p.height, CHOICE_STYLE.height) }),
+    draw(rc, l, p) {
+      const ctx = rc.ctx;
+      const w = num(p.width, CHOICE_STYLE.width), h = num(p.height, CHOICE_STYLE.height);
+      const st = rc.view.choiceState?.(l.id);
+      if (st?.disabled) ctx.globalAlpha *= 0.45;
+      else if (rc.mode === 'edit' && p.hidden) ctx.globalAlpha *= 0.5;
+      ctx.fillStyle = st?.hover && !st.disabled ? (p.hoverFill || CHOICE_STYLE.hoverFill) : (p.fill || CHOICE_STYLE.fill);
+      roundRect(ctx, 0, 0, w, h, num(p.radius, CHOICE_STYLE.radius));
+      ctx.fill();
+      ctx.strokeStyle = p.borderColor || CHOICE_STYLE.borderColor;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      const look = varLookup(rc.view);
+      const text = String(p.text ?? '').replace(/\{([^{}]+)\}/g, (m, name) => look(name.trim()) ?? m);
+      ctx.fillStyle = p.textColor || CHOICE_STYLE.textColor;
+      ctx.font = `600 ${num(p.fontSize, CHOICE_STYLE.fontSize)}px system-ui, "PingFang SC", "Microsoft YaHei", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, w / 2, h / 2 + 1, w - 24);
     },
   });
 

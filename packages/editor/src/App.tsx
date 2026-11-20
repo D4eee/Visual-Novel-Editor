@@ -237,7 +237,7 @@ function SessionView({ session }: { session: ProjectSession }) {
           {tab.kind === 'node' && !node && <div className="pad muted">{t('workspace.nodeGone')}</div>}
           {custom?.startsWith('behavior:') && <BehaviorWorkspace session={session} behaviorId={custom.slice(9)} />}
           {custom && !custom.startsWith('behavior:') && session.ext.workspaces.filter((w) => w.id === custom).map((w) => <ModulePanelHost key={w.id} session={session} panel={{ ...w, location: 'bottom' } as any} />)}
-          {ui.preview && <PreviewPanel key={ui.preview.key} session={session} />}
+          {ui.preview && !(ui.preview.docked && node?.type === 'core.scene' && ui.preview.nodeId === node.id) && <PreviewPanel key={ui.preview.key} session={session} />}
         </div>
       </main>
       {ui.inspectorOpen && (

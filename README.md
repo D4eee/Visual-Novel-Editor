@@ -7,10 +7,10 @@ A standalone, extensible visual novel engine for macOS and Windows: a story flow
 ## Features
 
 - **Story flow graph** – Start, Scene/Page (one output per choice, with stable choice ids), Event, Condition, Jump In / Jump Out pairs (also across chapters), Random, Wait, Ending and Comment nodes; chapters; validation with a Problems list.
-- **Scene composition** – canvas with backgrounds, images, characters (portraits), text, shapes, buttons, hotspots, video, audio, groups, reusable compositions, particles and module-defined layers.
-- **Timeline** – keyframes on any animatable property, interpolation curves with a curve editor, audio/video clips synced to the timeline.
-- **Procedural effects** – node-based effect graphs per layer (blur, color, distortion, noise, custom GLSL shaders, property drivers), shared effect graphs and presets.
-- **Visual scripting** – event blocks (clicks, scene start, dialogue, choices, variables), control, looks, sound, variables and story blocks; reusable behaviors.
+- **Scene composition** – everything in a scene is an element: backgrounds, images, characters (portraits), text, shapes, buttons, hotspots, video, audio, the dialogue, choice buttons, groups, reusable compositions, particles and module-defined layers.
+- **Timeline** – keyframes on any animatable property of any element, interpolation curves with a curve editor, audio/video clips, and each element's effects.
+- **Procedural effects** – node-based effect graphs per element (full-screen effects via a covering mask) (blur, color, distortion, noise, custom GLSL shaders, property drivers), shared effect graphs and presets.
+- **Interactions (visual scripting)** – Scratch-like blocks on a pan/zoom canvas; scene elements can be dragged into blocks like variables (*Start ( )*, *Stop ( )*, *When ( ) is clicked*); a Test run lights up blocks as they execute; reusable behaviors.
 - **Modules** – runtime, editor or combined modules that add nodes, layers, properties, effects, transitions, blocks, systems, panels, node workspaces, importers and exporters. Unknown module data is preserved when a module is missing.
 - **Preview** – the same runtime as exported games, scoped to a scene, a chapter or the whole game, with a debug panel (variables, flow, log).
 - **Export** – game folder, web build, macOS app and Windows executable; only used assets and runtime modules are included.

@@ -2,6 +2,7 @@ import type { Engine } from './registry';
 import type { Block, Issue, JumpData, Project, SceneData, StoryNode, Layer, EventData, ConditionData, Expr } from './types';
 import { nodePorts, isFlowPort, jumpOutsFor, jumpInsFor, reachableFrom, typesCompatible } from './graph';
 import { exprVars, isExpr } from './expr';
+import { sceneChoices, sceneLines, DIALOGUE_LAYER } from './elements';
 
 export interface ValidationEnv {
   /** Asset ids whose files are missing on disk. */
@@ -44,9 +45,8 @@ export function validateProject(engine: Engine, project: Project, env: Validatio
     if (n.type === 'core.scene') {
       const d = n.data as SceneData;
       d.layers?.forEach((l) => checkId(l.id, 'layer', n.id));
-      d.choices?.forEach((c) => checkId(c.id, 'choice', n.id));
       d.animations?.forEach((a) => checkId(a.id, 'animation', n.id));
-      d.dialogue?.forEach((l) => checkId(l.id, 'line', n.id));
+      sceneLines(d).forEach((l) => checkId(l.id, 'line', n.id));
     }
     n.modules?.forEach((m) => checkId(m.id, 'module instance', n.id));
   }
@@ -207,12 +207,13 @@ function checkScene(engine: Engine, project: Project, n: StoryNode, varIds: Set<
     }
     for (const m of a.media) if (!layerIds.has(m.layerId)) issues.push({ severity: 'error', code: 'anim.media', message: 'issue.anim.layer', params: { anim: a.name, node: n.name }, target });
   }
-  for (const c of d.choices) {
+  for (const c of sceneChoices(d)) {
     checkVars(c.condition, varIds, n, issues, local);
     for (const e of c.effects) if (!varIds.has(e.varId) && !local.has(e.varId)) issues.push({ severity: 'error', code: 'var.missing', message: 'issue.var.missing', params: { node: n.name }, target });
     if (!c.text.trim()) issues.push({ severity: 'warning', code: 'choice.empty', message: 'issue.choice.empty', params: { node: n.name }, target });
   }
-  for (const line of d.dialogue) {
+  if (d.layers.filter((l) => l.type === DIALOGUE_LAYER).length > 1) issues.push({ severity: 'warning', code: 'dialogue.multiple', message: 'issue.dialogue.multiple', params: { node: n.name }, target });
+  for (const line of sceneLines(d)) {
     if (line.speakerId && !project.characters.some((c) => c.id === line.speakerId)) issues.push({ severity: 'warning', code: 'line.speaker', message: 'issue.line.speaker', params: { node: n.name }, target });
     if (line.voiceAssetId && !assetIds.has(line.voiceAssetId)) issues.push({ severity: 'error', code: 'asset.missingRef', message: 'issue.asset.missingRef', params: { node: n.name }, target });
   }

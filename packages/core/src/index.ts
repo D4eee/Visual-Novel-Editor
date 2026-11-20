@@ -11,3 +11,4 @@ export * from './validate';
 export * from './migrate';
 export * from './i18n';
 export * from './modules';
+export * from './elements';

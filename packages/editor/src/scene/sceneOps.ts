@@ -1,5 +1,5 @@
 import type { SceneData, Layer, Project, Track, AnimationClip } from '@vne/core';
-import { newId, createAnimation, createLayer, remapIds } from '@vne/core';
+import { newId, createAnimation, createLayer, remapIds, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE } from '@vne/core';
 import { normalizeTrack, sampleTrack, propKind, animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 
@@ -11,7 +11,12 @@ export function sceneOf(session: ProjectSession, nodeId: string): SceneData | nu
 export function updateScene(session: ProjectSession, nodeId: string, label: string, fn: (scene: SceneData, draft: Project) => void, mergeKey?: string): void {
   session.update(label, (d) => {
     const n = d.nodes[nodeId];
-    if (n && n.type === 'core.scene') fn(n.data as SceneData, d);
+    if (!n || n.type !== 'core.scene') return;
+    // Choice elements are the scene's outputs: keep story connections in sync with them.
+    const before = choiceLayers(n.data as SceneData).map((l) => l.id);
+    fn(n.data as SceneData, d);
+    const after = choiceLayers(n.data as SceneData).map((l) => l.id);
+    if (before.length !== after.length || before.some((id, i) => id !== after[i])) syncSceneChoiceEdges(d, nodeId, before);
   }, mergeKey ? { mergeKey } : undefined);
 }
 
@@ -108,7 +113,15 @@ export function addLayer(session: ProjectSession, nodeId: string, type: string, 
   const scene = sceneOf(session, nodeId);
   if (!scene) return null;
   const def = session.engine.layerTypes.get(type);
-  const base = name || (def ? t(def.label) : type);
+  // A scene has one dialogue element.
+  const existingDialogue = type === DIALOGUE_LAYER ? scene.layers.find((l) => l.type === DIALOGUE_LAYER) : null;
+  if (existingDialogue) { session.setSceneUI(nodeId, { selectedLayers: [existingDialogue.id] }); return existingDialogue.id; }
+  if (type === CHOICE_LAYER) {
+    const { width: W, height: H } = session.project.settings.resolution;
+    const n = scene.layers.filter((l) => l.type === CHOICE_LAYER).length;
+    extra = { x: W / 2, y: Math.round(H * 0.3 + n * (CHOICE_STYLE.height + 16)), text: t('choice.new', { n: n + 1 }), ...extra };
+  }
+  const base = name || (type === CHOICE_LAYER ? String(extra.text) : def ? t(def.label) : type);
   let n = 1;
   while (scene.layers.some((l) => l.name === (n === 1 ? base : `${base} ${n}`))) n++;
   const layer = createLayer(session.engine, session.project, type, n === 1 ? base : `${base} ${n}`, extra);
