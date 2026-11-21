@@ -1,5 +1,5 @@
 import type { Project, Issue, Engine, Recipe, UpdateOptions, ModuleManifest, Asset } from '@vne/core';
-import { History, loadProject, validateProject, serializeProject, I18n, newId } from '@vne/core';
+import { History, loadProject, validateProject, serializeProject, I18n, newId, hasSceneData } from '@vne/core';
 import { createEngine, ModuleHost, ModuleRecord, AssetLoader } from '@vne/runtime';
 import { call } from '../host';
 import { EditorExtensions, activateEditorModule } from '../modules/editorApi';
@@ -44,6 +44,8 @@ export interface SessionUI {
   graphFocus: { nodeId: string; key: number } | null;
   /** Pan/zoom per chapter (kept out of the undo history; written to the project on save). */
   views: Record<string, { x: number; y: number; zoom: number }>;
+  /** Draw global and inherited elements on page canvases (default on). */
+  showContext?: boolean;
 }
 
 export interface InstalledModuleInfo {
@@ -159,7 +161,7 @@ export class ProjectSession {
     const node = this.project.nodes[nodeId];
     if (!node) return;
     const def = this.engine.nodeTypes.get(node.type);
-    if (!def?.workspace && !node.modules.length && node.type !== 'core.scene') {
+    if (!def?.workspace && !node.modules.length && !hasSceneData(node)) {
       // Nodes without a detailed workspace are edited in the inspector; just focus them.
       this.focusNode(nodeId);
       if (sub !== 'modules') return;

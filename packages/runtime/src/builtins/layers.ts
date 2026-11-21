@@ -95,7 +95,7 @@ function varLookup(view: any): (name: string) => string | undefined {
     const v = view?.project?.variables?.find((x: any) => x.name === name);
     if (!v) return undefined;
     const val = view.vars.get(v.id);
-    return val === undefined ? undefined : String(val);
+    return val === undefined ? undefined : Array.isArray(val) ? val.join(', ') : String(val);
   };
 }
 
@@ -332,6 +332,8 @@ export function registerBuiltinLayers(engine: Engine): void {
       { key: 'condition', type: 'expr', label: 'choice.condition', default: null, group: 'choiceLogic', description: 'choice.conditionHint' },
       { key: 'unavailable', type: 'select', label: 'choice.unavailable', default: 'hide', group: 'choiceLogic', options: [{ value: 'hide', label: 'choice.unavailable.hide' }, { value: 'disable', label: 'choice.unavailable.disable' }] },
       { key: 'hidden', type: 'boolean', label: 'choice.hidden', default: false, group: 'choiceLogic', description: 'choice.hiddenHint' },
+      { key: 'requiresItem', type: 'item', label: 'choice.requiresItem', default: null, group: 'choiceLogic', description: 'choice.requiresItemHint' },
+      { key: 'consumeItem', type: 'boolean', label: 'choice.consumeItem', default: false, group: 'choiceLogic', description: 'choice.consumeItemHint' },
       { key: 'animationId', type: 'animation', label: 'choice.animation', default: null, group: 'choiceLogic' },
       { key: 'effects', type: 'json', label: 'choice.effects', default: [], hidden: true },
       { key: 'width', type: 'number', label: 'prop.width', default: CHOICE_STYLE.width, min: 10, unit: 'px', animatable: true, group: 'size' },
@@ -482,6 +484,201 @@ export function registerBuiltinLayers(engine: Engine): void {
       inst.draw!(rc, p);
     },
   });
+
+  registerGameLayers(engine, reg);
+}
+
+/* ------------------------------------------------------------------ */
+/* Game module elements: sprite (frame animation) and inventory         */
+/* ------------------------------------------------------------------ */
+
+export interface SpriteFrame { assetId: string | null }
+
+export function spriteFrames(p: Record<string, any>): SpriteFrame[] {
+  return Array.isArray(p.frames) ? p.frames.filter((f: any) => f && typeof f === 'object') : [];
+}
+
+/** The 0-based index of the frame shown (the `frame` property counts from 1). */
+export function spriteIndex(p: Record<string, any>): number {
+  const n = spriteFrames(p).length;
+  if (!n) return 0;
+  const f = Math.floor(num(p.frame, 1)) - 1;
+  return ((f % n) + n) % n;
+}
+
+/** Advance a sprite's state by dt seconds. Returns true when a non-looping playback reached its end. */
+export function stepSprite(s: Record<string, any>, dt: number): boolean {
+  const n = spriteFrames(s).length;
+  if (!s.playing || n < 1) return false;
+  const fps = Math.max(0, num(s.fps, 8));
+  s._acc = num(s._acc, 0) + dt * fps;
+  let ended = false;
+  while (s._acc >= 1) {
+    s._acc -= 1;
+    const dir = s.reverse ? -1 : 1;
+    let f = Math.floor(num(s.frame, 1)) + dir;
+    if (f > n || f < 1) {
+      if (s.loop !== false) f = f > n ? 1 : n;
+      else { f = f > n ? n : 1; s.playing = false; s._acc = 0; ended = true; }
+    }
+    s.frame = f;
+    if (ended) break;
+  }
+  return ended;
+}
+
+export interface InventorySlot { name: string; count: number; assetId: string | null }
+
+/** Inventory contents grouped by item (duplicates become a count). */
+export function inventorySlots(project: any, list: unknown): InventorySlot[] {
+  const out: InventorySlot[] = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const name = String(raw);
+    const cur = out.find((s) => s.name.toLowerCase() === name.toLowerCase());
+    if (cur) { cur.count++; continue; }
+    const item = (project.items || []).find((i: any) => i.name.toLowerCase() === name.toLowerCase() || i.id === name);
+    out.push({ name: item ? item.name : name, count: 1, assetId: item?.assetId ?? null });
+  }
+  return out;
+}
+
+function inventoryGeometry(p: Record<string, any>) {
+  const cols = Math.max(1, Math.floor(num(p.columns, 4)));
+  const rows = Math.max(1, Math.floor(num(p.rows, 1)));
+  const slot = Math.max(8, num(p.slotSize, 96));
+  const gap = Math.max(0, num(p.gap, 12));
+  const pad = Math.max(0, num(p.padding, 12));
+  return { cols, rows, slot, gap, pad, width: pad * 2 + cols * slot + (cols - 1) * gap, height: pad * 2 + rows * slot + (rows - 1) * gap };
+}
+
+function inventoryList(view: any, p: Record<string, any>): unknown {
+  if (view?.items) return view.items.list(p.listVar || null);
+  const id = p.listVar || view?.project?.inventoryVarId;
+  return id ? view?.vars?.get(id) : [];
+}
+
+function registerGameLayers(engine: Engine, reg: (d: LayerTypeDef) => void): void {
+  reg({
+    id: 'core.sprite', label: 'layer.sprite', icon: 'sprite', category: 'media', visual: true,
+    props: visual([
+      // Frames: [{ assetId }], edited in the frame editor (double-click the element's variable in Interactions).
+      { key: 'frames', type: 'json', label: 'prop.frames', default: [], hidden: true },
+      { key: 'frame', type: 'number', label: 'prop.frame', default: 1, min: 1, step: 1, animatable: true, group: 'sprite' },
+      { key: 'fps', type: 'number', label: 'prop.fps', default: 8, min: 0, step: 1, group: 'sprite' },
+      { key: 'playing', type: 'boolean', label: 'prop.spritePlaying', default: false, group: 'sprite', description: 'prop.spritePlaying.desc' },
+      { key: 'loop', type: 'boolean', label: 'prop.loop', default: true, group: 'sprite' },
+      { key: 'reverse', type: 'boolean', label: 'prop.reverse', default: false, group: 'sprite' },
+      { key: 'flip', type: 'boolean', label: 'prop.flip', default: false, group: 'sprite' },
+      { key: 'width', type: 'number', label: 'prop.width', default: 0, min: 0, unit: 'px', animatable: true, group: 'size' },
+      { key: 'height', type: 'number', label: 'prop.height', default: 0, min: 0, unit: 'px', animatable: true, group: 'size' },
+    ]),
+    size(_l, p, rc) {
+      const frames = spriteFrames(p);
+      const f = frames[spriteIndex(p)] || frames[0];
+      const n = f ? naturalSize(rc, f.assetId) : null;
+      const w = num(p.width), h = num(p.height);
+      if (w && h) return { width: w, height: h };
+      if (n) {
+        if (w) return { width: w, height: (w * n.height) / n.width };
+        if (h) return { width: (h * n.width) / n.height, height: h };
+        return n;
+      }
+      return { width: w || 240, height: h || 240 };
+    },
+    step(state, dt, ctx) {
+      if (stepSprite(state, dt)) ctx.emit({ type: 'sprite.ended', layerId: ctx.layer.id });
+    },
+    draw(rc, l, p) {
+      const s = engine.layerTypes.get('core.sprite')!.size!(l, p, rc);
+      const frames = spriteFrames(p);
+      const f = frames[spriteIndex(p)];
+      const img = f ? imgOf(rc, f.assetId) : null;
+      if (!img) {
+        drawPlaceholder(rc.ctx, s.width, s.height, frames.length ? `${spriteIndex(p) + 1} / ${frames.length}` : 'Sprite', !!f?.assetId && rc.assets.imageFailed(f.assetId));
+        return;
+      }
+      rc.ctx.save();
+      if (p.flip) { rc.ctx.translate(s.width, 0); rc.ctx.scale(-1, 1); }
+      rc.ctx.drawImage(img, 0, 0, s.width, s.height);
+      rc.ctx.restore();
+    },
+  });
+
+  reg({
+    id: 'core.inventory', label: 'layer.inventory', icon: 'backpack', category: 'interactive', visual: true, interactive: true,
+    props: visual([
+      { key: 'listVar', type: 'variable', label: 'prop.inventoryList', default: null, group: 'inventory', description: 'prop.inventoryList.desc' },
+      { key: 'columns', type: 'number', label: 'prop.columns', default: 5, min: 1, step: 1, group: 'inventory' },
+      { key: 'rows', type: 'number', label: 'prop.rows', default: 1, min: 1, step: 1, group: 'inventory' },
+      { key: 'slotSize', type: 'number', label: 'prop.slotSize', default: 96, min: 8, unit: 'px', group: 'inventory' },
+      { key: 'gap', type: 'number', label: 'prop.gap', default: 12, min: 0, unit: 'px', group: 'inventory' },
+      { key: 'padding', type: 'number', label: 'prop.padding', default: 12, min: 0, unit: 'px', group: 'inventory' },
+      { key: 'radius', type: 'number', label: 'prop.radius', default: 12, min: 0, unit: 'px', group: 'style' },
+      { key: 'background', type: 'color', label: 'prop.background', default: 'rgba(14,16,28,0.72)', group: 'style' },
+      { key: 'slotColor', type: 'color', label: 'prop.slotColor', default: 'rgba(255,255,255,0.08)', group: 'style' },
+      { key: 'selectedColor', type: 'color', label: 'prop.selectedColor', default: '#ffd36b', group: 'style' },
+      { key: 'textColor', type: 'color', label: 'prop.color', default: '#ffffff', group: 'style' },
+      { key: 'showNames', type: 'boolean', label: 'prop.showNames', default: false, group: 'inventory' },
+      { key: 'selectable', type: 'boolean', label: 'prop.selectable', default: true, group: 'inventory', description: 'prop.selectable.desc' },
+    ]),
+    size: (_l, p) => { const g = inventoryGeometry(p); return { width: g.width, height: g.height }; },
+    pointer(_l, p, x, y, _s, ctx) {
+      if (p.selectable === false) return false;
+      const g = inventoryGeometry(p);
+      const cx = Math.floor((x - g.pad) / (g.slot + g.gap)), cy = Math.floor((y - g.pad) / (g.slot + g.gap));
+      if (cx < 0 || cy < 0 || cx >= g.cols || cy >= g.rows) return true;
+      const slots = inventorySlots(ctx.runtime.project, ctx.runtime.items.list(p.listVar || null));
+      const s = slots[cy * g.cols + cx];
+      const cur = ctx.runtime.items.selected;
+      ctx.runtime.items.select(s && (!cur || cur.toLowerCase() !== s.name.toLowerCase()) ? s.name : null);
+      return true;
+    },
+    draw(rc, _l, p) {
+      const g = inventoryGeometry(p);
+      const ctx = rc.ctx as CanvasRenderingContext2D;
+      roundRect(ctx, 0, 0, g.width, g.height, num(p.radius, 12));
+      ctx.fillStyle = p.background || 'transparent';
+      ctx.fill();
+      const slots = inventorySlots(rc.project, inventoryList(rc.view, p));
+      const selected: string | null = rc.view?.items?.selected?.() ?? null;
+      for (let i = 0; i < g.cols * g.rows; i++) {
+        const x = g.pad + (i % g.cols) * (g.slot + g.gap), y = g.pad + Math.floor(i / g.cols) * (g.slot + g.gap);
+        roundRect(ctx, x, y, g.slot, g.slot, Math.min(num(p.radius, 12), g.slot / 4));
+        ctx.fillStyle = p.slotColor || 'rgba(255,255,255,0.08)';
+        ctx.fill();
+        const s = slots[i];
+        if (!s) continue;
+        if (selected && selected.toLowerCase() === s.name.toLowerCase()) { ctx.strokeStyle = p.selectedColor || '#ffd36b'; ctx.lineWidth = 3; ctx.stroke(); }
+        const img = s.assetId ? imgOf(rc, s.assetId) : null;
+        const inner = g.slot * 0.78, off = (g.slot - inner) / 2;
+        if (img && img.naturalWidth) {
+          const k = Math.min(inner / img.naturalWidth, inner / img.naturalHeight);
+          const w = img.naturalWidth * k, h = img.naturalHeight * k;
+          ctx.drawImage(img, x + (g.slot - w) / 2, y + (g.slot - h) / 2 - (p.showNames ? g.slot * 0.08 : 0), w, h);
+        } else {
+          ctx.fillStyle = p.textColor || '#fff';
+          ctx.font = `600 ${Math.max(10, g.slot * 0.16)}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(s.name, x + g.slot / 2, y + g.slot / 2, inner);
+        }
+        ctx.textAlign = 'center';
+        if (p.showNames && img) {
+          ctx.fillStyle = p.textColor || '#fff';
+          ctx.font = `500 ${Math.max(9, g.slot * 0.13)}px system-ui, sans-serif`;
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(s.name, x + g.slot / 2, y + g.slot - 3, g.slot - 6);
+        }
+        if (s.count > 1) {
+          ctx.fillStyle = p.textColor || '#fff';
+          ctx.font = `700 ${Math.max(10, g.slot * 0.17)}px system-ui, sans-serif`;
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`×${s.count}`, x + g.slot - off / 2 - 2, y + 4);
+        }
+      }
+    },
+  });
 }
 
 export function portraitAsset(project: any, characterId: string | null, portraitId: string | null): string | null {
@@ -529,12 +726,17 @@ function createMediaInstance(layer: Layer, rt: LayerRuntime, kind: 'video' | 'au
     element: el,
     play(offset = 0) {
       started = true;
-      if (useMusicChannel) { rt.audio.playMusic(p.assetId, num(p.volume, 1), p.loop !== false); return; }
+      if (useMusicChannel) { if (p.assetId) rt.audio.playMusic(p.assetId, num(p.volume, 1), p.loop !== false); return; }
       if (!el) return;
       try { if (offset) el.currentTime = offset; } catch { /* not seekable yet */ }
       el.play().catch(() => {});
     },
-    pause() { if (useMusicChannel) return; el?.pause(); },
+    pause() { if (useMusicChannel) { if (rt.audio.musicAssetId === p.assetId) rt.audio.pauseMusic(); return; } el?.pause(); },
+    /** Still sounding (continues on the next page)? */
+    isPlaying() {
+      if (useMusicChannel) return started && rt.audio.musicAssetId === p.assetId && rt.audio.musicPlaying;
+      return !!el && started && !el.paused && !el.ended;
+    },
     stop() {
       if (useMusicChannel) { rt.audio.stopMusic(); return; }
       if (!el) return;

@@ -42,6 +42,8 @@ export function choiceOf(l: Layer): Choice {
     unavailable: p.unavailable === 'disable' ? 'disable' : 'hide',
     effects: Array.isArray(p.effects) ? p.effects : [],
     animationId: p.animationId ?? null,
+    requiresItem: typeof p.requiresItem === 'string' && p.requiresItem ? p.requiresItem : null,
+    consumeItem: !!p.consumeItem,
   };
 }
 

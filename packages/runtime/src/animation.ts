@@ -83,6 +83,7 @@ export interface PlayingClip {
   done: boolean;
   resolve: (() => void)[];
   mediaStarted: Set<string>;
+  paused?: boolean;
 }
 
 /**
@@ -126,6 +127,27 @@ export class AnimationPlayer {
     for (const id of [...this.playing.keys()]) this.stop(id);
   }
 
+  /** Take a playing clip out without stopping it or its media (it continues on the next page). */
+  detach(clipId: string): PlayingClip | undefined {
+    const p = this.playing.get(clipId);
+    if (!p) return undefined;
+    this.playing.delete(clipId);
+    p.resolve.forEach((r) => r());
+    p.resolve = [];
+    return p;
+  }
+
+  /** Continue a clip taken from another page. */
+  adopt(p: PlayingClip): void {
+    this.playing.set(p.clip.id, p);
+  }
+
+  /** Pause / resume a playing clip where it is. */
+  setPaused(clipId: string, paused: boolean): void {
+    const p = this.playing.get(clipId);
+    if (p) p.paused = paused;
+  }
+
   isPlaying(clipId: string): boolean {
     const p = this.playing.get(clipId);
     return !!p && !p.done;
@@ -133,7 +155,7 @@ export class AnimationPlayer {
 
   update(dt: number): void {
     for (const [id, p] of [...this.playing]) {
-      if (p.done) continue;
+      if (p.done || p.paused) continue;
       p.time += dt * p.speed;
       const end = clipEnd(p.clip);
       if (p.time >= end) {

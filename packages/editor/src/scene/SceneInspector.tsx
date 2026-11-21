@@ -11,6 +11,9 @@ import { Field, TextInput, ColorInput, Select, NumberInput, Toggle, Section, But
 import { Icon } from '../ui/Icon';
 import { useEffect, useRef } from 'react';
 import { makeMountContext, safeMount } from '../modules/editorApi';
+import { GLOBAL_NODE_ID } from '@vne/core';
+import { ParamsEditor, SpriteFramesEditor } from '../script/GameEditors';
+import { pageElements, pageName, revealElement, openGlobalPage, moveElements } from './pageContext';
 
 export function SceneInspector({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
   useSession(session);
@@ -20,10 +23,41 @@ export function SceneInspector({ session, nodeId }: { session: ProjectSession; n
   const ui = session.sceneUI(nodeId);
   const layers = ui.selectedLayers.map((id) => scene.layers.find((l) => l.id === id)).filter(Boolean) as Layer[];
   if (layers.length === 1) return <LayerInspector session={session} nodeId={nodeId} scene={scene} layer={layers[0]} />;
+  if (!layers.length && ui.selectedLayers.length === 1) {
+    // An element this page shows but does not own: inherited or global.
+    const ctxEl = pageElements(session, nodeId).find((e) => e.layer.id === ui.selectedLayers[0] && e.origin !== 'own');
+    if (ctxEl) {
+      const def = session.engine.layerTypes.get(ctxEl.layer.type);
+      return (
+        <div className="inspector-body">
+          <div className="insp-title"><span className="type-chip"><Icon name={def?.icon || 'layers'} size={14} />{def ? t(def.label) : ctxEl.layer.type}</span></div>
+          <div className="insp-context">
+            <div className="insp-context-name"><Icon name={ctxEl.origin === 'global' ? 'globe' : 'inherit'} size={15} />{ctxEl.layer.name}</div>
+            <p className="muted small">{ctxEl.origin === 'global' ? t('global.inspectorText') : t(ctxEl.paused ? 'inherit.inspectorPaused' : 'inherit.inspectorText', { page: pageName(session, ctxEl.from) })}</p>
+            {ctxEl.origin === 'global'
+              ? <><Button icon="arrowRight" onClick={() => openGlobalPage(session, ctxEl.layer.id)}>{t('global.editOn')}</Button> <Button icon="arrowDown" onClick={() => moveElements(session, GLOBAL_NODE_ID, nodeId, [ctxEl.layer.id])}>{t('global.moveHere')}</Button></>
+              : <Button icon="arrowRight" onClick={() => revealElement(session, ctxEl.from!, ctxEl.layer.id)}>{t('inherit.open', { page: pageName(session, ctxEl.from) })}</Button>}
+            <p className="muted small">{t('inherit.scriptsTip')}</p>
+          </div>
+        </div>
+      );
+    }
+  }
   if (layers.length > 1) {
     return (
       <div className="inspector-body">
         <div className="insp-title"><Icon name="layers" size={16} /> {t('inspector.nLayers', { n: layers.length })}</div>
+      </div>
+    );
+  }
+  if (nodeId === GLOBAL_NODE_ID) {
+    return (
+      <div className="inspector-body">
+        <div className="insp-title"><Icon name="globe" size={16} /> {t('global.title')}</div>
+        <div className="insp-context">
+          <p className="muted small">{t('global.note')}</p>
+          <p className="muted small">{t('global.inspectorHelp')}</p>
+        </div>
       </div>
     );
   }
@@ -65,6 +99,19 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
             updateScene(session, nodeId, t('choice.edit'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.name = String(v).slice(0, 40) || l.name; }, `p-${layer.id}-name`);
           }
         }} />
+      {layer.type === 'core.sprite' && (
+        <Section id="insp.sprite.frames" title={t('sprite.frames')} tip={t('sprite.framesHint')}>
+          <SpriteFramesEditor session={session} nodeId={nodeId} layer={layer} settings={false} />
+        </Section>
+      )}
+      {nodeId === GLOBAL_NODE_ID && def?.visual !== false && (
+        <Field label={t('global.zone')}>
+          <Select value={layer.zone || 'front'} options={[{ value: 'front', label: t('global.zone.front') }, { value: 'back', label: t('global.zone.back') }]} onChange={(v) => updateScene(session, nodeId, t('global.behind'), (s) => { const l = s.layers.find((x) => x.id === layer.id); if (l) l.zone = v as any; })} />
+        </Field>
+      )}
+      <Section id="insp.params" title={<>{t('params.title')}{layer.params?.length ? <span className="muted"> {layer.params.length}</span> : null}</>} tip={t('params.hint')} defaultOpen={!!layer.params?.length}>
+        <ParamsEditor session={session} nodeId={nodeId} layer={layer} />
+      </Section>
       {layer.type === CHOICE_LAYER && (
         <Section id="insp.choice.effects" title={t('choice.effects')} tip={t('choice.effectsHint')}>
           <ChoiceEffects session={session} nodeId={nodeId} layer={layer} />

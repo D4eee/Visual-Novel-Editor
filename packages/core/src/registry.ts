@@ -1,4 +1,4 @@
-import type { Block, Issue, Layer, Project, StoryNode, VarValue } from './types';
+import type { Block, Issue, Layer, Project, StoryNode, VarValue, VarType } from './types';
 import type { ExprFunction } from './expr';
 import { Emitter } from './util';
 
@@ -67,7 +67,7 @@ export class Registry<T extends Registrable> {
 export type PropType =
   | 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select'
   | 'asset' | 'character' | 'portrait' | 'variable' | 'layer' | 'animation'
-  | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr';
+  | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item';
 
 export interface PropDef {
   key: string;
@@ -161,6 +161,18 @@ export interface LayerTypeDef extends Registrable {
    * clicks, hover and the "mouse inside" block. Default: the layer's rectangle.
    */
   hitTest?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }): boolean;
+  /**
+   * Advance the element's live state each frame while the game plays (sprites step their
+   * frames this way). `state` is the element's current property values; change it in place.
+   */
+  step?(state: Record<string, any>, dt: number, ctx: { layer: Layer; emit(e: { type: string; [k: string]: any }): void; runtime: any }): void;
+  /**
+   * A click on the element while the game plays, in local coordinates. Return true when the
+   * element handled it (the inventory selects the item under the pointer this way).
+   */
+  pointer?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }, ctx: { emit(e: { type: string; [k: string]: any }): void; runtime: any }): boolean;
+  /** Always receives clicks (even when no script listens to it). */
+  interactive?: boolean;
 }
 
 export interface LayerInstance {
@@ -200,17 +212,24 @@ export interface InterpolatorDef extends Registrable {
  * reporter (round) and boolean (pointed): values that go into other blocks' slots.
  */
 export type BlockShape = 'hat' | 'statement' | 'c' | 'c-else' | 'cap' | 'reporter' | 'boolean';
-export type BlockCategory = 'elements' | 'events' | 'control' | 'looks' | 'sound' | 'sensing' | 'variables' | 'story' | 'operators' | 'module';
+export type BlockCategory = 'elements' | 'events' | 'control' | 'looks' | 'sound' | 'sensing' | 'variables' | 'story' | 'operators' | 'game' | 'module';
 
 export interface BlockArgDef {
   id: string;
   type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line'
-    | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message';
+    | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message'
+    | 'item' | 'param';
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';
   /** `layer` arguments: element types this slot accepts (default: any element). */
   layerTypes?: string[];
+  /** `variable` arguments: only variables of this type (e.g. 'list'). */
+  varType?: VarType;
+  /** `param` arguments: the id of the `layer` argument whose parameters are listed. */
+  paramOf?: string;
+  /** Text and number arguments may be left empty (shown as a hint, passed as null). */
+  optional?: boolean;
 }
 
 export interface BlockDef extends Registrable {

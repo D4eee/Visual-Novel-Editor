@@ -13,6 +13,11 @@ import { ModuleWorkspace } from '../modules/ModuleWorkspace';
 import { Tabs, Button, useResizable } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { Modal } from '../ui/Modal';
+import { GLOBAL_NODE_ID } from '@vne/core';
+import { GamePanel, GameModal } from '../script/GameEditors';
+import type { GameOpen } from '../script/GameEditors';
+import { pageElements } from './pageContext';
+import { useState } from 'react';
 
 export function SceneEditor({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
   useSession(session);
@@ -24,6 +29,7 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
   const [dockH, startDock] = useResizable('scene.dock', 300, 160, 640);
   if (!node || !scene) return null;
   const chapter = session.project.chapters.find((c) => c.id === node.chapterId);
+  const isGlobal = nodeId === GLOBAL_NODE_ID;
   const bottomPanels = session.ext.panels.filter((p) => p.location === 'bottom');
   const tabs = [
     { id: 'timeline', label: t('scene.timeline'), icon: 'timeline', badge: scene.animations.length || null },
@@ -34,17 +40,24 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
   return (
     <div className="scene-editor">
       <div className="node-head">
-        <div className="crumbs">
-          <button type="button" className="crumb" onClick={() => session.setUI({ chapterId: node.chapterId, active: 0 })}><Icon name="book" size={13} />{chapter?.name}</button>
-          <Icon name="chevronRight" size={12} />
-          <span className="crumb current"><Icon name="scene" size={13} />#{scene.number} {node.name}</span>
-        </div>
+        {isGlobal ? (
+          <div className="crumbs">
+            <span className="crumb current"><Icon name="globe" size={13} />{t('global.title')}</span>
+            <span className="muted small global-hint">{t('global.headerHint')}</span>
+          </div>
+        ) : (
+          <div className="crumbs">
+            <button type="button" className="crumb" onClick={() => session.setUI({ chapterId: node.chapterId, active: 0 })}><Icon name="book" size={13} />{chapter?.name}</button>
+            <Icon name="chevronRight" size={12} />
+            <span className="crumb current"><Icon name="scene" size={13} />#{scene.number} {node.name}</span>
+          </div>
+        )}
         <Tabs value={ui.subTab} onChange={(v) => session.setSceneUI(nodeId, { subTab: v })} tabs={[
           { id: 'composition', label: t('workspace.composition'), icon: 'layers' },
           { id: 'modules', label: t('workspace.modules'), icon: 'module', badge: node.modules.length || null },
         ]} />
         <div className="grow" />
-        <Button small icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now() } })} title={t('preview.thisScene')}>{t('preview.thisScene')}</Button>
+        {!isGlobal && <Button small icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now() } })} title={t('preview.thisScene')}>{t('preview.thisScene')}</Button>}
       </div>
       {ui.effectsOpen && ui.selectedLayers[0] && (
         <Modal title={t('effects.editFor', { layer: scene.layers.find((l) => l.id === ui.selectedLayers[0])?.name || '' })} icon={<Icon name="sparkles" size={16} />} width={1100} onClose={() => session.setSceneUI(nodeId, { effectsOpen: false })}>
@@ -81,7 +94,10 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
   const t = useT();
   const ui = session.sceneUI(nodeId);
   const stacks: WStack[] = scene.scripts.map((s) => ({ ...s }));
-  const layer = scene.layers.find((l) => l.id === ui.selectedLayers[0]);
+  // The selected element may also be an inherited or a global one.
+  const layer = pageElements(session, nodeId).find((e) => e.layer.id === ui.selectedLayers[0])?.layer;
+  const [gameOpen, setGameOpen] = useState<GameOpen>(null);
+  const isGlobal = nodeId === GLOBAL_NODE_ID;
   const testing = !!(session.ui.preview?.docked && session.ui.preview.nodeId === nodeId);
   const { width: W, height: H } = session.project.settings.resolution;
   return (
@@ -101,8 +117,14 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
       selectedLayer={layer?.id || null}
       onSelectLayer={(id) => session.setSceneUI(nodeId, { selectedLayers: [id] })}
       onNewElement={(e) => openMenu(e, addLayerMenu(session, nodeId, t, { x: W / 2, y: H / 2 }, { fromScripts: true }))}
-      header={(
+      onOpenElement={(id) => setGameOpen({ kind: 'element', id })}
+      categoryExtra={(cat, api) => cat === 'game' ? <GamePanel session={session} nodeId={nodeId} api={api} setOpen={setGameOpen} /> : null}
+      header={isGlobal ? (
+        <div className="blk-test-bar"><Icon name="globe" size={13} /><span className="muted small">{t('global.scriptsHint')}</span>
+          <GameModal session={session} nodeId={nodeId} open={gameOpen} onClose={() => setGameOpen(null)} /></div>
+      ) : (
         <div className="blk-test-bar">
+          <GameModal session={session} nodeId={nodeId} open={gameOpen} onClose={() => setGameOpen(null)} />
           {testing
             ? <Button small icon="stop" onClick={() => session.setUI({ preview: null })}>{t('script.stopTest')}</Button>
             : <Button small kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now(), docked: true } })} title={t('script.testHint')}>{t('script.test')}</Button>}

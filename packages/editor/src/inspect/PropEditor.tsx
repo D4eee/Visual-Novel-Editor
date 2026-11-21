@@ -68,6 +68,9 @@ export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; 
     case 'layer':
       control = <Select value={value || ''} placeholder={t('common.choose')} options={(ctx.scene?.layers || []).map((x) => ({ value: x.id, label: x.name }))} onChange={(v) => onChange(v)} />;
       break;
+    case 'item':
+      control = <Select value={value || ''} placeholder={t('items.none')} options={[{ value: '', label: t('items.none') }, ...ctx.project.items.map((x) => ({ value: x.id, label: x.name }))]} onChange={(v) => onChange(v || null)} />;
+      break;
     case 'animation':
       control = <Select value={value || ''} placeholder={t('common.choose')} options={(ctx.scene?.animations || []).map((x) => ({ value: x.id, label: x.name }))} onChange={(v) => onChange(v)} />;
       break;

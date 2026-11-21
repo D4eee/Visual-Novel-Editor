@@ -8,6 +8,8 @@ import { useSession, useT, store } from '../state/store';
 import { Icon } from '../ui/Icon';
 import { IconButton, cx } from '../ui/controls';
 import { openMenu } from '../ui/Menu';
+import { GLOBAL_NODE_ID } from '@vne/core';
+import { openGlobalPage } from '../scene/pageContext';
 
 function sceneNum(n: StoryNode): number {
   const v = parseFloat((n.data as SceneData)?.number);
@@ -111,6 +113,10 @@ export function StoryOutline({ session }: { session: ProjectSession }) {
           </div>
           <button type="button" className={cx('chapter-row', 'overview', ui.overview && session.ui.active === 0 && 'active')} onClick={() => session.setUI({ overview: true, active: 0 })}>
             <Icon name="book" size={14} /><span className="outline-name">{t('graph.overview')}</span>
+          </button>
+          <button type="button" className={cx('chapter-row', 'overview', 'global-row', (session.ui.tabs[session.ui.active] as any)?.nodeId === GLOBAL_NODE_ID && 'active')} onClick={() => openGlobalPage(session)} title={t('global.outlineHint')}>
+            <Icon name="globe" size={14} /><span className="outline-name">{t('global.title')}</span>
+            {(project.nodes[GLOBAL_NODE_ID]?.data as SceneData | undefined)?.layers.length ? <span className="count">{(project.nodes[GLOBAL_NODE_ID].data as SceneData).layers.length}</span> : null}
           </button>
           {project.chapters.map((c, idx) => {
             const nodes = nodesInChapter(project, c.id);

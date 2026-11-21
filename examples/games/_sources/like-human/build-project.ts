@@ -11,7 +11,7 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  createProject, createSceneData, createLayer, I18n, validateProject, serializeProject, loadProject,
+  createProject, createSceneData, createLayer, I18n, ensureGlobalNode, validateProject, serializeProject, loadProject,
   type Project, type StoryNode, type Layer, type AnimationClip, type Track, type Block, type ScriptStack, type Choice, type Expr, type DialogueLine, type EffectGraph,
 } from '@vne/core';
 import { createEngine, ModuleHost } from '@vne/runtime';
@@ -48,7 +48,7 @@ for (const sub of ['images', 'audio', 'video']) {
     }
     const id = `ast_${name}`;
     A[name] = id;
-    p.assets.push({ id, name, kind, path: `assets/${sub}/${f}`, size: statSync(file).size, hash: createHash('sha1').update(buf).digest('hex'), tags: [sub === 'images' ? (name.startsWith('bg_') ? 'background' : name === 'icon' ? 'ui' : 'character') : name.split('_')[0]], meta, imported: '2026-11-19T00:00:00.000Z' });
+    p.assets.push({ id, name, kind, path: `assets/${sub}/${f}`, size: statSync(file).size, hash: createHash('sha1').update(buf).digest('hex'), tags: [sub === 'images' ? (name.startsWith('bg_') ? 'background' : name === 'icon' || name.startsWith('item_') || name.startsWith('led_') ? 'ui' : 'character') : name.split('_')[0]], meta, imported: '2026-11-19T00:00:00.000Z' });
   }
 }
 
@@ -57,7 +57,7 @@ Object.assign(p, { id: 'prj_like_human', created: '2026-11-19T00:00:00.000Z' });
 p.settings.title = 'Like Human';
 p.settings.author = 'Visual Novel Editor examples';
 p.settings.identifier = 'com.example.likehuman';
-p.settings.description = 'A short story about an android and the engineer who built her. Shows every major feature: branching, conditions, cross-chapter jumps, animation, effects, scripts and modules.';
+p.settings.description = 'A short story about an android and the engineer who built her. Shows every major feature: branching, conditions, cross-chapter jumps, animation, effects, scripts, modules and the Game module (a collectible, a global inventory, a sprite and page-to-page inheritance).';
 p.settings.iconAssetId = A.icon;
 p.settings.titleScreen = { backgroundAssetId: A.bg_title, musicAssetId: A.bgm_lab, showTitle: true };
 p.settings.textbox.showPortrait = false;
@@ -182,7 +182,9 @@ const S1 = scene(ch1.id, 'scn_boot', 'Boot sequence', '1', 300, 200, (d) => {
   const hud = layer('core.text', 'Boot text', { x: 40, y: 36, anchorX: 0, anchorY: 0, text: 'UNIT 7 // VISUAL INPUT ONLINE', fontFamily: 'ui-monospace, Menlo, Consolas, monospace', fontSize: 22, color: '#7ff3ff', width: 700, reveal: 0 });
   const bubble = modLayer('com.example.speech-bubble/bubble', 'Hint bubble', { x: 1010, y: 150, anchorX: 0.2, anchorY: 1, text: 'Psst… click me!', width: 240, fontSize: 24, tail: 'bottomLeft', style: 'speech', pop: 0, fill: '#ffffff', textColor: '#1d1d27' });
   const music = layer('core.audio', 'Lab music', { assetId: A.bgm_lab, category: 'bgm', autoplay: true, loop: true, volume: 0.6, persist: true });
-  d.layers.push(back, dust, mika, bubble, hud, music);
+  // A sprite (frame animation): Seven's status light blinks red → amber → cyan.
+  const light = layer('core.sprite', 'Status light', { x: 1226, y: 52, width: 56, height: 56, frames: [{ assetId: A.led_0 }, { assetId: A.led_1 }, { assetId: A.led_2 }], frame: 1, fps: 3, playing: true, loop: true });
+  d.layers.push(back, dust, mika, bubble, hud, light, music);
   // "Opening the eyes": a slow fade in from black.
   d.transition = { type: 'fade', duration: 2.2 };
   bubble.visible = false;
@@ -290,13 +292,21 @@ node('core.comment', ch1.id, 'nod_note1', 'Note', 300, 520, { text: 'Click Mika 
 /* ================================================================ Chapter 2 */
 const JO = node('core.jumpOut', ch2.id, 'nod_from_lab', 'From the lab', 0, 240, { number: 1 });
 
+let rainSound: Layer;
 const S5 = scene(ch2.id, 'scn_rooftop', 'Rooftop', '5', 300, 200, (d) => {
   const rain = layer('core.particles', 'Rain', { kind: 'rain', count: 220, speed: 1.2, color: '#9fb6ff' });
   const mika = charLayer(MIKA, 'por_mika_neutral', 400);
   const seven = charLayer(SEVEN, 'por_seven_neutral', 880, 'Seven', { float: 6 });
   const card = layer('core.composition', 'Title card', { compositionId: 'cmp_title_card', x: 80, y: 90, anchorX: 0, anchorY: 0, opacity: 0 });
-  d.layers.push(bg('bg_rooftop'), rain, mika, seven, card,
-    layer('core.audio', 'Rain', { assetId: A.amb_rain, category: 'ambient', autoplay: true, loop: true, volume: 0.35, persist: false }),
+  // A collectible: Mika's old photo lies on the rooftop. Clicking it picks it up (Game module).
+  const photo = layer('core.image', 'Old photo', { assetId: A.item_photo, x: 130, y: 470, width: 104, height: 104, rotation: -14 });
+  d.scripts.push(stack(B('core.whenLayerClicked', { layer: photo.id }), [
+    B('core.pickUp', { layer: photo.id, item: 'itm_photo' }),
+    B('core.playSound', { asset: A.sfx_beep, volume: 0.6 }),
+  ], 40, 260));
+  rainSound = layer('core.audio', 'Rain', { assetId: A.amb_rain, category: 'ambient', autoplay: true, loop: true, volume: 0.35, persist: false });
+  d.layers.push(bg('bg_rooftop'), rain, photo, mika, seven, card,
+    rainSound,
     layer('core.audio', 'City music', { assetId: A.bgm_city, category: 'bgm', autoplay: true, loop: true, volume: 0.6, persist: true }));
   d.animations.push(clip('Title card', 4.5, [
     [card.id, 'opacity', [[0.3, 0, 'easeOut'], [1.2, 1, 'linear'], [3.4, 1, 'easeIn'], [4.4, 0]]],
@@ -324,6 +334,8 @@ const S6b = scene(ch2.id, 'scn_learning', 'Learning', '7', 620, 360, (d) => {
   d.layers.push(bg('bg_rooftop'), layer('core.particles', 'Rain', { kind: 'rain', count: 220, speed: 1.2, color: '#9fb6ff' }), charLayer(MIKA, 'por_mika_smile', 400), charLayer(SEVEN, 'por_seven_neutral', 880, 'Seven', { float: 6 }));
   d.dialogue.push(line('That’s fine. Nobody really does.', MIKA, 'por_mika_smile'), line('You learn it by noticing what you miss when it’s gone.', MIKA, 'por_mika_neutral'));
 });
+// The rain sound keeps playing on the next rooftop page (inherited), then stays behind when the story goes indoors.
+for (const n of [S6a, S6b]) (n.data as any).scripts.push(stack(B('core.whenSceneStarts'), [B('core.onLeaveRemove', { layer: rainSound!.id })], 40, 420));
 edge(S5.id, 'c:cho_like_you', S6a.id);
 edge(S5.id, 'c:cho_learning', S6b.id);
 
@@ -341,7 +353,13 @@ const S7 = scene(ch2.id, 'scn_memory', 'Memory', '8', 940, 220, (d) => {
     line('Then he got sick. And the room got very quiet.', MIKA, 'por_mika_sad'),
     line('She is reaching for your hand.', null, null, { speakerName: '' }),
   );
-  d.choices.push(choice('cho_hold', 'Hold her hand.', { effects: [{ varId: 'var_empathy', op: 'add', value: 1 }] }), choice('cho_wait', '( Do nothing )'));
+  d.choices.push(
+    choice('cho_hold', 'Hold her hand.', { effects: [{ varId: 'var_empathy', op: 'add', value: 1 }] }),
+    // Only available with the photo found on the rooftop; choosing it gives the photo back.
+    choice('cho_photo', 'Give her the old photo.', { unavailable: 'disable', requiresItem: 'itm_photo', consumeItem: true, effects: [{ varId: 'var_empathy', op: 'add', value: 2 }] } as any),
+    choice('cho_wait', '( Do nothing )'));
+  // The old TV stays in this room: without this rule its looping video would carry on to the next page.
+  d.scripts.push(stack(B('core.whenSceneStarts'), [B('core.onLeaveRemove', { layer: tv.id })], 40, 300));
 });
 S7.modules.push({ id: 'mi_timer_memory', moduleId: 'com.example.timed-choices', component: 'com.example.timed-choices/timer', enabled: true, data: { seconds: 8, defaultChoice: 'cho_wait', color: '#ffcc66' } });
 edge(S6a.id, 'next', S7.id);
@@ -349,10 +367,12 @@ edge(S6b.id, 'next', S7.id);
 
 // The hold-hand choice also raises affection through a script block.
 (S7.data as any).scripts.push(stack(B('core.whenChoiceSelected', { choice: 'cho_hold' }), [B(`${REL}/change`, { character: MIKA, delta: 2 })]));
+(S7.data as any).scripts.push(stack(B('core.whenChoiceSelected', { choice: 'cho_photo' }), [B(`${REL}/change`, { character: MIKA, delta: 4 })], 40, 160));
 
 const BR = node(`${REL}/branch`, ch2.id, 'nod_affection', 'Does Mika trust Seven?', 1240, 240, { characterId: MIKA, threshold: null });
 edge(S7.id, 'c:cho_hold', BR.id);
 edge(S7.id, 'c:cho_wait', BR.id);
+edge(S7.id, 'c:cho_photo', BR.id);
 
 const S8 = scene(ch2.id, 'scn_dawn', 'Dawn', '9', 1520, 100, (d) => {
   const mika = charLayer(MIKA, 'por_mika_smile', 420);
@@ -380,6 +400,22 @@ const E2 = node('core.ending', ch2.id, 'nod_end_machine', 'Ending: Just a Machin
 edge(S8.id, 'next', E1.id);
 edge(S9.id, 'next', E2.id);
 node('core.comment', ch2.id, 'nod_note2', 'Note', 940, 480, { text: 'Memory has a Timed Choices module (Modules tab) and uses the shared “Old film” effect.\nThe pink node is an Affection Branch from the Relationships module.', width: 440, height: 110 });
+
+/* ---------------------------------------------------------------- Game module: collectibles and the global page */
+p.items.push({ id: 'itm_photo', name: 'Old photo', assetId: A.item_photo, description: 'Mika and her father in his TV repair room.' });
+p.variables.push({ id: 'var_inventory', name: 'inventory', type: 'list', initial: [], scope: 'game', description: 'Collected items (the inventory).' });
+p.inventoryVarId = 'var_inventory';
+{
+  const g = ensureGlobalNode(p).data as any;
+  // An inventory shown on every page (top right), only once something has been collected.
+  const bag = layer('core.inventory', 'Inventory', { x: 1256, y: 24, anchorX: 1, anchorY: 0, columns: 3, rows: 1, slotSize: 64, gap: 8, padding: 8, radius: 10 }, { visible: false });
+  g.layers.push(bag);
+  g.scripts.push(
+    stack(B('core.whenSceneStarts'), [B('core.ifElse', { cond: op('>', { k: 'fn', fn: 'length', args: [v('var_inventory')] } as any, lit(0)) }, [B('core.show', { layer: bag.id })])], 40, 40),
+    stack(B('core.whenItemCollected'), [B('core.fadeIn', { layer: bag.id, seconds: 0.4 })], 40, 220),
+  );
+  g.scripts[0].body[0].else = [B('core.hide', { layer: bag.id })];
+}
 
 /* ---------------------------------------------------------------- convert lines and choices into scene elements */
 {

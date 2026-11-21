@@ -20,6 +20,8 @@ export interface EditViewOptions {
   instances?: Map<string, LayerInstance>;
   /** Hide layers (e.g. editor "solo" or temporary hide). */
   hidden?: Set<string>;
+  /** Elements drawn with the page but not part of it (global and inherited), behind and in front. */
+  context?: { under: Layer[]; over: Layer[] };
 }
 
 /**
@@ -42,7 +44,7 @@ export function createEditView(o: EditViewOptions): SceneView {
     engine: o.engine,
     project: o.project,
     assets: o.assets,
-    layers: o.scene.layers,
+    layers: o.context ? [...o.context.under, ...o.scene.layers, ...o.context.over] : o.scene.layers,
     mode: 'edit',
     time: o.time,
     vars: o.vars,

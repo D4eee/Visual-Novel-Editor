@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Asset, AssetKind } from '@vne/core';
-import { assetUsage } from '@vne/core';
+import { assetUsage, hasSceneData } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { call, droppedPath, fileToBase64, isElectron } from '../host';
@@ -177,7 +177,7 @@ function AssetDetails({ session, asset, uses, onRelink, onRemove, onClose }: { s
           return (
             <button key={i} type="button" className="link-row" disabled={!node} onClick={() => {
               if (!node) return;
-              if (node.type === 'core.scene') { session.openNode(node.id); if (u.layerId) session.setSceneUI(node.id, { selectedLayers: [u.layerId] }); }
+              if (hasSceneData(node)) { session.openNode(node.id); if (u.layerId) session.setSceneUI(node.id, { selectedLayers: [u.layerId] }); }
               else session.focusNode(node.id);
             }}>
               <Icon name={node ? 'scene' : 'settings'} size={13} /><span>{node ? node.name : t(`refs.${u.path.split('.')[0]}`)}</span>

@@ -1,5 +1,5 @@
-import type { Layer, LayerInstance, SceneData, StoryNode, Choice, PropDef, ModuleInstance, ComponentDef } from '@vne/core';
-import { evaluateBool, applyVarOp, choicePort, Emitter, sceneLines, sceneChoices, CHOICE_LAYER } from '@vne/core';
+import type { Layer, LayerInstance, SceneData, StoryNode, Choice, PropDef, ModuleInstance, ComponentDef, AnimationClip, ScriptStack } from '@vne/core';
+import { evaluateBool, applyVarOp, choicePort, Emitter, sceneLines, sceneChoices, CHOICE_LAYER, leavePolicies, isContinuousScript, scriptElements, newId, isMusic } from '@vne/core';
 import type { Project } from '@vne/core';
 import { interpolateVars } from './text';
 import type { VarStore } from './state';
@@ -9,16 +9,44 @@ export function interpolateVarsCompat(text: string, project: Project, vars: VarS
     const v = project.variables.find((x) => x.name === name) || vars.byName(name);
     if (!v) return undefined;
     const val = vars.get(v.id);
-    return val === undefined ? undefined : String(val);
+    return val === undefined ? undefined : Array.isArray(val) ? val.join(', ') : String(val);
   });
 }
 import { AnimationPlayer, propKind } from './animation';
+import type { PlayingClip } from './animation';
+import { paramDefaults } from './globals';
 import { ScriptEngine, ScriptHost, CancelToken, RuntimeEvent } from './script';
 import type { SceneView } from './render';
-import { hitTest, computeDrives, layerContains, layerBounds, effectiveVisible } from './render';
+import { hitTest, computeDrives, layerContains, layerBounds, effectiveVisible, layerLocalPoint } from './render';
 import { lerp, lerpColor, num } from './math';
 import { portraitAsset } from './builtins/layers';
 import type { GameRuntime } from './game';
+
+/** An element that keeps running from the previous page. */
+export interface CarriedLayer {
+  layer: Layer;
+  /** The page it was created on. */
+  from: string;
+  paused: boolean;
+  state: Record<string, any>;
+  visible: boolean;
+  instance?: LayerInstance;
+}
+
+export interface CarriedScript {
+  stack: ScriptStack;
+  from: string;
+  paused: boolean;
+  /** It had a thread running (a loop) when the page changed: it starts again on the new page. */
+  running: boolean;
+}
+
+/** What one page hands to the next (see inherit.ts in core for the rules). */
+export interface Carry {
+  layers: CarriedLayer[];
+  scripts: CarriedScript[];
+  clips: PlayingClip[];
+}
 
 interface Tween { layerId: string; prop: string; from: any; to: any; elapsed: number; dur: number; ease: string; kind: 'number' | 'color' | 'discrete'; resolve: () => void; token?: CancelToken }
 
@@ -53,18 +81,60 @@ export class ScenePlayer {
   time = 0;
   textboxVisible: boolean;
   exitPort: string | null = null;
+  /** Every element on this page, bottom to top: global (behind), carried backgrounds, own, carried, labels, global (front). */
+  layers: Layer[] = [];
+  /** Elements continuing from earlier pages. */
+  readonly carried = new Map<string, CarriedLayer>();
+  /** Global elements (shared by every page). */
+  readonly globalIds = new Set<string>();
+  /** Paused elements (media, animations and frame playback stop) and scripts. */
+  readonly pausedLayers = new Set<string>();
+  readonly pausedScripts = new Set<string>();
+  /** Text labels shown by this page's scripts. */
+  readonly labels: Layer[] = [];
+  /** Live label texts (re-evaluated every frame). */
+  private labelValues = new Map<string, () => string>();
+  /** "When the page changes" rules met while the page played. */
+  readonly leave = { removeLayers: new Set<string>(), pauseLayers: new Set<string>(), removeScripts: new Set<string>(), pauseScripts: new Set<string>() };
+  private carriedScripts: CarriedScript[] = [];
+  private carriedClips: AnimationClip[] = [];
+  private zOrder: { id: string; to: 'front' | 'back' }[] = [];
+  private frozenRunning = new Set<string>();
+  private handedOff = new Set<string>();
 
-  constructor(readonly rt: GameRuntime, readonly node: StoryNode<SceneData>, private resumeLine = 0) {
+  constructor(readonly rt: GameRuntime, readonly node: StoryNode<SceneData>, private resumeLine = 0, carry: Carry | null = null) {
     this.data = node.data;
     this.textboxVisible = !this.data.hideTextbox;
+    const g = rt.globals;
+    g.ensure();
     for (const l of this.data.layers) {
-      this.layerState.set(l.id, { ...l.props });
-      this.visibleState.set(l.id, l.visible);
+      this.layerState.set(l.id, { ...paramDefaults(l), ...l.props });
+      this.visibleState.set(l.id, l.visible && !rt.items.collected.has(`${node.id}:${l.id}`));
     }
+    for (const l of g.layers) {
+      this.globalIds.add(l.id);
+      this.layerState.set(l.id, g.layerState.get(l.id)!);
+      this.visibleState.set(l.id, g.visibleState.get(l.id) ?? l.visible);
+      const inst = g.instances.get(l.id);
+      if (inst) this.instances.set(l.id, inst);
+    }
+    for (const l of g.labels) { this.layerState.set(l.id, { ...l.props }); this.visibleState.set(l.id, true); }
+    for (const c of carry?.layers || []) {
+      if (this.layerState.has(c.layer.id)) continue;
+      this.carried.set(c.layer.id, c);
+      this.layerState.set(c.layer.id, c.state);
+      this.visibleState.set(c.layer.id, c.visible);
+      if (c.instance) this.instances.set(c.layer.id, c.instance);
+      if (c.paused) this.pausedLayers.add(c.layer.id);
+    }
+    this.carriedScripts = (carry?.scripts || []).filter((c) => !this.data.scripts.some((x) => x.id === c.stack.id));
+    for (const c of this.carriedScripts) if (c.paused) this.pausedScripts.add(c.stack.id);
+    this.carriedClips = (carry?.clips || []).map((p) => p.clip);
     for (const c of sceneChoices(this.data)) this.choiceVisible.set(c.id, !c.hidden);
     const engine = rt.engine;
     this.view = {
-      engine, project: rt.project, assets: rt.assets, layers: this.data.layers, mode: 'play', time: 0, vars: rt.vars,
+      engine, project: rt.project, assets: rt.assets, layers: [], mode: 'play', time: 0, vars: rt.vars,
+      items: { list: (v) => rt.items.list(v ?? null), selected: () => rt.items.selected },
       props: (l: Layer) => {
         const base = this.layerState.get(l.id) || l.props;
         const d = this.drives.get(l.id);
@@ -76,9 +146,10 @@ export class ScenePlayer {
       pool: rt.pool, shaders: rt.shaders, errors: new Map(),
       reportError: (source, err) => rt.reportError(source, err, { nodeId: node.id }),
     };
+    this.rebuildLayers();
     this.anim = new AnimationPlayer(
       engine,
-      () => this.data.animations,
+      () => this.clips,
       (layerId, prop) => this.propDef(layerId, prop),
       (layerId, prop, v) => this.writeProp(layerId, prop, v),
       (animId) => this.dispatch({ type: 'anim.finished', animId }),
@@ -92,12 +163,62 @@ export class ScenePlayer {
       reportError: (source, err, extra) => rt.reportError(source, err, { ...extra, nodeId: node.id }),
       trace: (blockId) => rt.debug.emit('block', { blockId, nodeId: node.id }),
     };
-    this.scripts = new ScriptEngine(host, () => this.data.scripts);
+    host.functions = rt.functions;
+    this.scripts = new ScriptEngine(host, () => this.stacks);
+    // Scripts continuing from the last page do not start again on "when the page starts".
+    const carriedIds = new Set(this.carriedScripts.map((c) => c.stack.id));
+    this.scripts.skip = (st, e) => e.type === 'scene.enter' && carriedIds.has(st.id);
+    for (const p of carry?.clips || []) {
+      this.anim.adopt(p);
+      const layers = p.clip.tracks.map((t) => t.layerId);
+      if (layers.length && layers.every((id) => this.pausedLayers.has(id))) this.anim.setPaused(p.clip.id, true);
+    }
+  }
+
+  /** Scripts of this page: the global page's, the carried ones (unless paused) and its own. */
+  get stacks(): ScriptStack[] {
+    const all = [...(this.rt.globals.data?.scripts || []), ...this.carriedScripts.map((c) => c.stack), ...this.data.scripts];
+    return all.filter((s) => !this.pausedScripts.has(s.id));
+  }
+
+  /** Every script on this page, paused ones included. */
+  get allStacks(): ScriptStack[] {
+    return [...(this.rt.globals.data?.scripts || []), ...this.carriedScripts.map((c) => c.stack), ...this.data.scripts];
+  }
+
+  get clips(): AnimationClip[] {
+    return [...(this.rt.globals.data?.animations || []), ...this.carriedClips, ...this.data.animations];
+  }
+
+  /** Is this script from the global page? */
+  isGlobalScript(stackId: string): boolean {
+    return !!this.rt.globals.data?.scripts.some((s) => s.id === stackId);
+  }
+
+  private rebuildLayers(): void {
+    const g = this.rt.globals;
+    const back = g.layers.filter((l) => l.zone === 'back');
+    const front = g.layers.filter((l) => l.zone !== 'back');
+    const carried = [...this.carried.values()].map((c) => c.layer);
+    let list = [...back, ...carried.filter((l) => l.type === 'core.background'), ...this.data.layers, ...carried.filter((l) => l.type !== 'core.background'), ...this.labels, ...front, ...g.labels];
+    for (const z of this.zOrder) {
+      const i = list.findIndex((l) => l.id === z.id);
+      if (i < 0) continue;
+      const [l] = list.splice(i, 1);
+      if (z.to === 'front') list.push(l); else list.unshift(l);
+    }
+    this.layers = list;
+    this.view.layers = list;
   }
 
   propDef(layerId: string, prop: string): PropDef | undefined {
-    const l = this.data.layers.find((x) => x.id === layerId);
-    return l ? this.rt.engine.layerProps(l.type).find((p) => p.key === prop) : undefined;
+    const l = this.layer(layerId);
+    if (!l) return undefined;
+    if (prop.startsWith('param.')) {
+      const pd = (l.params || []).find((x) => `param.${x.id}` === prop);
+      return pd ? { key: prop, type: pd.type === 'number' ? 'number' : pd.type === 'boolean' ? 'boolean' : 'string', label: pd.name, animatable: pd.type === 'number' } : undefined;
+    }
+    return this.rt.engine.layerProps(l.type).find((p) => p.key === prop);
   }
 
   private writeProp(layerId: string, prop: string, value: any): void {
@@ -116,7 +237,8 @@ export class ScenePlayer {
       this.dispatch({ type: 'var.changed', varId: c.id, value: c.value });
       if (this.choicesShown) this.renderChoices();
     }));
-    const lrt = { assets: this.rt.assets, audio: this.rt.audio, mode: 'play' as const, emit: (e: RuntimeEvent) => this.dispatch(e), requestRender: () => {} };
+    // Instances may continue on later pages: their events go to whichever page is playing.
+    const lrt = { assets: this.rt.assets, audio: this.rt.audio, mode: 'play' as const, emit: (e: RuntimeEvent) => (this.rt.scene || this).dispatch(e), requestRender: () => {} };
     for (const l of this.data.layers) {
       const def = this.rt.engine.layerTypes.get(l.type);
       if (!def?.createInstance) continue;
@@ -132,6 +254,8 @@ export class ScenePlayer {
       const p = this.layerState.get(l.id)!;
       if ((l.type === 'core.audio' || l.type === 'core.video') && p.autoplay && this.visibleState.get(l.id) !== false) this.instances.get(l.id)?.play?.(0);
     }
+    for (const id of this.pausedLayers) this.instances.get(id)?.pause?.();
+    for (const a of this.rt.globals.data?.animations || []) if (a.autoplay) this.anim.play(a.id);
     for (const a of this.data.animations) if (a.autoplay) this.anim.play(a.id);
     // node components (module instances)
     for (const inst of this.node.modules || []) {
@@ -146,6 +270,8 @@ export class ScenePlayer {
       }
     }
     this.scripts.start();
+    // Loops that were running on the last page carry on.
+    for (const c of this.carriedScripts) if (!c.paused && c.running && !this.scripts.hasSetup(c.stack)) this.scripts.spawn(c.stack, null);
     this.dispatch({ type: 'scene.enter' });
     this.lineIndex = Math.max(0, Math.min(this.resumeLine, this.lines.length));
     this.runNarrative().catch((err) => this.rt.reportError('scene', err, { nodeId: this.node.id }));
@@ -190,6 +316,91 @@ export class ScenePlayer {
     return this.exited;
   }
 
+  /** The page ended: remember which loops were running, then stop the scripts. */
+  freeze(): void {
+    this.frozenRunning = this.scripts.runningStacks();
+    this.scripts.stopAll();
+  }
+
+  /**
+   * What continues on the next page: running media, looping animations, running loops and
+   * timers and the elements they use, and what this page inherited — minus what the
+   * "when the page changes, remove" rules drop; "pause" rules carry it paused.
+   */
+  handOff(next: StoryNode<SceneData> | null): Carry {
+    const engine = this.rt.engine;
+    const pol = leavePolicies(engine, this.allStacks.filter((s) => !this.isGlobalScript(s.id)));
+    for (const k of ['removeLayers', 'pauseLayers', 'removeScripts', 'pauseScripts'] as const) for (const id of this.leave[k]) pol[k].add(id);
+    for (const id of pol.removeLayers) pol.pauseLayers.delete(id);
+    const nextLayers = new Set(next?.data.layers.map((l) => l.id) || []);
+    const nextScripts = new Set(next?.data.scripts.map((s) => s.id) || []);
+    const keep = new Map<string, boolean>(); // id → paused
+    const local = (id: string) => this.data.layers.find((l) => l.id === id) || this.carried.get(id)?.layer;
+    const mark = (id: string, paused: boolean) => {
+      if (!local(id)) return;
+      keep.set(id, keep.has(id) ? keep.get(id)! && paused : paused);
+    };
+    const scripts: CarriedScript[] = [];
+    const candidates: CarriedScript[] = [
+      ...this.carriedScripts.map((c) => ({ ...c, paused: this.pausedScripts.has(c.stack.id) })),
+      ...this.data.scripts.map((st) => ({ stack: st, from: this.node.id, paused: false, running: false })),
+    ];
+    for (const c of candidates) {
+      const st = c.stack;
+      if (!st.enabled || pol.removeScripts.has(st.id) || nextScripts.has(st.id)) continue;
+      const running = this.frozenRunning.has(st.id);
+      const lives = c.paused || this.scripts.hasSetup(st) || (running && isContinuousScript(st));
+      if (!lives) continue;
+      const paused = c.paused || pol.pauseScripts.has(st.id);
+      scripts.push({ stack: st, from: c.from, paused, running: c.paused ? c.running : running });
+      for (const id of scriptElements(engine, st)) mark(id, paused);
+    }
+    for (const l of [...this.data.layers, ...[...this.carried.values()].map((c) => c.layer)]) {
+      const inst = this.instances.get(l.id);
+      if (inst?.isPlaying?.()) mark(l.id, false);
+      else if (this.carried.has(l.id) && this.pausedLayers.has(l.id) && (l.type === 'core.audio' || l.type === 'core.video')) mark(l.id, true);
+    }
+    const clips: PlayingClip[] = [];
+    for (const clip of [...this.carriedClips, ...this.data.animations]) {
+      const p = this.anim.playing.get(clip.id);
+      if (!p || p.done || !p.loop) continue;
+      for (const t of clip.tracks) mark(t.layerId, !!p.paused);
+    }
+    // Groups take their contents along.
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const l of [...this.data.layers, ...[...this.carried.values()].map((c) => c.layer)]) {
+        if (l.parentId && keep.has(l.parentId) && !keep.has(l.id)) { keep.set(l.id, keep.get(l.parentId)!); grew = true; }
+      }
+    }
+    for (const id of pol.removeLayers) keep.delete(id);
+    for (const id of nextLayers) keep.delete(id);
+    // The next page's own music replaces the music channel (it cross-fades by itself).
+    if (next?.data.layers.some((l) => isMusic(l) && l.props.autoplay && l.visible !== false)) for (const id of [...keep.keys()]) { const l = local(id); if (l && isMusic(l)) keep.delete(id); }
+    // Removed media fall silent.
+    for (const l of [...this.data.layers, ...[...this.carried.values()].map((c) => c.layer)]) {
+      if (!keep.has(l.id) && pol.removeLayers.has(l.id)) { try { this.instances.get(l.id)?.stop?.(); } catch { /* ignore */ } }
+    }
+    const layers: CarriedLayer[] = [];
+    for (const [id, pausedFlag] of keep) {
+      const layer = local(id)!;
+      const paused = pausedFlag || pol.pauseLayers.has(id) || (this.pausedLayers.has(id) && !pol.removeLayers.has(id));
+      layers.push({ layer, from: this.carried.get(id)?.from || this.node.id, paused, state: this.layerState.get(id)!, visible: this.visibleState.get(id) ?? layer.visible, instance: this.instances.get(id) });
+      this.handedOff.add(id);
+    }
+    for (const clip of [...this.carriedClips, ...this.data.animations]) {
+      const p = this.anim.playing.get(clip.id);
+      if (!p || p.done || !p.loop || !clip.tracks.length || !clip.tracks.every((t) => keep.has(t.layerId))) continue;
+      const taken = this.anim.detach(clip.id);
+      if (taken) clips.push(taken);
+    }
+    // Keep the order the elements had.
+    const order = new Map(this.layers.map((l, i) => [l.id, i]));
+    layers.sort((a, b) => (order.get(a.layer.id) ?? 0) - (order.get(b.layer.id) ?? 0));
+    return { layers, scripts, clips };
+  }
+
   dispose(): void {
     this.scripts.stopAll();
     this.anim.stopAll();
@@ -199,6 +410,7 @@ export class ScenePlayer {
     }
     for (const f of this.unsub) f();
     for (const [id, inst] of this.instances) {
+      if (this.handedOff.has(id) || this.globalIds.has(id)) continue;
       try { inst.dispose?.(); } catch (err) { this.rt.reportError('layer', err, { layerId: id }); }
     }
     this.instances.clear();
@@ -280,6 +492,7 @@ export class ScenePlayer {
       if (this.exited || picked === '__exit') return;
       const choice = choices.find((c) => c.id === picked)!;
       for (const op of choice.effects) this.rt.vars.set(op.varId, applyVarOp(this.rt.vars.def(op.varId), this.rt.vars.get(op.varId), op));
+      if (choice.requiresItem && choice.consumeItem) this.rt.items.remove(choice.requiresItem);
       this.rt.backlogPush({ kind: 'choice', name: '', text: choice.text, nodeId: this.node.id });
       this.dispatch({ type: 'choice.selected', choiceId: choice.id });
       if (choice.animationId) await this.anim.play(choice.animationId);
@@ -301,6 +514,7 @@ export class ScenePlayer {
       let ok = true;
       try { ok = evaluateBool(c.condition, this.rt.vars, this.rt.functions); }
       catch (err) { this.rt.reportError('choice', err, { nodeId: this.node.id }); }
+      if (ok && c.requiresItem && !this.rt.items.has(c.requiresItem)) ok = false;
       if (!ok && c.unavailable === 'hide') continue;
       out.push({ choice: c, disabled: !ok });
     }
@@ -349,7 +563,21 @@ export class ScenePlayer {
   /* ----------------------------------------------------------------- */
 
   layer(id: string): Layer | undefined {
-    return this.data.layers.find((l) => l.id === id) || this.data.layers.find((l) => l.name === id);
+    if (!id) return undefined;
+    return this.layers.find((l) => l.id === id)
+      || this.data.layers.find((l) => l.name === id)
+      || [...this.carried.values()].find((c) => c.layer.name === id)?.layer
+      || this.layers.find((l) => l.name === id);
+  }
+
+  /** Where an element comes from on this page. */
+  layerOrigin(id: string): 'own' | 'carried' | 'global' | 'label' | null {
+    const l = this.layer(id);
+    if (!l) return null;
+    if (this.globalIds.has(l.id)) return 'global';
+    if (this.carried.has(l.id)) return 'carried';
+    if (this.data.layers.includes(l)) return 'own';
+    return 'label';
   }
 
   private resolveLayer(id: string): string {
@@ -373,6 +601,106 @@ export class ScenePlayer {
   setVisible(layerId: string, v: boolean): void {
     const id = this.resolveLayer(layerId);
     this.visibleState.set(id, v);
+    if (this.globalIds.has(id)) this.rt.globals.visibleState.set(id, v);
+  }
+
+  /* ----------------------------------------------------------------- */
+  /* Game module: order, pause, labels, collectibles                    */
+  /* ----------------------------------------------------------------- */
+
+  /** Bring an element in front of (or behind) everything else on the page. */
+  reorder(layerId: string, to: 'front' | 'back'): void {
+    const id = this.resolveLayer(layerId);
+    this.zOrder = this.zOrder.filter((z) => z.id !== id);
+    this.zOrder.push({ id, to });
+    this.rebuildLayers();
+  }
+
+  /** Pause an element: its media, animations and frame playback stop where they are. */
+  pauseElement(layerId: string): void {
+    const id = this.resolveLayer(layerId);
+    if (this.pausedLayers.has(id)) return;
+    this.pausedLayers.add(id);
+    this.instances.get(id)?.pause?.();
+    for (const c of this.clips) if (c.tracks.some((t) => t.layerId === id)) this.anim.setPaused(c.id, true);
+  }
+
+  /** Resume a paused element (and the paused scripts that use it). Empty: everything paused on this page. */
+  resumeElement(layerId: string | null): void {
+    const ids = layerId ? [this.resolveLayer(layerId)] : [...this.pausedLayers];
+    for (const id of ids) {
+      const was = this.pausedLayers.delete(id);
+      if (was) {
+        const l = this.layer(id);
+        if (l && (l.type === 'core.audio' || l.type === 'core.video')) this.instances.get(id)?.play?.();
+        for (const c of this.clips) if (c.tracks.some((t) => t.layerId === id)) this.anim.setPaused(c.id, false);
+      }
+    }
+    for (const st of this.allStacks) {
+      if (!this.pausedScripts.has(st.id)) continue;
+      if (layerId && !scriptElements(this.rt.engine, st).has(ids[0])) continue;
+      this.resumeScript(st.id);
+    }
+  }
+
+  resumeScript(stackId: string): void {
+    if (!this.pausedScripts.delete(stackId)) return;
+    const st = this.allStacks.find((x) => x.id === stackId);
+    if (!st) return;
+    const carried = this.carriedScripts.find((c) => c.stack.id === stackId);
+    if (!this.scripts.setupStack(st) && carried?.running) this.scripts.spawn(st, null);
+  }
+
+  /** A "when the page changes, remove/pause" block ran. Empty element: this script (its elements follow it). */
+  leaveRule(kind: 'remove' | 'pause', layerId: string | null, stackId: string): void {
+    const remove = kind === 'remove';
+    if (layerId) { (remove ? this.leave.removeLayers : this.leave.pauseLayers).add(this.resolveLayer(layerId)); return; }
+    (remove ? this.leave.removeScripts : this.leave.pauseScripts).add(stackId);
+  }
+
+  /**
+   * Show text at a position (a label). The same name updates the label. The value is
+   * re-read every frame, so a label showing a variable follows it. Labels shown by
+   * global scripts stay on every page.
+   */
+  showLabel(name: string, value: () => string, x: number, y: number, style: { fontSize?: number; color?: string; align?: string } = {}, global = false): void {
+    const list = global ? this.rt.globals.labels : this.labels;
+    const key = String(name || 'label');
+    let l = list.find((x) => x.name === key);
+    if (!l) {
+      l = { id: newId('lbl'), type: 'core.text', name: key, parentId: null, visible: true, locked: true, props: {} };
+      list.push(l);
+    }
+    const props = { ...Object.fromEntries(this.rt.engine.layerProps('core.text').map((d) => [d.key, d.default])), text: value(), x, y, anchorX: style.align === 'center' ? 0.5 : style.align === 'right' ? 1 : 0, anchorY: 0, fontSize: style.fontSize ?? 36, color: style.color ?? '#ffffff', align: style.align || 'left', strokeColor: 'rgba(0,0,0,0.75)', strokeWidth: 4 };
+    l.props = props;
+    this.layerState.set(l.id, { ...props });
+    this.visibleState.set(l.id, true);
+    this.labelValues.set(l.id, value);
+    if (global) this.rt.globals.labelValues.set(l.id, value);
+    this.rebuildLayers();
+  }
+
+  hideLabel(name: string | null): void {
+    for (const list of [this.labels, this.rt.globals.labels]) {
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (name && list[i].name !== String(name)) continue;
+        this.labelValues.delete(list[i].id);
+        this.rt.globals.labelValues.delete(list[i].id);
+        this.layerState.delete(list[i].id);
+        list.splice(i, 1);
+      }
+    }
+    this.rebuildLayers();
+  }
+
+  /** Pick up an element as a collectible: it disappears (also when the page is visited again) and the item goes to the inventory. */
+  pickUp(layerId: string, item: string | null): void {
+    const id = this.resolveLayer(layerId);
+    const l = this.layer(id)!;
+    this.setVisible(id, false);
+    const origin = this.carried.get(id)?.from || this.node.id;
+    if (!this.globalIds.has(id)) this.rt.items.collected.add(`${origin}:${id}`);
+    this.rt.items.add(item || l.name);
   }
 
   tween(layerId: string, prop: string, to: any, seconds: number, ease = 'easeInOut', token?: CancelToken): Promise<void> {
@@ -430,7 +758,21 @@ export class ScenePlayer {
         if (u >= 1) { this.tweens = this.tweens.filter((x) => x !== tw); tw.resolve(); }
       }
     }
-    for (const l of this.data.layers) {
+    for (const [id, fn] of [...this.labelValues, ...this.rt.globals.labelValues]) {
+      const st = this.layerState.get(id);
+      if (!st) continue;
+      try { st.text = fn(); } catch { /* keep the last text */ }
+    }
+    const stepCtx = { emit: (e: RuntimeEvent) => this.dispatch(e), runtime: this.rt.api };
+    for (const l of this.layers) {
+      if (this.pausedLayers.has(l.id)) continue;
+      const def = this.rt.engine.layerTypes.get(l.type);
+      if (!def?.step) continue;
+      const st = this.layerState.get(l.id);
+      if (!st) continue;
+      try { def.step(st, dt, { ...stepCtx, layer: l }); } catch (err) { this.rt.reportError(`layer:${l.type}`, err, { layerId: l.id }); }
+    }
+    for (const l of this.layers) {
       const inst = this.instances.get(l.id);
       if (inst?.update) {
         try { inst.update(dt, this.view.props(l), this.time); } catch (err) { this.rt.reportError(`layer:${l.type}`, err, { layerId: l.id }); }
@@ -454,6 +796,8 @@ export class ScenePlayer {
   private isInteractive(l: Layer): boolean {
     if (l.type === CHOICE_LAYER) return this.offered.has(l.id) && !this.offered.get(l.id)!.disabled;
     if (l.type === 'core.button' || l.type === 'core.hotspot') return true;
+    if (this.rt.engine.layerTypes.get(l.type)?.interactive) return true;
+    if (this.rt.items.selected && this.scripts.listens('item.used', (a) => !a.layer || a.layer === l.id)) return true;
     return this.scripts.listens('layer.click', (a) => a.layer === l.id) || this.scripts.listens('layer.hoverEnter', (a) => a.layer === l.id);
   }
 
@@ -464,6 +808,18 @@ export class ScenePlayer {
     if (!hit) return false;
     if (hit.type === CHOICE_LAYER) { this.pickChoice(hit.id); return true; }
     if (hit.type === 'core.button' && this.layerState.get(hit.id)?.enabled === false) return true;
+    const def = this.rt.engine.layerTypes.get(hit.type);
+    if (def?.pointer) {
+      const lp = layerLocalPoint(this.view, hit, x, y);
+      try { if (lp && def.pointer(hit, this.view.props(hit), lp.x, lp.y, lp.size, { emit: (e) => this.dispatch(e), runtime: this.rt.api })) { this.dispatch({ type: 'layer.click', layerId: hit.id }); return true; } }
+      catch (err) { this.rt.reportError(`layer:${hit.type}`, err, { layerId: hit.id }); }
+    }
+    // Using the selected item on an element.
+    const item = this.rt.items.selected;
+    if (item && this.scripts.listens('item.used', (a) => !a.layer || a.layer === hit.id)) {
+      this.dispatch({ type: 'item.used', item, layerId: hit.id });
+      return true;
+    }
     this.dispatch({ type: 'layer.click', layerId: hit.id });
     return true;
   }
