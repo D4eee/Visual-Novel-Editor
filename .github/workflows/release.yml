@@ -53,8 +53,11 @@ jobs:
           curl -fsSL -o "resources/runtime-templates/electron-v$EV-linux-x64.zip" \
             "https://github.com/electron/electron/releases/download/v$EV/electron-v$EV-linux-x64.zip"
 
-      - name: Package mac-arm64, mac-x64, win-x64, linux-x64
+      - name: Package the desktop apps (mac-arm64, mac-x64, win-x64, linux-x64)
         run: node scripts/package-desktop.mjs --target mac-arm64 --target mac-x64 --target win-x64 --target linux-x64 --zip
+
+      - name: Package the web edition
+        run: node scripts/package-web.mjs
 
       - name: Publish the release
         env:

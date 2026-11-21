@@ -1,6 +1,8 @@
-# Visual Novel Editor
+<p align="center"><img src="resources/icons/app.png" width="160" alt="Visual Novel Editor icon"></p>
 
-A standalone, extensible visual novel engine for macOS and Windows: a story flow graph, layered scene composition, keyframe animation, procedural effect graphs, Scratch-style visual scripting, a module SDK, and one-click export of games as a macOS `.app` or a Windows `.exe`.
+<h1 align="center">Visual Novel Editor</h1>
+
+A standalone, extensible visual novel engine for macOS, Windows and Linux: a story flow graph, layered scene composition, keyframe animation, procedural effect graphs, Scratch-style visual scripting, a module SDK, and one-click export of games as a macOS `.app` or a Windows `.exe`.
 
 [中文快速上手](docs/user-guide/getting-started.zh-CN.md) · [User guide](docs/user-guide/README.md) · [Modding guide](docs/modding/README.md) · [API reference](docs/api/README.md) · [Architecture](docs/architecture/README.md)
 
@@ -27,6 +29,7 @@ Ready-made builds are attached to the [GitHub releases](https://github.com/D4eee
 | **Desktop – macOS (Apple Silicon)** | `Visual-Novel-Editor-<version>-mac-arm64.zip` | nothing else |
 | **Desktop – macOS (Intel)** | `Visual-Novel-Editor-<version>-mac-x64.zip` | nothing else |
 | **Desktop – Windows (x64)** | `Visual-Novel-Editor-<version>-win-x64.zip` | nothing else |
+| **Desktop – Linux (x64)** | `Visual-Novel-Editor-<version>-linux-x64.zip` | nothing else |
 | **Web** (editor in your browser) | `Visual-Novel-Editor-<version>-web.zip` | Node.js 20+ |
 
 The desktop editions are complete applications: example games, the seven example modules and the runtimes for exporting macOS/Windows games are built in, so everything works offline. They are not notarized: on a Mac, unzip, move *Visual Novel Editor.app* to Applications and run once in Terminal
@@ -35,7 +38,7 @@ The desktop editions are complete applications: example games, the seven example
 xattr -cr "/Applications/Visual Novel Editor.app" && codesign --force --deep --sign - "/Applications/Visual Novel Editor.app"
 ```
 
-(builds made with `npm run app:mac` on your own Mac are signed automatically). On Windows, unzip and run *Visual Novel Editor.exe*.
+(builds made with `npm run app:mac` on your own Mac are signed automatically). On Windows, unzip and run *Visual Novel Editor.exe*; on Linux, unzip and run `visual-novel-editor`.
 
 ### Branches
 

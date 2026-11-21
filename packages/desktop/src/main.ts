@@ -57,6 +57,8 @@ function createWindow(query = ''): BrowserWindow {
     minHeight: 640,
     backgroundColor: '#14151c',
     title: 'Visual Novel Editor',
+    // Window/taskbar icon on Windows and Linux (macOS uses the app bundle's icon).
+    icon: process.platform === 'darwin' ? undefined : path.join(DIST, 'editor', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
