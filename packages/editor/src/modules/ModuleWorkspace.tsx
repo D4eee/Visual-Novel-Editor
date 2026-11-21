@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { ModuleInstance, StoryNode } from '@vne/core';
-import { newId } from '@vne/core';
+import { newId, hasSceneData } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { makeMountContext, safeMount } from './editorApi';
@@ -107,7 +107,7 @@ function ModuleCard({ session, node, inst, index }: { session: ProjectSession; n
           {def.props.length > 0 && (
             <PropEditor defs={def.props} values={inst.data} idPrefix={`mod.${inst.component}`}
               onChange={(k, v, tr) => upd(t('modules.editData'), (m) => { m.data = { ...m.data, [k]: v }; }, tr ? `mod-${inst.id}-${k}` : undefined)}
-              ctx={{ project: session.project, scene: node.type === 'core.scene' ? (node.data as any) : null, t, assetUrl: (id) => { const a = session.project.assets.find((x) => x.id === id); return a ? session.assetUrl(a) : null; }, values: inst.data }} />
+              ctx={{ project: session.project, scene: hasSceneData(node) ? (node.data as any) : null, t, assetUrl: (id) => { const a = session.project.assets.find((x) => x.id === id); return a ? session.assetUrl(a) : null; }, values: inst.data }} />
           )}
           {custom && <CustomMount session={session} node={node} inst={inst} mount={custom.mount} moduleId={custom.moduleId} />}
           {deps.length > 0 && (

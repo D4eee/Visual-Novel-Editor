@@ -1,4 +1,4 @@
-import { sceneChoices } from '@vne/core';
+import { sceneChoices, hasSceneData } from '@vne/core';
 import { useEffect, useRef, useState } from 'react';
 import type { Asset, VarValue } from '@vne/core';
 import { chapterEntry, startNode, newId } from '@vne/core';
@@ -102,9 +102,9 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
     return () => { disposed = true; rt?.dispose(); rtRef.current = null; };
   }, [run, scope, p.key]);
 
-  const layerName = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const l = (n.data as any).layers.find((x: any) => x.id === id); if (l) return l.name; } return id; };
+  const layerName = (id: string) => { for (const n of Object.values(project.nodes)) if (hasSceneData(n)) { const l = (n.data as any).layers.find((x: any) => x.id === id); if (l) return l.name; } return id; };
   const choiceText = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const c = sceneChoices(n.data as any).find((x) => x.id === id); if (c) return c.text; } return id; };
-  const animName = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const a = (n.data as any).animations.find((x: any) => x.id === id); if (a) return a.name; } return id; };
+  const animName = (id: string) => { for (const n of Object.values(project.nodes)) if (hasSceneData(n)) { const a = (n.data as any).animations.find((x: any) => x.id === id); if (a) return a.name; } return id; };
 
   const close = () => session.setUI({ preview: null });
   const errorCount = errors.filter((e) => e.detail?.severity !== 'warning').length;

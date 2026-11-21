@@ -11,6 +11,8 @@ export interface ScriptHost {
   vars: VarStore;
   /** Current scene API, or null when running outside a scene (rare). */
   scene: any | null;
+  /** Expression functions (defaults to the engine's table). The game adds has(), etc. */
+  functions?: Record<string, import('@vne/core').ExprFunction>;
   /** Game runtime (public API for modules). */
   runtime: any;
   /** Wait respecting pause/skip. */
@@ -58,7 +60,7 @@ export class ScriptContext {
 
   evaluate(v: any): VarValue {
     if (isBlockRef(v)) return reportBlock(this, v.block);
-    if (isExpr(v)) return evaluate(v as Expr, this.host.vars, this.host.engine.functionTable(builtinFunctions));
+    if (isExpr(v)) return evaluate(v as Expr, this.host.vars, this.host.functions || this.host.engine.functionTable(builtinFunctions));
     return v as VarValue;
   }
 
@@ -150,6 +152,9 @@ export async function runBlocks(ctx: ScriptContext, blocks: Block[]): Promise<vo
  */
 export class ScriptEngine {
   private threads = new Set<CancelToken>();
+  private threadStacks = new Map<CancelToken, string>();
+  /** Stacks that must not react to an event (carried scripts do not restart on "page starts"). */
+  skip: ((stack: ScriptStack, event: RuntimeEvent) => boolean) | null = null;
   private teardown: (() => void)[] = [];
   private stopped = false;
   /** Number of hat stacks that handled the last dispatched event. */
@@ -159,19 +164,44 @@ export class ScriptEngine {
 
   /** Start timer-style hats. Call once when the scene starts. */
   start(): void {
-    for (const s of this.stacks()) {
-      if (!s.enabled) continue;
-      const def = this.host.engine.blocks.get(s.hat.type);
-      const setup = (def as any)?.setup as ((ctx: ScriptContext, args: any, fire: () => void) => (() => void) | void) | undefined;
-      if (!setup) continue;
-      const ctx = new ScriptContext(this.host, new CancelToken(), s.id, null);
-      try {
-        const stop = setup(ctx, evaluateArgs(ctx, def!, s.hat), () => this.spawn(s, null));
-        if (stop) this.teardown.push(stop);
-      } catch (err) {
-        this.host.reportError('script', err, { stackId: s.id });
-      }
+    for (const s of this.stacks()) this.setupStack(s);
+  }
+
+  private stackTeardown = new Map<string, () => void>();
+
+  /** Start a timer-style hat (every n seconds, when the mouse enters…). Returns false for other hats. */
+  setupStack(s: ScriptStack): boolean {
+    if (!s.enabled || this.stopped) return false;
+    const def = this.host.engine.blocks.get(s.hat.type);
+    const setup = (def as any)?.setup as ((ctx: ScriptContext, args: any, fire: () => void) => (() => void) | void) | undefined;
+    if (!setup) return false;
+    if (this.stackTeardown.has(s.id)) return true;
+    const ctx = new ScriptContext(this.host, new CancelToken(), s.id, null);
+    try {
+      const stop = setup(ctx, evaluateArgs(ctx, def!, s.hat), () => { if (this.stacks().some((x) => x.id === s.id)) this.spawn(s, null); });
+      if (stop) { this.teardown.push(stop); this.stackTeardown.set(s.id, stop); }
+      else this.stackTeardown.set(s.id, () => {});
+    } catch (err) {
+      this.host.reportError('script', err, { stackId: s.id });
     }
+    return true;
+  }
+
+  /** Has a timer-style hat that runs on its own? */
+  hasSetup(s: ScriptStack): boolean {
+    return !!(this.host.engine.blocks.get(s.hat?.type) as any)?.setup;
+  }
+
+  /** Stop every thread of one stack (and its timer hat). */
+  stopStack(stackId: string): void {
+    for (const [t, id] of this.threadStacks) if (id === stackId) { t.cancel(); this.threads.delete(t); this.threadStacks.delete(t); }
+    const td = this.stackTeardown.get(stackId);
+    if (td) { try { td(); } catch { /* ignore */ } this.stackTeardown.delete(stackId); }
+  }
+
+  /** Stacks that have a thread running now. */
+  runningStacks(): Set<string> {
+    return new Set(this.threadStacks.values());
   }
 
   dispatch(event: RuntimeEvent): number {
@@ -181,6 +211,7 @@ export class ScriptEngine {
       if (!s.enabled) continue;
       const def = this.host.engine.blocks.get(s.hat.type);
       if (!def || def.shape !== 'hat' || def.event !== event.type) continue;
+      if (this.skip?.(s, event)) continue;
       const probe = new ScriptContext(this.host, new CancelToken(), s.id, event);
       let ok = false;
       try { ok = def.matches ? def.matches(event, evaluateArgs(probe, def, s.hat)) : true; }
@@ -208,12 +239,14 @@ export class ScriptEngine {
 
   spawn(stack: ScriptStack, event: RuntimeEvent | null): Promise<void> {
     const token = new CancelToken();
+    if (this.stopped) return Promise.resolve();
     this.threads.add(token);
+    this.threadStacks.set(token, stack.id);
     const ctx = new ScriptContext(this.host, token, stack.id, event);
     if (stack.hat) this.host.trace?.(stack.hat.id);
     return runBlocks(ctx, stack.body)
       .catch((err) => { if (!(err instanceof StopThread)) this.host.reportError('script', err, { stackId: stack.id }); })
-      .finally(() => this.threads.delete(token));
+      .finally(() => { this.threads.delete(token); this.threadStacks.delete(token); });
   }
 
   /** Run a list of blocks once (event nodes, behaviors). */
@@ -237,6 +270,8 @@ export class ScriptEngine {
     this.stopped = true;
     for (const t of this.threads) t.cancel();
     this.threads.clear();
+    this.threadStacks.clear();
+    this.stackTeardown.clear();
     for (const fn of this.teardown) try { fn(); } catch { /* ignore */ }
     this.teardown = [];
   }

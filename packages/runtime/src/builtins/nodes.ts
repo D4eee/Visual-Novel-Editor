@@ -1,5 +1,5 @@
 import type { Engine, Project, StoryNode, SceneData, EventData, ConditionData, JumpData, EndingData, RandomData, WaitData, CommentData } from '@vne/core';
-import { createSceneData, nextSceneNumber, nextJumpNumber, scenePorts, exprToString, newId, jumpOutsFor, sceneLines } from '@vne/core';
+import { createSceneData, nextSceneNumber, nextJumpNumber, scenePorts, exprToString, newId, jumpOutsFor, sceneLines, GLOBAL_NODE_TYPE } from '@vne/core';
 import { stripMarkup } from '../text';
 
 const IN = [{ id: 'in', type: 'flow', multiple: true }];
@@ -136,6 +136,17 @@ export function registerBuiltinNodes(engine: Engine): void {
     inputs: () => [],
     outputs: () => [],
     summary: (n) => (n.data as CommentData).text,
+  });
+
+  // The global page (one per project): its elements appear on every page and its
+  // scripts run on every page. Not part of the story flow.
+  R.register({
+    id: GLOBAL_NODE_TYPE, label: 'node.global', category: 'organize', color: '#2fa9cf', icon: 'globe', creatable: false,
+    description: 'node.global.desc',
+    createData: () => ({ ...createSceneData('G'), background: 'transparent' }),
+    inputs: () => [],
+    outputs: () => [],
+    summary: (n) => `${(n.data as SceneData).layers.length}`,
   });
 }
 

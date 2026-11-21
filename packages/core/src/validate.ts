@@ -1,7 +1,11 @@
+import { hasSceneData, GLOBAL_NODE_ID } from './defaults';
+import { inheritedInto } from './inherit';
+import type { Inheritance } from './inherit';
 import type { Engine } from './registry';
 import type { Block, Issue, JumpData, Project, SceneData, StoryNode, Layer, EventData, ConditionData, Expr } from './types';
 import { nodePorts, isFlowPort, jumpOutsFor, jumpInsFor, reachableFrom, typesCompatible } from './graph';
 import { exprVars, isExpr } from './expr';
+import { isBlockRef } from './types';
 import { sceneChoices, sceneLines, DIALOGUE_LAYER } from './elements';
 
 export interface ValidationEnv {
@@ -9,6 +13,8 @@ export interface ValidationEnv {
   missingAssets?: Set<string>;
   /** Status of the project's module dependencies. */
   moduleStatus?: Map<string, { status: 'ok' | 'missing' | 'incompatible' | 'disabled' | 'failed'; detail?: string }>;
+  /** Internal: inheritance computed once per validation. */
+  inheritMemo?: Map<string, Inheritance>;
 }
 
 /** Module id that owns a namespaced type id ("com.example.mod/thing" → "com.example.mod"). */
@@ -42,7 +48,7 @@ export function validateProject(engine: Engine, project: Project, env: Validatio
   };
   for (const n of nodes) {
     checkId(n.id, 'node', n.id);
-    if (n.type === 'core.scene') {
+    if (hasSceneData(n)) {
       const d = n.data as SceneData;
       d.layers?.forEach((l) => checkId(l.id, 'layer', n.id));
       d.animations?.forEach((a) => checkId(a.id, 'animation', n.id));
@@ -128,7 +134,7 @@ export function validateProject(engine: Engine, project: Project, env: Validatio
       checkVars(d.expr, varIds, n, issues);
     }
     if (n.type === 'core.event') checkBlocks(engine, (n.data as EventData).actions, n, null, varIds, issues, missingType);
-    if (n.type === 'core.scene') checkScene(engine, project, n, varIds, assetIds, issues, missingType, env);
+    if (hasSceneData(n)) checkScene(engine, project, n, varIds, assetIds, issues, missingType, env);
     for (const m of n.modules || []) {
       const c = engine.components.get(m.component);
       if (!c) { missingType(m.component, 'component', n.id, n.chapterId); continue; }
@@ -159,9 +165,9 @@ function checkVars(expr: Expr | null | undefined, varIds: Set<string>, n: StoryN
   }
 }
 
-function checkBlocks(engine: Engine, blocks: Block[] | undefined, n: StoryNode, scene: SceneData | null, varIds: Set<string>, issues: Issue[], missingType: (t: string, k: string, nodeId?: string, chapterId?: string) => void, local?: Set<string>) {
-  const layerIds = new Set((scene?.layers || []).map((l) => l.id));
-  const animIds = new Set((scene?.animations || []).map((a) => a.id));
+function checkBlocks(engine: Engine, blocks: Block[] | undefined, n: StoryNode, scene: SceneData | null, varIds: Set<string>, issues: Issue[], missingType: (t: string, k: string, nodeId?: string, chapterId?: string) => void, local?: Set<string>, extra?: { layers: Set<string>; animations: Set<string>; items: Set<string> }) {
+  const layerIds = new Set([...(scene?.layers || []).map((l) => l.id), ...(extra?.layers || [])]);
+  const animIds = new Set([...(scene?.animations || []).map((a) => a.id), ...(extra?.animations || [])]);
   const walk = (list: Block[] | undefined) => {
     for (const b of list || []) {
       if (!b) continue;
@@ -169,6 +175,8 @@ function checkBlocks(engine: Engine, blocks: Block[] | undefined, n: StoryNode, 
       if (!def) { missingType(b.type, 'block', n.id, n.chapterId); continue; }
       for (const a of def.args) {
         const v = b.args?.[a.id];
+        if (isBlockRef(v)) { walk([v.block]); continue; }
+        if (a.type === 'item' && v && extra && !extra.items.has(String(v))) issues.push({ severity: 'warning', code: 'script.item', message: 'issue.script.item', params: { node: n.name }, target: { nodeId: n.id, chapterId: n.chapterId } });
         if (a.type === 'layer' && scene && v && !layerIds.has(String(v))) issues.push({ severity: 'error', code: 'script.layer', message: 'issue.script.layer', params: { node: n.name }, target: { nodeId: n.id, chapterId: n.chapterId } });
         if (a.type === 'animation' && scene && v && !animIds.has(String(v))) issues.push({ severity: 'error', code: 'script.animation', message: 'issue.script.animation', params: { node: n.name }, target: { nodeId: n.id, chapterId: n.chapterId } });
         if (a.type === 'variable' && v && !varIds.has(String(v)) && !local?.has(String(v))) issues.push({ severity: 'error', code: 'var.missing', message: 'issue.var.missing', params: { node: n.name }, target: { nodeId: n.id, chapterId: n.chapterId } });
@@ -217,9 +225,18 @@ function checkScene(engine: Engine, project: Project, n: StoryNode, varIds: Set<
     if (line.speakerId && !project.characters.some((c) => c.id === line.speakerId)) issues.push({ severity: 'warning', code: 'line.speaker', message: 'issue.line.speaker', params: { node: n.name }, target });
     if (line.voiceAssetId && !assetIds.has(line.voiceAssetId)) issues.push({ severity: 'error', code: 'asset.missingRef', message: 'issue.asset.missingRef', params: { node: n.name }, target });
   }
+  // Scripts may also use the global page's elements and what the page inherits from the pages before it.
+  const g = project.nodes[GLOBAL_NODE_ID];
+  const gd = g && g.id !== n.id ? (g.data as SceneData) : null;
+  const inh: Inheritance = n.id === GLOBAL_NODE_ID ? { elements: [], scripts: [] } : inheritedInto(engine, project, n.id, env.inheritMemo || (env.inheritMemo = new Map()));
+  const extra = {
+    layers: new Set([...(gd?.layers || []).map((l) => l.id), ...inh.elements.map((e) => e.layer.id)]),
+    animations: new Set((gd?.animations || []).map((a) => a.id)),
+    items: new Set(project.items.flatMap((i) => [i.id, i.name])),
+  };
   for (const s of d.scripts) {
-    checkBlocks(engine, [s.hat], n, d, varIds, issues, missingType, local);
-    checkBlocks(engine, s.body, n, d, varIds, issues, missingType, local);
+    checkBlocks(engine, [s.hat], n, d, varIds, issues, missingType, local, extra);
+    checkBlocks(engine, s.body, n, d, varIds, issues, missingType, local, extra);
   }
   if (d.transition?.type && !engine.transitions.has(d.transition.type)) missingType(d.transition.type, 'transition', n.id, n.chapterId);
 }

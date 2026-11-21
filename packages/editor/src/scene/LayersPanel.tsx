@@ -9,6 +9,8 @@ import { addLayerMenu, reorder } from './CompositionCanvas';
 import { IconButton, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu } from '../ui/Menu';
+import { GLOBAL_NODE_ID } from '@vne/core';
+import { pageCtx, openGlobalPage, revealElement, moveElements, pageName } from './pageContext';
 
 export function LayersPanel({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
   useSession(session);
@@ -123,6 +125,9 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
                 { label: t('layer.backward'), onClick: () => reorder(session, nodeId, ids, 'down') },
                 { label: t('layer.sendBack'), icon: 'arrowDown', onClick: () => reorder(session, nodeId, ids, 'back') },
                 { separator: true },
+                ...(nodeId === GLOBAL_NODE_ID
+                  ? [{ label: t('global.behind'), icon: 'arrowDown', checked: l.zone === 'back', hint: t('global.behindHint'), onClick: () => updateScene(session, nodeId, t('global.behind'), (s) => { for (const x of s.layers) if (ids.includes(x.id)) x.zone = l.zone === 'back' ? 'front' : 'back'; }) }]
+                  : [{ label: t('global.makeGlobal'), icon: 'globe', hint: t('global.makeGlobalHint'), onClick: () => moveElements(session, nodeId, GLOBAL_NODE_ID, ids) }]),
                 { label: t('layer.saveComposition'), icon: 'layers', onClick: () => saveAsComposition(session, nodeId, ids) },
                 ...(l.type === 'core.composition' && l.props.compositionId ? [{ label: t('layer.unpackComposition'), icon: 'folderOpen', onClick: () => unpackComposition(session, nodeId, l.id) }] : []),
                 ...(l.type === 'core.group' && l.sourceCompositionId && session.project.compositions.some((c) => c.id === l.sourceCompositionId)
@@ -151,9 +156,59 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
             </div>
           );
         })}
-        {!rows.length && <div className="muted small pad">{t('layer.none')}</div>}
+        {!rows.length && <div className="muted small pad">{nodeId === GLOBAL_NODE_ID ? t('global.empty') : t('layer.none')}</div>}
+        <ContextRows session={session} nodeId={nodeId} />
       </div>
     </div>
+  );
+}
+
+/** Elements on this page that live elsewhere: inherited from earlier pages, and the global page's. */
+function ContextRows({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
+  const t = useT();
+  const pc = pageCtx(session, nodeId);
+  const icon = (l: Layer) => session.engine.layerTypes.get(l.type)?.icon || 'layers';
+  const globals = [...pc.globalFront].reverse().concat([...pc.globalBack].reverse());
+  if (pc.isGlobal) return <div className="layer-note"><Icon name="globe" size={13} />{t('global.note')}</div>;
+  return (
+    <>
+      {pc.inherited.length > 0 && (
+        <>
+          <div className="layer-section" title={t('inherit.sectionHint')}><Icon name="inherit" size={12} />{t('inherit.section')}<span className="muted">{pc.inherited.length}</span></div>
+          {pc.inherited.slice().reverse().map((e) => (
+            <div key={e.layer.id} className={cx('layer-row context', e.paused && 'paused', session.sceneUI(nodeId).selectedLayers.includes(e.layer.id) && 'active')} role="treeitem" tabIndex={0}
+              title={t(e.paused ? 'inherit.rowPaused' : 'inherit.row', { page: pageName(session, e.fromNodeId) })}
+              onClick={() => session.setSceneUI(nodeId, { selectedLayers: [e.layer.id] })}
+              onDoubleClick={() => revealElement(session, e.fromNodeId, e.layer.id)}
+              onContextMenu={(ev) => { ev.preventDefault(); openMenu(ev, [{ label: t('inherit.open', { page: pageName(session, e.fromNodeId) }), icon: 'arrowRight', onClick: () => revealElement(session, e.fromNodeId, e.layer.id) }]); }}>
+              <Icon name={icon(e.layer)} size={14} className="layer-icon" />
+              <span className="layer-name">{e.layer.name}</span>
+              <span className="layer-from">{pageName(session, e.fromNodeId)}</span>
+              <Icon name={e.paused ? 'paused' : 'play'} size={11} className="layer-flag" title={t(e.paused ? 'inherit.paused' : 'inherit.running')} />
+            </div>
+          ))}
+        </>
+      )}
+      {globals.length > 0 && (
+        <>
+          <div className="layer-section" title={t('global.sectionHint')}><Icon name="globe" size={12} />{t('global.section')}<span className="muted">{globals.length}</span>
+            <span className="grow" /><button type="button" className="link-btn" onClick={() => openGlobalPage(session)}>{t('global.edit')}</button></div>
+          {globals.map((l) => (
+            <div key={l.id} className={cx('layer-row context', !l.visible && 'hidden', session.sceneUI(nodeId).selectedLayers.includes(l.id) && 'active')} role="treeitem" tabIndex={0} title={t('global.row')}
+              onClick={() => session.setSceneUI(nodeId, { selectedLayers: [l.id] })}
+              onDoubleClick={() => openGlobalPage(session, l.id)}
+              onContextMenu={(ev) => { ev.preventDefault(); openMenu(ev, [
+                { label: t('global.editOn'), icon: 'arrowRight', onClick: () => openGlobalPage(session, l.id) },
+                { label: t('global.moveHere'), icon: 'arrowDown', onClick: () => moveElements(session, GLOBAL_NODE_ID, nodeId, [l.id]) },
+              ]); }}>
+              <Icon name={icon(l)} size={14} className="layer-icon" />
+              <span className="layer-name">{l.name}</span>
+              {l.zone === 'back' && <span className="layer-from">{t('global.behindShort')}</span>}
+            </div>
+          ))}
+        </>
+      )}
+    </>
   );
 }
 

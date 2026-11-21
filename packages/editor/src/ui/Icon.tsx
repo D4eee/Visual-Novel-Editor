@@ -20,6 +20,8 @@ const MAP: Record<string, IconType> = {
   power: L.LuPower, box: L.LuBox, hash: L.LuHash, text: L.LuTextCursorInput, quote: L.LuQuote, crop: L.LuCrop, anchor: L.LuAnchor, magic: L.LuWand,
   filter: L.LuFilter, curve: L.LuSpline, command: L.LuCommand, skipBack: L.LuSkipBack, star: L.LuStar,
   bookmark: L.LuBookmark, bookmarkPlus: L.LuBookmarkPlus, library: L.LuLibrary,
+  game: L.LuGamepad2, backpack: L.LuBackpack, sprite: L.LuGalleryHorizontal, gem: L.LuGem, inherit: L.LuCornerDownRight, tag: L.LuTag,
+  images: L.LuImages, listOrdered: L.LuListOrdered, paused: L.LuCirclePause, stack: L.LuSquareStack,
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {

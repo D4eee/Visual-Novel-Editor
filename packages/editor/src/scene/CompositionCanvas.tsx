@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layer, LayerInstance, SceneData, Engine, Project } from '@vne/core';
-import { sceneLines } from '@vne/core';
+import { sceneLines, GLOBAL_NODE_ID, ensureGlobalNode, ensureInventoryVar } from '@vne/core';
 import { Stage, NarrativeUI, createEditView, drawScene, hitTest, regionPoints, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { setLayerProps, addLayer, deleteLayers, duplicateLayers, sceneOf, updateScene } from './sceneOps';
+import { pageCtx, openGlobalPage, moveElements } from './pageContext';
 import { IconButton, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu } from '../ui/Menu';
@@ -76,9 +77,17 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   // Read live: instances are created in an effect after the first render.
   const liveInstances = () => new Map([...instancesRef.current].map(([k, v]) => [k, v.inst]));
 
+  // Global elements and elements inherited from earlier pages are drawn too (not editable here).
+  const pc = pageCtx(session, nodeId);
+  const inheritedLayers = session.ui.showContext === false ? [] : pc.inherited.map((e) => e.layer);
+  const context = session.ui.showContext === false ? { under: [], over: [] } : {
+    under: [...pc.globalBack, ...inheritedLayers.filter((l) => l.type === 'core.background')],
+    over: [...inheritedLayers.filter((l) => l.type !== 'core.background'), ...pc.globalFront],
+  };
+  const ownIds = new Set(scene.layers.map((l) => l.id));
   const buildView = () => createEditView({
     engine: session.engine, project, scene, assets: session.assets, pool: poolRef.current, shaders: shadersRef.current,
-    time: ui.time, clipIds: ui.clipId ? [ui.clipId] : [], vars: varsRef.current!, instances: liveInstances(),
+    time: ui.time, clipIds: ui.clipId ? [ui.clipId] : [], vars: varsRef.current!, instances: liveInstances(), context,
   });
 
   // Render: on change, and continuously while playing or when the scene has moving content.
@@ -162,7 +171,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   /* --------------------------------------------------------------- */
 
   const selected = ui.selectedLayers.filter((id) => scene.layers.some((l) => l.id === id));
-  const selectable = (l: Layer) => !l.locked && l.visible;
+  const selectable = (l: Layer) => !l.locked && l.visible && ownIds.has(l.id);
 
   const startPan = (e: React.PointerEvent) => {
     const st = stageRef.current!;
@@ -478,6 +487,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
         <span className="sep" />
         <IconButton icon="magnet" size={15} title={t('scene.snap')} active={ui.snap} onClick={() => session.setSceneUI(nodeId, { snap: !ui.snap })} />
         <IconButton icon="message" size={15} title={t('scene.textboxPreview')} active={ui.showTextbox} onClick={() => session.setSceneUI(nodeId, { showTextbox: !ui.showTextbox })} />
+        <IconButton icon="globe" size={15} title={t('scene.showContext')} active={session.ui.showContext !== false} onClick={() => session.setUI({ showContext: session.ui.showContext === false })} />
         <span className="sep" />
         <IconButton icon="minus" size={15} title={t('graph.zoomOut')} onClick={() => { const s = stageRef.current!; const r = hostRef.current!.getBoundingClientRect(); const z = s.scale / 1.25; setView(z, r.width / 2 - ((r.width / 2 - s.offsetX) / s.scale) * z, r.height / 2 - ((r.height / 2 - s.offsetY) / s.scale) * z); }} />
         <span className="zoom-label">{Math.round((st?.scale || 1) * 100)}%</span>
@@ -495,12 +505,18 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
  * `fromScripts`: elements made in Interactions start hidden and do not autoplay, so
  * scripts decide when they appear (the "Start" block shows and plays them).
  */
-export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: string, p?: any) => string, at: { x: number; y: number }, opts: { fromScripts?: boolean } = {}) {
+export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: string, p?: any) => string, at: { x: number; y: number }, opts: { fromScripts?: boolean; nested?: boolean } = {}): any[] {
   const defs = session.engine.layerTypes.list();
+  const isGlobal = nodeId === GLOBAL_NODE_ID;
+  if (isGlobal && !session.project.nodes[GLOBAL_NODE_ID]) session.update(t('global.title'), (d) => { ensureGlobalNode(d); });
   const has = (id: string) => !!session.engine.layerTypes.get(id);
   const pos = { x: Math.round(at.x), y: Math.round(at.y) };
   const hidden = opts.fromScripts ? { visible: false } : undefined;
-  const add = (type: string, extra: Record<string, any> = {}, name?: string, f?: { visible?: boolean }) => addLayer(session, nodeId, type, extra, name, f);
+  const add = (type: string, extra: Record<string, any> = {}, name?: string, f?: { visible?: boolean }) => {
+    const id = addLayer(session, nodeId, type, extra, name, f);
+    if (isGlobal && opts.nested) store.toast(t('global.added'), 'success', { label: t('global.open'), run: () => openGlobalPage(session, id || undefined) });
+    return id;
+  };
   const nameOf = (a: { name: string }) => a.name.replace(/\.[^.]+$/, '');
   const fromAsset = (a: any) => {
     if (a.kind === 'image') return add('core.image', { assetId: a.id, ...pos }, nameOf(a), hidden);
@@ -530,13 +546,20 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     ...shapeOpts.map((o) => ({ label: t(o.label), icon: 'square', onClick: () => add('core.shape', { ...pos, shape: o.value }, t(o.label), hidden) })),
     { header: true, label: t('element.group.text') },
     { label: t('layer.text'), icon: 'type', onClick: () => add('core.text', pos, undefined, hidden) },
-    ...(has('core.dialogue') ? [{ label: t('layer.dialogue'), icon: 'message', onClick: () => add('core.dialogue', {}) }] : []),
+    ...(has('core.dialogue') && !isGlobal ? [{ label: t('layer.dialogue'), icon: 'message', onClick: () => add('core.dialogue', {}) }] : []),
     { header: true, label: t('element.group.interactive') },
-    { label: t('layer.choice'), icon: 'choice', onClick: () => add('core.choice', {}) },
+    ...(isGlobal ? [] : [{ label: t('layer.choice'), icon: 'choice', onClick: () => add('core.choice', {}) }]),
     { label: t('layer.button'), icon: 'button', onClick: () => add('core.button', pos, undefined, hidden) },
     { label: t('layer.hotspot'), icon: 'target', submenu: regionOpts.map((o) => ({ label: t(o.label), onClick: () => add('core.hotspot', { ...pos, shape: o.value }, `${t('layer.hotspot')}`) })) },
+    { header: true, label: t('element.group.game') },
+    ...(has('core.sprite') ? [{ label: t('layer.sprite'), icon: 'sprite', hint: t('layer.sprite.hint'), onClick: () => add('core.sprite', pos, undefined, hidden) }] : []),
+    ...(has('core.inventory') ? [{ label: t('layer.inventory'), icon: 'backpack', hint: t('layer.inventory.hint'), onClick: () => { ensureInventory(session); add('core.inventory', { x: 40, y: 40, anchorX: 0, anchorY: 0 }); } }] : []),
   ];
-  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition']);
+  if (!isGlobal && !opts.nested) {
+    // Global elements are on every page (music, HUD, inventory, health bar…).
+    items.push({ header: true, label: t('element.group.global') }, { label: t('element.addGlobal'), icon: 'globe', hint: t('element.addGlobalHint'), submenu: addLayerMenu(session, GLOBAL_NODE_ID, t, at, { ...opts, nested: true }) });
+  }
+  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition', 'core.sprite', 'core.inventory']);
   const rest = defs.filter((d) => !shown.has(d.id));
   const cats = ['effect', 'structure', 'module'];
   for (const c of cats) {
@@ -550,6 +573,12 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => add('core.composition', { compositionId: c.id, ...pos }, c.name, hidden) });
   }
   return items;
+}
+
+/** Inventories show the inventory list: make sure it exists. */
+export function ensureInventory(session: ProjectSession): void {
+  if (session.project.inventoryVarId && session.project.variables.some((v) => v.id === session.project.inventoryVarId)) return;
+  session.update(session.i18n.t('items.inventoryCreated'), (d) => { ensureInventoryVar(d, session.i18n.t('items.inventoryName')); });
 }
 
 /** Import media files into the library and add each as an element. */

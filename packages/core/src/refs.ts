@@ -1,3 +1,4 @@
+import { hasSceneData } from './defaults';
 import type { Id, Project, SceneData, StoryNode } from './types';
 
 export interface RefLocation {
@@ -5,7 +6,7 @@ export interface RefLocation {
   /** Human-readable path inside the node data, e.g. "layers[2].props.assetId". */
   path: string;
   layerId?: Id;
-  where: 'node' | 'settings' | 'character' | 'composition' | 'extension' | 'effectGraph' | 'behavior';
+  where: 'node' | 'settings' | 'character' | 'composition' | 'extension' | 'effectGraph' | 'behavior' | 'item';
 }
 
 /**
@@ -47,6 +48,7 @@ export function findReferences(project: Project, ids: Set<string>): Map<string, 
   walk(project.effectGraphs, 'effectGraphs', { where: 'effectGraph' });
   walk(project.behaviors, 'behaviors', { where: 'behavior' });
   walk(project.extensions, 'extensions', { where: 'extension' });
+  walk(project.items || [], 'items', { where: 'item' });
   return out;
 }
 
@@ -65,7 +67,7 @@ export function usedAssetIds(project: Project): Set<string> {
 }
 
 export function sceneOf(node: StoryNode | undefined): SceneData | null {
-  return node && node.type === 'core.scene' ? (node.data as SceneData) : null;
+  return hasSceneData(node) ? (node.data as SceneData) : null;
 }
 
 /** Collect module ids a project actually uses through node types, layers, blocks, components and effects. */
@@ -75,6 +77,8 @@ export function usedTypeIds(project: Project): { nodeTypes: Set<string>; layerTy
     for (const b of list || []) {
       if (!b) continue;
       r.blocks.add(b.type);
+      // Blocks nested in argument slots (reporters) count too.
+      for (const v of Object.values(b.args || {})) if (v && typeof v === 'object' && (v as any).k === 'block') blocks([(v as any).block]);
       blocks(b.body);
       blocks(b.else);
     }
@@ -90,7 +94,7 @@ export function usedTypeIds(project: Project): { nodeTypes: Set<string>; layerTy
     r.nodeTypes.add(n.type);
     for (const m of n.modules || []) r.components.add(m.component);
     const d: any = n.data;
-    if (n.type === 'core.scene') {
+    if (hasSceneData(n)) {
       layers(d.layers);
       for (const s of d.scripts || []) { blocks([s.hat]); blocks(s.body); }
       for (const a of d.animations || []) for (const t of a.tracks || []) for (const k of t.keyframes || []) r.interpolators.add(k.ease);

@@ -41,7 +41,7 @@ export function stripForExport(project: Project): Project {
     delete n.notes;
     if (n.type === 'core.comment') delete p.nodes[n.id];
   }
-  for (const n of Object.values<any>(p.nodes)) if (n.type === 'core.scene') for (const s of n.data.scripts || []) { delete s.x; delete s.y; }
+  for (const n of Object.values<any>(p.nodes)) if (n.type === 'core.scene' || n.type === 'core.global') for (const s of n.data.scripts || []) { delete s.x; delete s.y; }
   return p;
 }
 

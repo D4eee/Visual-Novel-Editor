@@ -45,7 +45,8 @@ Only the runtime entry (`runtime`), locales and declared assets are copied into 
 
 | API | Engine | Added |
 | --- | --- | --- |
+| 1.2.0 | 0.3.0 | Game module: `Layer.params` and `Layer.zone`, list variables (`VarValue` arrays), `Project.items` / `inventoryVarId`, `runtime.items`, block arg types `item` and `param`, `BlockArgDef.varType` / `paramOf` / `optional`, category `game`, `LayerTypeDef.step` / `pointer` / `interactive`, prop type `item`, scene `layers`, `layerOrigin`, `reorder`, `pauseElement` / `resumeElement`, `showLabel` / `hideLabel`, `pickUp`. The global page (node type `core.global`) and page-to-page inheritance. Project format 3 |
 | 1.1.0 | 0.2.2 | Reporter and condition blocks (`shape: 'reporter' | 'boolean'`, `report()`), per-element blocks (`BlockDef.layerTypes`, `BlockArgDef.layerTypes`), `LayerTypeDef.hitTest`, scene sensing (`contains`, `touching`, `isVisible`, `bounds`, `timer`), `runtime.input` |
 | 1.0.0 | 0.1.0 | First public API |
 
-Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1 features should declare `"api": "^1.1.0"` so older editors refuse it with a clear message instead of failing.
+Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1 or 1.2 features should declare `"api": "^1.1.0"` or `"^1.2.0"` so older editors refuse it with a clear message instead of failing.

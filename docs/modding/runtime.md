@@ -224,3 +224,38 @@ Use `layerTypes: ['*']` for blocks that suit every element, also non-visual ones
 ## Shapes, hit tests and sensing
 
 A layer type can define `hitTest(layer, props, x, y, size)` (local coordinates) for a precise shape; clicks, hover, *When the mouse enters* and *mouse inside?* use it. The scene API has sensing helpers: `scene.contains(layer, x?, y?)` (default: the mouse), `scene.touching(a, b)`, `scene.isVisible(layer)`, `scene.bounds(layer)`, `scene.timer` / `scene.resetTimer()`. `ctx.runtime.input` holds the mouse position (stage pixels), `down` and the held `keys` (`KeyboardEvent.code`).
+
+## The Game module (API 1.2, project format 3)
+
+**The global page.** Every project has one hidden scene-like node with id `global` and type `core.global` (`GLOBAL_NODE_ID`). Its `data` is `SceneData`:
+
+- its layers are drawn on every page and keep their state between pages;
+- its scripts run on every page.
+
+`hasSceneData(node)` is true for scenes and the global page. Module code that walks scene layers should use it, so global elements are included.
+
+**Inheritance.** When the story leaves a page, `ScenePlayer.handOff(next)` carries over what is still running: playing media, looping animations, running loops and timers with the elements they use. It honours the `core.onLeaveRemove` / `core.onLeavePause` blocks. The editor shows the same rules statically through `inheritedInto(engine, project, nodeId)` and `pageContext(...)` from `@vne/core`.
+
+In a scene, `scene.layers` lists every element on the page and `scene.layerOrigin(id)` tells where one comes from. A layer type that keeps a running state should implement `createInstance()` with `isPlaying()`, so its element is carried while it plays.
+
+**Parameters.** `Layer.params` declares an element's own values. The live value of parameter `hp` (id `prm_x`) is the prop `param.prm_x`, so `scene.getProp(id, 'param.prm_x')`, tweens and the param blocks all work on it.
+
+**Lists.** A variable of type `list` holds an array of scalars. Copy before changing: `const l = [...vars.get(id)]; l.push(x); vars.set(id, l)`. `toList(v)` from `@vne/core` converts any value.
+
+**Collectibles.** `runtime.items` gives `has`, `count`, `add`, `remove`, `select`, `selected` and `list`. Item events are:
+
+- `item.collected` `{ item, itemId }`;
+- `item.removed`;
+- `item.selected`;
+- `item.used` `{ item, itemId, layerId }`, fired when the selected item is clicked onto an element.
+
+Expressions get `has("Name")`.
+
+**Frame-based element types.** `LayerTypeDef.step(state, dt, ctx)` runs every frame while the game plays. Change `state` in place, as the built-in `core.sprite` does. `pointer(layer, props, x, y, size, ctx)` receives clicks in local coordinates, as `core.inventory` does. `interactive: true` makes the element clickable without a script.
+
+**Block arguments.**
+
+- `type: 'item'` (a collectible);
+- `type: 'param'` with `paramOf: '<layer arg id>'`;
+- `varType: 'list'` on `variable` arguments;
+- `optional: true` lets a slot stay empty (the value is `null`).

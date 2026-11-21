@@ -1,3 +1,4 @@
+import { hasSceneData, GLOBAL_NODE_ID } from '@vne/core';
 import { PresetManagerHost } from './effects/userPresets';
 import { useEffect } from 'react';
 import { useStore, useSession, useT, store } from './state/store';
@@ -217,7 +218,7 @@ function SessionView({ session }: { session: ProjectSession }) {
             const def = n ? session.engine.nodeTypes.get(n.type) : null;
             const beh = tb.kind === 'custom' && tb.id.startsWith('behavior:') ? session.project.behaviors.find((b) => `behavior:${b.id}` === tb.id) : null;
             const ws = tb.kind === 'custom' ? session.ext.workspaces.find((w) => w.id === tb.id) : null;
-            const label = tb.kind === 'graph' ? (ui.overview ? t('graph.overview') : session.project.chapters.find((c) => c.id === ui.chapterId)?.name || t('side.story')) : n ? n.name : beh ? beh.name : ws ? t(ws.title) : '?';
+            const label = tb.kind === 'graph' ? (ui.overview ? t('graph.overview') : session.project.chapters.find((c) => c.id === ui.chapterId)?.name || t('side.story')) : n ? (n.id === GLOBAL_NODE_ID ? t('global.title') : n.name) : beh ? beh.name : ws ? t(ws.title) : '?';
             const icon = tb.kind === 'graph' ? 'workflow' : def?.icon || (beh ? 'script' : ws?.icon || 'module');
             return (
               <div key={i} role="tab" aria-selected={ui.active === i} className={cx('ws-tab', ui.active === i && 'active', tb.kind === 'graph' && 'pinned')} onClick={() => session.setUI({ active: i })}
@@ -234,19 +235,19 @@ function SessionView({ session }: { session: ProjectSession }) {
         </div>
         <div className="ws-body">
           {tab.kind === 'graph' && <StoryGraph session={session} />}
-          {node?.type === 'core.scene' && <SceneEditor key={node.id} session={session} nodeId={node.id} />}
-          {node && node.type !== 'core.scene' && <LogicWorkspace key={node.id} session={session} nodeId={node.id} />}
+          {hasSceneData(node) && <SceneEditor key={node.id} session={session} nodeId={node.id} />}
+          {node && !hasSceneData(node) && <LogicWorkspace key={node.id} session={session} nodeId={node.id} />}
           {tab.kind === 'node' && !node && <div className="pad muted">{t('workspace.nodeGone')}</div>}
           {custom?.startsWith('behavior:') && <BehaviorWorkspace session={session} behaviorId={custom.slice(9)} />}
           {custom && !custom.startsWith('behavior:') && session.ext.workspaces.filter((w) => w.id === custom).map((w) => <ModulePanelHost key={w.id} session={session} panel={{ ...w, location: 'bottom' } as any} />)}
-          {ui.preview && !(ui.preview.docked && node?.type === 'core.scene' && ui.preview.nodeId === node.id) && <PreviewPanel key={ui.preview.key} session={session} />}
+          {ui.preview && !(ui.preview.docked && hasSceneData(node) && ui.preview.nodeId === node.id) && <PreviewPanel key={ui.preview.key} session={session} />}
         </div>
       </main>
       {ui.inspectorOpen && (
         <>
           <div className="resizer-x" onPointerDown={(e) => startInsp(e, -1)} role="separator" aria-orientation="vertical" />
           <aside className="inspector" style={{ width: inspW }} aria-label={t('inspector.title')}>
-            {node?.type === 'core.scene' ? <SceneInspector session={session} nodeId={node.id} /> : <StoryInspector session={session} />}
+            {hasSceneData(node) ? <SceneInspector session={session} nodeId={node.id} /> : <StoryInspector session={session} />}
           </aside>
         </>
       )}

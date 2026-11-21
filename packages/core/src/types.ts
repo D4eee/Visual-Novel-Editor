@@ -10,7 +10,7 @@
 export type Id = string;
 
 export const PROJECT_FORMAT = 'vne.project';
-export const PROJECT_FORMAT_VERSION = 2;
+export const PROJECT_FORMAT_VERSION = 3;
 
 export interface Project {
   format: typeof PROJECT_FORMAT;
@@ -34,6 +34,10 @@ export interface Project {
   modules: ModuleDependency[];
   /** Project-level data owned by modules, keyed by module id. Never removed automatically. */
   extensions: Record<string, unknown>;
+  /** Collectible items (Game module): picked up in scenes, kept in the inventory list. */
+  items: ItemDef[];
+  /** The list variable that is the player's inventory (holds item names). */
+  inventoryVarId: Id | null;
   /** Editor-only view state (stripped from exported games). */
   editor?: EditorState;
   [key: string]: unknown;
@@ -127,8 +131,10 @@ export interface StoryEdge {
   to: PortRef;
 }
 
-export type VarType = 'number' | 'string' | 'boolean';
-export type VarValue = number | string | boolean;
+export type VarType = 'number' | 'string' | 'boolean' | 'list';
+/** Lists hold numbers, text and true/false values (not other lists). */
+export type VarValue = number | string | boolean | ScalarValue[];
+export type ScalarValue = number | string | boolean;
 
 export interface VariableDef {
   id: Id;
@@ -138,6 +144,23 @@ export interface VariableDef {
   /** game: saved with progress; persistent: shared by all saves (e.g. unlocked endings). */
   scope: 'game' | 'persistent';
   description?: string;
+}
+
+/** A collectible item. The inventory list stores item names, so conditions read naturally: has("Key"). */
+export interface ItemDef {
+  id: Id;
+  name: string;
+  /** Icon shown in inventories (image asset). */
+  assetId: Id | null;
+  description?: string;
+}
+
+/** A custom parameter of an element (e.g. hp, maxHp of a health bar). Its value lives in props["param.<id>"]. */
+export interface ParamDef {
+  id: Id;
+  name: string;
+  type: 'number' | 'string' | 'boolean';
+  initial: ScalarValue;
 }
 
 export interface Character {
@@ -232,6 +255,10 @@ export interface Layer {
   data?: Record<string, unknown>;
   /** Set on a group made by "Edit as layers" from a reusable composition, so it can update that composition. */
   sourceCompositionId?: Id;
+  /** Custom parameters (Game module); values in props["param.<id>"]. */
+  params?: ParamDef[];
+  /** Global elements only: drawn in front of (default) or behind every page's own elements. */
+  zone?: 'front' | 'back';
 }
 
 export type LayerEffect =
@@ -295,6 +322,9 @@ export interface Choice {
   effects: VarOp[];
   /** Optional animation played before leaving the scene. */
   animationId?: Id | null;
+  /** Only offered when the inventory holds this item (by name); `consumeItem` takes it away when picked. */
+  requiresItem?: string | null;
+  consumeItem?: boolean;
 }
 
 export interface VarOp {

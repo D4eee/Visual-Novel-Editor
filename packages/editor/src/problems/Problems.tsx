@@ -1,3 +1,4 @@
+import { hasSceneData } from '@vne/core';
 import type { Issue } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
@@ -12,7 +13,7 @@ export function goToIssue(session: ProjectSession, i: Issue): void {
   if (tg.nodeId) {
     const n = session.project.nodes[tg.nodeId];
     if (!n) return;
-    if (tg.layerId && n.type === 'core.scene') {
+    if (tg.layerId && hasSceneData(n)) {
       session.openNode(n.id);
       session.setSceneUI(n.id, { selectedLayers: [tg.layerId], subTab: 'composition' });
     } else session.focusNode(n.id);

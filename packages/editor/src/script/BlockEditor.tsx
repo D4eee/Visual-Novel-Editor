@@ -1,4 +1,4 @@
-import { sceneChoices, sceneLines } from '@vne/core';
+import { sceneChoices, sceneLines, hasSceneData } from '@vne/core';
 import { useEffect, useMemo, useRef, useState, ReactNode } from 'react';
 import type { Block, BlockDef, Engine, Project, SceneData, StoryNode, Behavior } from '@vne/core';
 import { newId, remapIds, isBlockRef } from '@vne/core';
@@ -6,11 +6,13 @@ import { Icon } from '../ui/Icon';
 import { cx, IconButton, Toggle } from '../ui/controls';
 import { openMenu, MenuItem } from '../ui/Menu';
 import { ExprInput, ValueInput, ExprCtx } from './ExprInput';
+import { pageElementsOf, pageCtxOf } from '../scene/pageContext';
+import type { PageElement } from '../scene/pageContext';
 
 export interface WStack { id: string; hat: Block | null; body: Block[]; enabled: boolean; x?: number; y?: number }
 
 export const CATEGORY_COLORS: Record<string, string> = {
-  elements: '#3d8bfd', events: '#d9a520', control: '#e8873a', looks: '#8b6cf0', sound: '#c75ec7', sensing: '#2fa9cf', variables: '#e0566b', story: '#4c8dff', operators: '#4fb35a', module: '#25a89c',
+  elements: '#3d8bfd', events: '#d9a520', control: '#e8873a', looks: '#8b6cf0', sound: '#c75ec7', sensing: '#2fa9cf', variables: '#e0566b', story: '#4c8dff', operators: '#4fb35a', game: '#f07848', module: '#25a89c',
 };
 
 export function blockColor(def: BlockDef | undefined): string {
@@ -236,8 +238,12 @@ function freeSpot(stacks: WStack[]): { x: number; y: number } {
   return { x: 16 + (n % 3) * 360, y: 16 + Math.floor(n / 3) * 260 };
 }
 
-export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onSelectStack, header, running, selectedLayer, onSelectLayer, onNewElement }: {
+export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onSelectStack, header, running, selectedLayer, onSelectLayer, onNewElement, categoryExtra, onOpenElement }: {
   stacks: WStack[];
+  /** Extra palette content shown above a category's blocks (the Game category's variable manager). */
+  categoryExtra?: (category: string, api: { dragElement(e: React.PointerEvent, layerId: string, label: string): void; dragBlock(e: React.PointerEvent, defId: string, args: Record<string, any>): void }) => ReactNode;
+  /** Double-click on an element in the palette (opens its element-variable editor). */
+  onOpenElement?: (layerId: string) => void;
   /** Scene scripts: the element selected in the scene (its blocks open in the palette, its scripts are marked). */
   selectedLayer?: string | null;
   onSelectLayer?: (id: string) => void;
@@ -256,11 +262,15 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
   const engine = ctx.engine;
   const canvas = mode === 'scene';
   const scene = canvas ? (ctx.project.nodes[ctx.nodeId]?.data as SceneData | undefined) : undefined;
-  const elements = (scene?.layers || []).filter((l) => l.type !== 'core.dialogue').slice().reverse();
+  // This page's elements, those it inherits from earlier pages, and the global page's.
+  const allElements: PageElement[] = canvas ? pageElementsOf(engine, ctx.project, ctx.nodeId).filter((e) => e.layer.type !== 'core.dialogue') : [];
+  const elementGroups: { origin: PageElement['origin']; items: PageElement[] }[] = (['own', 'inherited', 'global'] as const)
+    .map((origin) => ({ origin, items: allElements.filter((e) => e.origin === origin).reverse() }))
+    .filter((g) => g.origin === 'own' || g.items.length);
   const [category, setCategory] = useState<string>(mode === 'scene' ? 'elements' : 'looks');
   const [expanded, setExpanded] = useState<string | null>(selectedLayer || null);
   // Selecting an element in the scene opens its blocks here.
-  useEffect(() => { if (selectedLayer) { setExpanded(selectedLayer); if (canvas) setCategory('elements'); } }, [selectedLayer]);
+  useEffect(() => { if (selectedLayer) { setExpanded(selectedLayer); if (canvas) setCategory((c) => (c === 'game' ? c : 'elements')); } }, [selectedLayer]);
   const refsSelected = useMemo(() => new Set(selectedLayer ? stacks.filter((s) => stackElements(s, engine).has(selectedLayer)).map((s) => s.id) : []), [stacks, selectedLayer, engine]);
   /** Blocks offered under an element, with the element already filled in. */
   const elementBlocks = (l: { id: string; type: string }): { def: BlockDef; args: Record<string, any> }[] => {
@@ -338,7 +348,7 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
   const defs = useMemo(() => engine.blocks.list().filter((d) => (mode === 'scene' ? d.context !== 'story' : d.shape !== 'hat' && d.context !== 'scene' ? true : d.shape !== 'hat' && mode === 'story' && d.context === 'scene' ? false : d.shape !== 'hat')), [engine, mode, engine.blocks.list().length]);
   const usable = defs.filter((d) => (mode === 'story' ? d.shape !== 'hat' && d.context !== 'scene' : true));
   const categories = [...new Set([...(canvas ? ['elements'] : []), ...usable.map((d) => d.category)])];
-  const order = ['elements', 'events', 'control', 'looks', 'sound', 'sensing', 'operators', 'variables', 'story'];
+  const order = ['elements', 'events', 'control', 'looks', 'game', 'sound', 'sensing', 'operators', 'variables', 'story'];
   categories.sort((a, b) => (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 99 : order.indexOf(b)));
   const shown = usable.filter((d) => (query ? t(d.label).toLowerCase().includes(query.toLowerCase()) || d.id.toLowerCase().includes(query.toLowerCase()) : d.category === category));
 
@@ -460,29 +470,39 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
           {canvas && !query && category === 'elements' && (
             <div className="blk-elements">
               {onNewElement && <button type="button" className="blk-new-el" onClick={onNewElement} title={t('script.newElementHint')}><Icon name="plus" size={13} />{t('script.newElement')}</button>}
-              {elements.map((l) => {
-                const ldef = engine.layerTypes.get(l.type);
-                const open = expanded === l.id;
-                return (
-                  <div key={l.id} className={cx('blk-element', open && 'open', selectedLayer === l.id && 'selected')}>
-                    <div className="blk-element-row">
-                      <button type="button" className="blk-el-toggle" aria-expanded={open} aria-label={t('script.elementBlocks', { name: l.name })} onClick={() => setExpanded(open ? null : l.id)}><Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} /></button>
-                      <span className="blk-pill" onPointerDown={(e) => start(e, { kind: 'element', layerId: l.id, label: l.name })} title={t('script.elementHint')}>
-                        <Icon name={ldef?.icon || 'layers'} size={12} /><span className="nm">{l.name}</span>
-                      </span>
-                      {!l.visible && <Icon name="eyeOff" size={12} title={t('script.startsHidden')} />}
-                    </div>
-                    {open && (
-                      <div className="blk-element-blocks">
-                        {elementBlocks(l).map(({ def, args }) => <PaletteBlock key={def.id} def={def} args={args} ctx={ctx} onPointerDown={(e) => start(e, { kind: 'new', def, args })} />)}
+              {elementGroups.map((g) => (
+                <div key={g.origin} className="blk-el-group">
+                  {g.origin !== 'own' && <div className="blk-el-group-head" title={t(g.origin === 'global' ? 'global.sectionHint' : 'inherit.sectionHint')}><Icon name={g.origin === 'global' ? 'globe' : 'inherit'} size={11} />{t(g.origin === 'global' ? 'global.section' : 'inherit.section')}</div>}
+                  {g.items.map(({ layer: l, origin, paused }) => {
+                    const ldef = engine.layerTypes.get(l.type);
+                    const open = expanded === l.id;
+                    return (
+                      <div key={l.id} className={cx('blk-element', open && 'open', selectedLayer === l.id && 'selected', origin !== 'own' && 'context')}>
+                        <div className="blk-element-row">
+                          <button type="button" className="blk-el-toggle" aria-expanded={open} aria-label={t('script.elementBlocks', { name: l.name })} onClick={() => setExpanded(open ? null : l.id)}><Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} /></button>
+                          <span className="blk-pill" onPointerDown={(e) => start(e, { kind: 'element', layerId: l.id, label: l.name })} onDoubleClick={() => onOpenElement?.(l.id)} title={t('script.elementHint')}>
+                            <Icon name={ldef?.icon || 'layers'} size={12} /><span className="nm">{l.name}</span>
+                          </span>
+                          {paused && <Icon name="paused" size={12} title={t('inherit.paused')} />}
+                          {!l.visible && <Icon name="eyeOff" size={12} title={t('script.startsHidden')} />}
+                        </div>
+                        {open && (
+                          <div className="blk-element-blocks">
+                            {elementBlocks(l).map(({ def, args }) => <PaletteBlock key={def.id} def={def} args={args} ctx={ctx} onPointerDown={(e) => start(e, { kind: 'new', def, args })} />)}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-              {!elements.length && <div className="muted small pad">{t('script.noElements')}</div>}
+                    );
+                  })}
+                  {g.origin === 'own' && !g.items.length && <div className="muted small pad">{t('script.noElements')}</div>}
+                </div>
+              ))}
             </div>
           )}
+          {!query && categoryExtra?.(category, {
+            dragElement: (e, layerId, label) => start(e, { kind: 'element', layerId, label }),
+            dragBlock: (e, defId, args) => { const def = engine.blocks.get(defId); if (def) start(e, { kind: 'new', def, args }); },
+          })}
           {!query && category === 'variables' && (
             <div className="blk-elements">
               {[...ctx.project.variables, ...(scene?.localVariables || [])].map((v) => {
@@ -666,6 +686,7 @@ function PaletteBlock({ def, args, ctx, onPointerDown }: { def: BlockDef; args?:
     if (v == null) return null;
     if (arg.type === 'layer') for (const n of Object.values(ctx.project.nodes)) { const l = (n.data as any)?.layers?.find?.((x: any) => x.id === v); if (l) return l.name; }
     if (arg.type === 'variable') return ctx.project.variables.find((x) => x.id === v)?.name || (ctx.project.nodes[ctx.nodeId]?.data as any)?.localVariables?.find?.((x: any) => x.id === v)?.name || null;
+    if (arg.type === 'item') return ctx.project.items.find((x) => x.id === v)?.name || String(v);
     return null;
   };
   return (
@@ -688,18 +709,23 @@ function PaletteBlock({ def, args, ctx, onPointerDown }: { def: BlockDef; args?:
 
 function scenesForCtx(ctx: BlockCtx): { node: StoryNode; scene: SceneData }[] {
   const node = ctx.project.nodes[ctx.nodeId];
-  if (node?.type === 'core.scene' && !ctx.storyLevel) return [{ node, scene: node.data as SceneData }];
+  if (hasSceneData(node) && !ctx.storyLevel) return [{ node, scene: node.data as SceneData }];
   return Object.values(ctx.project.nodes).filter((n) => n.type === 'core.scene').map((n) => ({ node: n, scene: n.data as SceneData }));
 }
 
 function ArgEditor({ arg, value, onChange, ctx, block }: { arg: BlockDef['args'][number]; value: any; onChange: (v: any) => void; ctx: BlockCtx; block: Block }) {
   const t = ctx.t;
-  const sel = (options: { value: string; label: string; group?: string }[], placeholder = t('common.choose')) => {
+  // Optional slots can be left empty ("this script", "any item"…).
+  const emptyKey = `block.empty.${block.type}.${arg.id}`;
+  const emptyFallback = arg.type === 'item' ? 'items.any' : arg.type === 'layer' ? 'script.thisScript' : 'script.emptyArg';
+  const emptyLabel = !arg.optional ? null : t(emptyKey) !== emptyKey ? t(emptyKey) : t(emptyFallback);
+  const sel = (options: { value: string; label: string; group?: string }[], placeholder = emptyLabel ?? t('common.choose')) => {
     const groups = [...new Set(options.map((o) => o.group || ''))];
     const known = options.some((o) => o.value === value);
     return (
-      <select className={cx('blk-select', value && !known && 'missing')} value={value ?? ''} onChange={(e) => onChange(e.target.value || null)} onKeyDown={(e) => e.stopPropagation()} aria-label={arg.id}>
+      <select className={cx('blk-select', value && !known && 'missing', !value && emptyLabel && 'empty-ok')} value={value ?? ''} onChange={(e) => onChange(e.target.value || null)} onKeyDown={(e) => e.stopPropagation()} aria-label={arg.id}>
         {(!value || !known) && <option value={value ?? ''}>{value && !known ? t('script.missingRef') : placeholder}</option>}
+        {value && known && emptyLabel && <option value="">{emptyLabel}</option>}
         {groups.length > 1
           ? groups.map((g) => <optgroup key={g} label={g}>{options.filter((o) => (o.group || '') === g).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</optgroup>)
           : options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -711,9 +737,28 @@ function ArgEditor({ arg, value, onChange, ctx, block }: { arg: BlockDef['args']
   switch (arg.type) {
     case 'number': return <ValueInput value={value} onChange={onChange} ctx={ctx} numeric />;
     case 'string': return <ValueInput value={value} onChange={onChange} ctx={ctx} />;
-    case 'expr': return <ExprInput value={value} onChange={(e) => onChange(e)} ctx={ctx} allowClear={false} />;
+    case 'expr': return <ExprInput value={value} onChange={(e) => onChange(e)} ctx={ctx} allowClear={!!arg.optional} />;
     case 'boolean': return <label className="blk-check"><input type="checkbox" checked={!!value} onChange={(e) => onChange(e.target.checked)} /><span>{t(`block.arg.${block.type}.${arg.id}`) !== `block.arg.${block.type}.${arg.id}` ? t(`block.arg.${block.type}.${arg.id}`) : ''}</span></label>;
-    case 'layer': return sel(scenes.flatMap(({ node, scene }) => scene.layers.map((l) => ({ value: l.id, label: l.name, group: multi ? node.name : undefined }))));
+    case 'layer': {
+      const fits = (type: string) => !arg.layerTypes || arg.layerTypes.includes('*') || arg.layerTypes.includes(type);
+      if (!multi && hasSceneData(ctx.project.nodes[ctx.nodeId])) {
+        // A page: its own elements, then inherited and global ones.
+        const groupOf = { own: '', inherited: t('inherit.section'), global: t('global.section') };
+        const list = pageElementsOf(ctx.engine, ctx.project, ctx.nodeId).filter((e) => fits(e.layer.type) && e.layer.type !== 'core.dialogue');
+        const grouped = list.some((e) => e.origin !== 'own');
+        return sel(list.map((e) => ({ value: e.layer.id, label: e.layer.name, group: grouped ? groupOf[e.origin] || t('inherit.thisPage') : undefined })));
+      }
+      const g = pageCtxOf(ctx.engine, ctx.project, ctx.nodeId);
+      return sel([...scenes.flatMap(({ node, scene }) => scene.layers.filter((l) => fits(l.type)).map((l) => ({ value: l.id, label: l.name, group: multi ? node.name : undefined }))),
+        ...[...g.globalBack, ...g.globalFront].filter((l) => fits(l.type)).map((l) => ({ value: l.id, label: l.name, group: t('global.section') }))]);
+    }
+    case 'item': return sel(ctx.project.items.map((i) => ({ value: i.id, label: i.name })), emptyLabel ?? t('items.choose'));
+    case 'param': {
+      const layerId = block.args[arg.paramOf || 'layer'];
+      const l = pageElementsOf(ctx.engine, ctx.project, ctx.nodeId).find((e) => e.layer.id === layerId)?.layer
+        || Object.values(ctx.project.nodes).flatMap((n) => (n.data as any)?.layers || []).find((x: any) => x.id === layerId);
+      return sel((l?.params || []).map((p: any) => ({ value: p.id, label: p.name })), l ? (l.params?.length ? t('params.choose') : t('params.none')) : t('params.pickElement'));
+    }
     case 'animation': return sel(scenes.flatMap(({ node, scene }) => scene.animations.map((a) => ({ value: a.id, label: a.name, group: multi ? node.name : undefined }))));
     case 'choice': return sel(scenes.flatMap(({ node, scene }) => sceneChoices(scene).map((c) => ({ value: c.id, label: c.text || '—', group: multi ? node.name : undefined }))));
     case 'line': return sel(scenes.flatMap(({ node, scene }) => sceneLines(scene).map((l, i) => ({ value: l.id, label: `${i + 1}. ${l.text.slice(0, 28)}`, group: multi ? node.name : undefined }))));
@@ -724,7 +769,10 @@ function ArgEditor({ arg, value, onChange, ctx, block }: { arg: BlockDef['args']
       return sel(opts);
     }
     case 'node': return sel(Object.values(ctx.project.nodes).filter((n) => n.type !== 'core.comment').map((n) => ({ value: n.id, label: n.name, group: ctx.project.chapters.find((c) => c.id === n.chapterId)?.name })));
-    case 'variable': return sel([...ctx.project.variables.map((v) => ({ value: v.id, label: v.name })), ...scenes.flatMap(({ scene }) => scene.localVariables.map((v) => ({ value: v.id, label: `${v.name} (${t('vars.scene')})` })))]);
+    case 'variable': {
+      const ok = (v: { type: string }) => !arg.varType || v.type === arg.varType;
+      return sel([...ctx.project.variables.filter(ok).map((v) => ({ value: v.id, label: v.name })), ...scenes.flatMap(({ scene }) => scene.localVariables.filter(ok).map((v) => ({ value: v.id, label: `${v.name} (${t('vars.scene')})` })))], arg.varType === 'list' ? t('vars.chooseList') : undefined);
+    }
     case 'asset': return sel(ctx.project.assets.filter((a) => !arg.assetKind || a.kind === arg.assetKind).map((a) => ({ value: a.id, label: a.name })));
     case 'character': return sel(ctx.project.characters.map((c) => ({ value: c.id, label: c.name })));
     case 'portrait': {
@@ -754,7 +802,7 @@ function MessageInput({ value, onChange, project }: { value: string; onChange: (
   const known = useMemo(() => {
     const out = new Set<string>();
     const walk = (bs: Block[] | undefined) => { for (const b of bs || []) { if (typeof b.args?.message === 'string' && b.args.message) out.add(b.args.message); walk(b.body); walk(b.else); } };
-    for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') for (const s of (n.data as SceneData).scripts) { walk([s.hat]); walk(s.body); }
+    for (const n of Object.values(project.nodes)) if (hasSceneData(n)) for (const s of (n.data as SceneData).scripts) { walk([s.hat]); walk(s.body); }
     return [...out];
   }, [project]);
   const [draft, setDraft] = useState(value);

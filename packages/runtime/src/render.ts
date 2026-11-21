@@ -24,6 +24,8 @@ export interface SceneView {
   errors: Map<string, string[]>;
   /** Hook for error reporting from module draw code. */
   reportError?(source: string, err: unknown): void;
+  /** Playing games: the player's collectibles (inventories draw these). */
+  items?: { list(listVar?: string | null): string[]; selected(): string | null };
 }
 
 export interface RenderContext {
@@ -130,6 +132,14 @@ export function layerContains(view: SceneView, l: Layer, x: number, y: number): 
   const def = view.engine.layerTypes.get(l.type);
   if (!def?.hitTest) return true;
   try { return !!def.hitTest(l, props, p.x, p.y, s); } catch { return true; }
+}
+
+/** A stage point in the layer's own coordinates (0..width, 0..height), with the layer's size. */
+export function layerLocalPoint(view: SceneView, l: Layer, x: number, y: number): { x: number; y: number; size: { width: number; height: number } } | null {
+  const m = invert(worldMatrix(view, l.id));
+  if (!m) return null;
+  const p = apply(m, x, y);
+  return { x: p.x, y: p.y, size: layerSize(view, l, view.props(l)) };
 }
 
 /** Axis-aligned bounding box of a layer on the stage. */

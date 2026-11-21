@@ -44,7 +44,7 @@ test('history undo / redo / merge', () => {
 
 test('connecting a single output replaces the old edge; incompatible ports are refused', () => {
   let p = sceneProject();
-  const [, a, b] = Object.values(p.nodes);
+  const [, a, b] = Object.values(p.nodes).filter((n) => n.type !== 'core.global');
   const c = V.createNode(engine, p, 'core.scene', p.chapters[0].id, 900, 0);
   p = V.produce(p, (d) => { d.nodes[c.id] = c; V.connect(engine, d, { node: a.id, port: 'next' }, { node: c.id, port: 'in' }); });
   const outs = V.outgoing(p, a.id, 'next');
@@ -58,7 +58,7 @@ const choiceLayer = (id, text, y) => ({ id, type: 'core.choice', name: text, par
 
 test('choice elements are the scene outputs, with stable ids; deleting one removes only its edge', () => {
   let p = sceneProject();
-  const [, a, b] = Object.values(p.nodes);
+  const [, a, b] = Object.values(p.nodes).filter((n) => n.type !== 'core.global');
   p = V.produce(p, (d) => {
     const before = V.sceneChoiceIds(d, a.id);
     d.nodes[a.id].data.layers.push(choiceLayer('c2', 'Right', 300), choiceLayer('c1', 'Left', 200));

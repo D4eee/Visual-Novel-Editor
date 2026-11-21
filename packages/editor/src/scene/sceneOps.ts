@@ -1,18 +1,18 @@
 import type { SceneData, Layer, Project, Track, AnimationClip, Block, Engine, ScriptStack } from '@vne/core';
-import { newId, createAnimation, createLayer, remapIds, isBlockRef, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE } from '@vne/core';
+import { newId, createAnimation, createLayer, remapIds, isBlockRef, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE, hasSceneData } from '@vne/core';
 import { normalizeTrack, sampleTrack, propKind, animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { store } from '../state/store';
 
 export function sceneOf(session: ProjectSession, nodeId: string): SceneData | null {
   const n = session.project.nodes[nodeId];
-  return n && n.type === 'core.scene' ? (n.data as SceneData) : null;
+  return hasSceneData(n) ? (n.data as SceneData) : null;
 }
 
 export function updateScene(session: ProjectSession, nodeId: string, label: string, fn: (scene: SceneData, draft: Project) => void, mergeKey?: string): void {
   session.update(label, (d) => {
     const n = d.nodes[nodeId];
-    if (!n || n.type !== 'core.scene') return;
+    if (!hasSceneData(n)) return;
     // Choice elements are the scene's outputs: keep story connections in sync with them.
     const before = choiceLayers(n.data as SceneData).map((l) => l.id);
     fn(n.data as SceneData, d);
