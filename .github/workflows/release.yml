@@ -1,7 +1,9 @@
 # Builds the desktop editor for every platform and publishes a GitHub release.
 #
-# Runs when a version tag (v1.2.3) is pushed, or by hand from the Actions tab
-# ("Run workflow", with the tag to publish). The tag must match package.json's version.
+# Runs when a version tag (v1.2.3) is pushed, or by hand from the Actions tab:
+# Release → Run workflow → enter the tag (for example v0.3.1). Run by hand, it
+# builds the chosen branch and creates the tag on that commit if it does not exist.
+# The tag must match package.json's version.
 name: Release
 
 on:
@@ -12,6 +14,7 @@ on:
       tag:
         description: 'Tag to publish (for example v0.3.1)'
         required: true
+        default: 'v0.3.1'
 
 permissions:
   contents: write
@@ -25,8 +28,6 @@ jobs:
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -67,5 +68,5 @@ jobs:
             gh release upload "$TAG" Visual-Novel-Editor-*.zip SHA256SUMS.txt --clobber
           else
             gh release create "$TAG" Visual-Novel-Editor-*.zip SHA256SUMS.txt \
-              --title "Visual Novel Editor $VERSION" --notes-file "$NOTES"
+              --target "$GITHUB_SHA" --title "Visual Novel Editor $VERSION" --notes-file "$NOTES"
           fi
