@@ -5,7 +5,7 @@ import { chapterEntry, startNode, newId } from '@vne/core';
 import { GameRuntime, RuntimeError, ModuleHost, createEngine } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
-import { Button, IconButton, Tabs, Select, cx, TextInput } from '../ui/controls';
+import { Button, Tabs, Select, cx, TextInput } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 
 type Scope = 'scene' | 'chapter' | 'game';
@@ -106,7 +106,6 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
   const choiceText = (id: string) => { for (const n of Object.values(project.nodes)) if (n.type === 'core.scene') { const c = sceneChoices(n.data as any).find((x) => x.id === id); if (c) return c.text; } return id; };
   const animName = (id: string) => { for (const n of Object.values(project.nodes)) if (hasSceneData(n)) { const a = (n.data as any).animations.find((x: any) => x.id === id); if (a) return a.name; } return id; };
 
-  const close = () => session.setUI({ preview: null });
   const errorCount = errors.filter((e) => e.detail?.severity !== 'warning').length;
 
   return (
@@ -119,7 +118,7 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
         {current && <button type="button" className="current-node" onClick={() => { session.focusNode(current.id); }} title={t('graph.reveal')}><span className={cx('live-dot', running && 'on')} />{current.name}</button>}
         <div className="grow" />
         <span className="muted small">{t('preview.sameRuntime')}</span>
-        <IconButton icon="close" title={`${t('common.close')} (Esc)`} onClick={close} />
+
       </div>
       <div className="preview-main">
         <div className="preview-stage" ref={hostRef} tabIndex={0} data-preview-focus="true" />

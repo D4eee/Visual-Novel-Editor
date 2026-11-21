@@ -2,13 +2,12 @@ import type { SceneData } from '@vne/core';
 import { chapterEntry, nodesInChapter, deleteNodes } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
-import { Field, TextInput, Select, Button, Section, Empty, IconButton } from '../ui/controls';
+import { Field, TextInput, Select, Button, Section } from '../ui/controls';
 import { NodeForm } from '../logic/NodeForms';
 import { ChoicesSummary } from '../scene/choices';
 import { sceneLines } from '@vne/core';
 import { Icon } from '../ui/Icon';
 import { nodeTypeLabel } from './nodeModel';
-import { IssueList } from '../problems/Problems';
 import { stripMarkup } from '@vne/runtime';
 
 export function StoryInspector({ session }: { session: ProjectSession }) {
@@ -33,7 +32,6 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
   if (sel.length === 1) {
     const node = project.nodes[sel[0]];
     const def = session.engine.nodeTypes.get(node.type);
-    const issues = session.issues.filter((i) => i.target?.nodeId === node.id);
     return (
       <div className="inspector-body">
         <div className="insp-title" style={{ ['--node-color' as any]: def?.color }}>
@@ -65,7 +63,6 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
           <Button icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId: node.id, key: Date.now() } })}>{t('preview.fromHere')}</Button>
           <Button icon="module" kind="ghost" onClick={() => session.openNode(node.id, 'modules')}>{node.modules.length ? t('modules.attached', { n: node.modules.length }) : t('modules.addToNode')}</Button>
         </div>
-        {issues.length > 0 && <Section id="insp.issues" title={t('problems.title')}><IssueList session={session} issues={issues} /></Section>}
       </div>
     );
   }
@@ -74,7 +71,6 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
   const nodes = nodesInChapter(project, chapter.id);
   const entry = chapterEntry(project, chapter.id);
   const scenes = nodes.filter((n) => n.type === 'core.scene');
-  const issues = session.issues.filter((i) => i.target?.chapterId === chapter.id);
   return (
     <div className="inspector-body">
       <div className="insp-title"><Icon name="book" size={16} /> {t('chapter.label')}</div>
@@ -94,8 +90,6 @@ export function StoryInspector({ session }: { session: ProjectSession }) {
         <div><b>{scenes.reduce((s, n) => s + sceneLines(n.data as SceneData).length, 0)}</b><span>{t('stats.lines')}</span></div>
       </div>
       <Button icon="play" onClick={() => session.setUI({ preview: { scope: 'chapter', nodeId: entry?.id || null, key: Date.now() } })} disabled={!entry}>{t('preview.chapter')}</Button>
-      {issues.length > 0 ? <Section id="insp.ch.issues" title={t('problems.inChapter', { n: issues.length })}><IssueList session={session} issues={issues} /></Section>
-        : <Empty icon="check" title={t('problems.noneInChapter')} />}
     </div>
   );
 }

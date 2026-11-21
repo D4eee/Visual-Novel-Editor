@@ -1,6 +1,6 @@
 // Everything the tests need from the source tree, bundled by scripts/build.mjs into dist/test/vne.mjs.
 export * from '@vne/core';
-export { createEngine, ModuleHost, ScriptContext, CancelToken, runBlocks, reportBlock, regionContains, VarStore, ScenePlayer, GlobalPage, Items, stepSprite, inventorySlots, ScriptEngine } from '@vne/runtime';
+export { createEngine, ModuleHost, ScriptContext, CancelToken, runBlocks, reportBlock, regionContains, VarStore, ScenePlayer, GlobalPage, Items, stepSprite, inventorySlots, ScriptEngine, resolveFontFamily, fontFamilyName } from '@vne/runtime';
 export * as zip from '../packages/host/src/zip';
 export * as projects from '../packages/host/src/projects';
 export * as exporter from '../packages/host/src/exporter';

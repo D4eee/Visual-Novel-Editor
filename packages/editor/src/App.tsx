@@ -154,10 +154,15 @@ function SessionActions({ session }: { session: ProjectSession }) {
       <IconButton icon="redo" title={h.redoLabel ? `${t('history.redo')}: ${h.redoLabel} (${shortcut('Mod+Shift+Z')})` : t('history.nothingRedo')} disabled={!h.canRedo} onClick={() => h.redo()} />
       <span className="sep" />
       {session.ext.toolbar.map((tb) => <Button key={tb.id} small kind="ghost" icon={tb.icon || 'module'} onClick={() => { try { tb.run(makeMountContext(session, tb.moduleId)); } catch (err) { session.moduleError(tb.moduleId, err, 'toolbar'); } }}>{t(tb.label)}</Button>)}
-      <div className="split-btn">
-        <Button kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId: session.currentNodeId, key: Date.now() } })} title={`${t('preview.title')} (${shortcut('Mod+P')})`}>{t('preview.button')}</Button>
-        <button type="button" className="btn btn-primary split-caret" onClick={previewMenu} aria-label={t('preview.scope')}><Icon name="chevronDown" size={14} /></button>
-      </div>
+      {session.ui.preview ? (
+        // While the preview runs, the same button stops it.
+        <Button kind="danger" icon="stop" className="preview-stop" onClick={() => session.setUI({ preview: null })} title={`${t('preview.stop')} (${shortcut('Mod+P')})`}>{t('preview.stop')}</Button>
+      ) : (
+        <div className="split-btn">
+          <Button kind="primary" icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId: session.currentNodeId, key: Date.now() } })} title={`${t('preview.title')} (${shortcut('Mod+P')})`}>{t('preview.button')}</Button>
+          <button type="button" className="btn btn-primary split-caret" onClick={previewMenu} aria-label={t('preview.scope')}><Icon name="chevronDown" size={14} /></button>
+        </div>
+      )}
       <Button icon="export" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
       <IconButton icon="module" title={t('modules.manage')} onClick={() => store.open({ kind: 'modules' })} />
       <IconButton icon="settings" title={t('settings.title')} onClick={() => store.open({ kind: 'settings' })} />
@@ -271,8 +276,9 @@ function StatusBar({ session }: { session: ProjectSession }) {
             : <><Icon name="check" size={12} /> {t('save.saved')}</>}
       </span>
       {session.dirty && <button type="button" className="link" onClick={() => session.save()}>{t('save.saveNow')} ({shortcut('Mod+S')})</button>}
-      <button type="button" className={cx('status-btn', errors ? 'err' : warnings ? 'warn' : 'ok')} onClick={() => session.setUI({ problemsOpen: !session.ui.problemsOpen })}>
+      <button type="button" className={cx('status-btn', errors ? 'err' : warnings ? 'warn' : 'ok')} onClick={() => session.setUI({ problemsOpen: !session.ui.problemsOpen })} title={t(session.ui.problemsOpen ? 'console.hide' : 'console.open')} aria-expanded={!!session.ui.problemsOpen}>
         <Icon name={errors ? 'error' : warnings ? 'warning' : 'check'} size={12} /> {t('problems.summary', { e: errors, w: warnings })}
+        <Icon name={session.ui.problemsOpen ? 'chevronDown' : 'chevronUp'} size={11} className="status-caret" />
       </button>
       {modErr > 0 && <button type="button" className="status-btn err" onClick={() => store.open({ kind: 'modules' })}><Icon name="module" size={12} /> {t('modules.problems', { n: modErr })}</button>}
       <span className="grow" />

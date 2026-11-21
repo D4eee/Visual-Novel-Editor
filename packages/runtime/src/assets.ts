@@ -83,6 +83,13 @@ export function fontFamilyName(a: Asset): string {
   return `vne-${a.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 }
 
+/** A font value is a CSS font-family or the id of an imported font asset. */
+export function resolveFontFamily(project: { assets: Asset[] }, value: string | null | undefined, fallback = 'system-ui, sans-serif'): string {
+  if (!value) return fallback;
+  const asset = project.assets.find((a) => a.kind === 'font' && a.id === value);
+  return asset ? `"${fontFamilyName(asset)}", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif` : value;
+}
+
 /* ------------------------------------------------------------------ */
 /* Audio                                                                */
 /* ------------------------------------------------------------------ */

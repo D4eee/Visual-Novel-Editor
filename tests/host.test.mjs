@@ -202,3 +202,49 @@ test('effect preset library: save, list, export, import, delete', async () => {
   assert.equal(list[0].id, preset.id);
   await assert.rejects(() => host.methods['effectPresets.delete']({ id: '../x' }), /Invalid preset id/);
 });
+
+test('deleting a project moves its folder to the trash folder and drops it from Recent; examples are protected', async () => {
+  const dir = tmp();
+  const host = V.createHost({ mode: 'browser', distDir: path.join(root, 'dist'), examplesDir: path.join(root, 'examples'), userDataDir: path.join(dir, 'ud'), urlBase: 'http://x/fs/' });
+  const proj = path.join(dir, 'My Story');
+  await host.methods['project.create']({ dir: proj, json: V.serializeProject(V.createProject('My Story')) });
+  assert.equal((await host.methods['recent.list']()).length, 1);
+  const r = await host.methods['project.trash']({ path: proj });
+  assert.equal(r.where, 'folder');
+  assert.ok(!existsSync(proj));
+  assert.ok(existsSync(path.join(r.path, 'project.vne.json')));
+  assert.equal((await host.methods['recent.list']()).length, 0);
+  await assert.rejects(host.methods['project.trash']({ path: path.join(root, 'examples', 'games', 'like-human') }));
+  await assert.rejects(host.methods['project.trash']({ path: dir }));
+  // With a system trash (desktop) it is used instead.
+  const trashed = [];
+  const desk = V.createHost({ mode: 'electron', distDir: path.join(root, 'dist'), examplesDir: path.join(root, 'examples'), userDataDir: path.join(dir, 'ud2'), urlBase: 'vne-fs://fs/', dialogs: { pickFolder: async () => null, pickFiles: async () => [], reveal() {}, trash: async (p) => { trashed.push(p); } } });
+  const p2 = path.join(dir, 'Other');
+  await desk.methods['project.create']({ dir: p2, json: V.serializeProject(V.createProject('Other')) });
+  assert.equal((await desk.methods['project.trash']({ path: p2 })).where, 'trash');
+  assert.deepEqual(trashed, [p2]);
+});
+
+test('examples list their icon, size and localized descriptions; an untouched copy is refreshed, an edited one kept', async () => {
+  const dir = tmp();
+  const host = V.createHost({ mode: 'electron', distDir: path.join(root, 'dist'), examplesDir: path.join(root, 'examples'), userDataDir: path.join(dir, 'ud'), urlBase: 'vne-fs://fs/', examplesReadOnly: true });
+  const [ex] = await host.methods['examples.list']();
+  assert.equal(ex.id, 'like-human');
+  assert.ok(ex.iconUrl && ex.iconUrl.endsWith('/assets/images/icon.png'));
+  assert.ok(ex.scenes >= 10 && ex.chapters === 2);
+  assert.ok(ex.descriptions['zh-CN'].length > 10);
+  const a = await host.methods['examples.workingCopy']({ id: 'like-human' });
+  // An older editor's copy (no marker) is kept beside a fresh one.
+  const marker = path.join(a.path, '.vne', 'example-source.json');
+  writeFileSync(marker, JSON.stringify({ srcHash: 'old', copyHash: 'x' }));
+  await host.methods['examples.workingCopy']({ id: 'like-human' });
+  const { readdirSync } = await import('node:fs');
+  const keptDir = readdirSync(path.dirname(a.path)).find((f) => f.includes('your copy'));
+  assert.ok(keptDir && existsSync(path.join(path.dirname(a.path), keptDir, 'project.vne.json')));
+  // An untouched copy of an older example is simply replaced.
+  const m = JSON.parse(readFileSync(marker, 'utf8'));
+  writeFileSync(marker, JSON.stringify({ ...m, srcHash: 'older' }));
+  writeFileSync(path.join(a.path, 'extra.txt'), 'x');
+  await host.methods['examples.workingCopy']({ id: 'like-human' });
+  assert.ok(!existsSync(path.join(a.path, 'extra.txt')));
+});

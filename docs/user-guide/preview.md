@@ -12,6 +12,8 @@ The menu next to **Preview** chooses the scope:
 
 Right-click a node (or use the button in its inspector) → **Preview from here**.
 
+While the preview runs, the **Preview** button turns into a red **Stop** button: click it (or press **Ctrl/⌘+P**) to stop the preview and return to editing.
+
 ## The debug panel
 
 | Tab | Shows |
