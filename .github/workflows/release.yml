@@ -1,0 +1,71 @@
+# Builds the desktop editor for every platform and publishes a GitHub release.
+#
+# Runs when a version tag (v1.2.3) is pushed, or by hand from the Actions tab
+# ("Run workflow", with the tag to publish). The tag must match package.json's version.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to publish (for example v0.3.1)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # A Mac runner, so the two macOS apps are signed ad hoc before they are zipped.
+    runs-on: macos-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check the tag matches package.json
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [ "v$VERSION" != "$TAG" ]; then echo "Tag $TAG does not match package.json version $VERSION"; exit 1; fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - run: npm install --no-audit --no-fund
+
+      - name: Build and test
+        run: |
+          node scripts/build.mjs
+          node --test tests/*.test.mjs
+
+      - name: Download Electron runtimes
+        run: |
+          node scripts/fetch-runtime-templates.mjs
+          EV=$(node -p "require('./package.json').devDependencies.electron.replace(/^[^0-9]*/, '')")
+          curl -fsSL -o "resources/runtime-templates/electron-v$EV-linux-x64.zip" \
+            "https://github.com/electron/electron/releases/download/v$EV/electron-v$EV-linux-x64.zip"
+
+      - name: Package mac-arm64, mac-x64, win-x64, linux-x64
+        run: node scripts/package-desktop.mjs --target mac-arm64 --target mac-x64 --target win-x64 --target linux-x64 --zip
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd release
+          shasum -a 256 Visual-Novel-Editor-*.zip > SHA256SUMS.txt
+          NOTES=../docs/release-notes/$TAG.md
+          [ -f "$NOTES" ] || { echo "Visual Novel Editor $VERSION" > /tmp/notes.md; NOTES=/tmp/notes.md; }
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" Visual-Novel-Editor-*.zip SHA256SUMS.txt --clobber
+          else
+            gh release create "$TAG" Visual-Novel-Editor-*.zip SHA256SUMS.txt \
+              --title "Visual Novel Editor $VERSION" --notes-file "$NOTES"
+          fi
