@@ -10,7 +10,7 @@
 export type Id = string;
 
 export const PROJECT_FORMAT = 'vne.project';
-export const PROJECT_FORMAT_VERSION = 3;
+export const PROJECT_FORMAT_VERSION = 4;
 
 export interface Project {
   format: typeof PROJECT_FORMAT;
@@ -259,6 +259,13 @@ export interface Layer {
   params?: ParamDef[];
   /** Global elements only: drawn in front of (default) or behind every page's own elements. */
   zone?: 'front' | 'back';
+  /**
+   * Parent element ("parent & link", like After Effects): this element moves, turns and scales
+   * with it, and its position is measured from the parent's anchor point. Unlike a group, the
+   * element keeps its own place in the layer order and its own opacity. Both must sit in the
+   * same group (or both at the top level).
+   */
+  link?: Id | null;
 }
 
 export type LayerEffect =
@@ -273,6 +280,16 @@ export interface AnimationClip {
   autoplay: boolean;
   tracks: Track[];
   media: MediaClip[];
+  /**
+   * In and out points of elements in this animation (After Effects-style layer bars): while
+   * the animation plays, the element is shown only from `in` to `out` (seconds; `out` null =
+   * to the end). Elements without an entry are shown the whole time.
+   */
+  spans?: Record<Id, { in: number; out: number | null }>;
+  /** Named points in time (editor aid: snapping and jumping). */
+  markers?: { id: Id; t: number; label: string; color?: string }[];
+  /** Part of the animation the editor previews and loops (editor only). */
+  workArea?: { start: number; end: number } | null;
 }
 
 export interface Track {

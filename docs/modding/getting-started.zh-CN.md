@@ -28,7 +28,7 @@ cp -r templates/extension my-sparkle
   "id": "io.github.yourname.sparkle",
   "name": { "en": "Sparkle", "zh-CN": "闪光" },
   "version": "0.1.0",
-  "engine": ">=0.2.2 <1.0.0",
+  "engine": ">=0.2.2 <2.0.0",
   "api": "^1.1.0",
   "runtime": "runtime.js",
   "editor": "editor.js",

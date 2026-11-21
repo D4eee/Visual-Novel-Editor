@@ -51,6 +51,13 @@ const server = http.createServer(async (req, res) => {
     const hostHeader = String(req.headers.host || '');
     if (!/^(127\.0\.0\.1|localhost)(:\d+)?$/.test(hostHeader)) { res.writeHead(403); res.end('Forbidden'); return; }
     if (url.pathname.startsWith('/api/') && req.method === 'POST') {
+      // Only the editor page may call the API: other web pages can send simple (text/plain or form)
+      // requests to localhost, but not JSON ones without a CORS preflight, which this server refuses.
+      const origin = req.headers.origin;
+      const ctype = String(req.headers['content-type'] || '');
+      if ((origin && !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(String(origin))) || !ctype.startsWith('application/json')) {
+        res.writeHead(403); res.end('Forbidden'); return;
+      }
       const name = decodeURIComponent(url.pathname.slice(5));
       const fn = host.methods[name];
       if (!fn) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: `Unknown method ${name}` })); return; }

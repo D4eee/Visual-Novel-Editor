@@ -1,8 +1,9 @@
 import type { SceneData, Layer, Project, Track, AnimationClip, Block, Engine, ScriptStack } from '@vne/core';
 import { newId, createAnimation, createLayer, remapIds, isBlockRef, choiceLayers, syncSceneChoiceEdges, CHOICE_LAYER, DIALOGUE_LAYER, CHOICE_STYLE, hasSceneData } from '@vne/core';
-import { normalizeTrack, sampleTrack, propKind, animatedProps } from '@vne/runtime';
+import { normalizeTrack, sampleTrack, propKind, animatedProps, linkMatrixWith, invert, apply, multiply } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { store } from '../state/store';
+import { getPrefs } from '../state/prefs';
 
 export function sceneOf(session: ProjectSession, nodeId: string): SceneData | null {
   const n = session.project.nodes[nodeId];
@@ -35,7 +36,7 @@ export function ensureClip(session: ProjectSession, nodeId: string, draftScene?:
   return clip.id;
 }
 
-function upsertKey(track: Track, time: number, value: any, ease = 'easeInOut'): void {
+function upsertKey(track: Track, time: number, value: any, ease = getPrefs().defaultEase || 'easeInOut'): void {
   const k = track.keyframes.find((x) => Math.abs(x.t - time) < 1e-3);
   if (k) k.v = value;
   else { track.keyframes.push({ id: newId('key'), t: time, v: value, ease }); normalizeTrack(track); }
@@ -64,7 +65,7 @@ export function setLayerProps(session: ProjectSession, nodeId: string, layerId: 
           track = { id: newId('trk'), layerId, prop: k, keyframes: [] };
           clip.tracks.push(track);
           // first key at time 0 holds the current base value so the change animates from it
-          if (ui.time > 0.001) track.keyframes.push({ id: newId('key'), t: 0, v: layer.props[k] ?? def?.default ?? 0, ease: 'easeInOut' });
+          if (ui.time > 0.001) track.keyframes.push({ id: newId('key'), t: 0, v: layer.props[k] ?? def?.default ?? 0, ease: getPrefs().defaultEase || 'easeInOut' });
         }
         upsertKey(track, Math.max(0, ui.time), v);
         if (ui.time > clip.duration) clip.duration = Math.ceil(ui.time * 10) / 10;
@@ -239,4 +240,62 @@ export function layerTree(scene: SceneData): { layer: Layer; depth: number }[] {
   };
   walk(null, 0);
   return out;
+}
+
+/**
+ * Link an element to a parent element (or unlink with null), like After Effects' parent pick-whip.
+ * The element stays where it is on screen: its position, rotation and scale — base values and
+ * keyframes — are converted into the new parent's space, measured at the playhead.
+ */
+export function setParent(session: ProjectSession, nodeId: string, layerId: string, parent: string | null): void {
+  const t = session.i18n.t;
+  const ui = session.sceneUI(nodeId);
+  updateScene(session, nodeId, parent ? t('insp.setParent') : t('insp.clearParent'), (s) => {
+    const layer = s.layers.find((l) => l.id === layerId);
+    if (!layer || (layer.link || null) === parent) return;
+    if (parent) {
+      const p = s.layers.find((l) => l.id === parent);
+      if (!p || (p.parentId || null) !== (layer.parentId || null)) return;
+      // no loops: the new parent may not (indirectly) follow this element
+      for (let c: string | null | undefined = p.link, i = 0; c && i < 64; i++) { if (c === layerId) return; c = s.layers.find((l) => l.id === c)?.link; }
+    }
+    const propsAt = (time: number) => (l: Layer) => animatedProps(session.engine, s, l, ui.clipId, time);
+    const before = (time: number) => linkMatrixWith(s.layers, layer, propsAt(time));
+    const after = (time: number) => linkMatrixWith(s.layers, { ...layer, link: parent }, propsAt(time));
+    const angle = (m: number[]) => (Math.atan2(m[1], m[0]) * 180) / Math.PI;
+    const scales = (m: number[]) => [Math.hypot(m[0], m[1]) || 1, Math.hypot(m[2], m[3]) || 1];
+    const convert = (time: number, x: number, y: number, rot: number, sx: number, sy: number) => {
+      const a = before(time), b = after(time);
+      const inv = invert(b);
+      const w = apply(a, x, y);
+      const q = inv ? apply(inv, w.x, w.y) : { x, y };
+      const [ax, ay] = scales(a), [bx, by] = scales(b);
+      return { x: q.x, y: q.y, rotation: rot + angle(a) - angle(b), scaleX: (sx * ax) / bx, scaleY: (sy * ay) / by };
+    };
+    const r = (v: number, d = 1000) => Math.round(v * d) / d;
+    const base = convert(ui.time, Number(layer.props.x ?? 0), Number(layer.props.y ?? 0), Number(layer.props.rotation ?? 0), Number(layer.props.scaleX ?? 1), Number(layer.props.scaleY ?? 1));
+    // Keyframes of the transform, in every clip. All new values are worked out from the
+    // original tracks first (x keys need y at the same moment and the other way round).
+    const writes: [any, number][] = [];
+    for (const clip of s.animations) {
+      const tr = (prop: string) => clip.tracks.find((x) => x.layerId === layerId && x.prop === prop);
+      const sample = (prop: string, time: number, fallback: number) => { const k = tr(prop); return k && k.keyframes.length ? Number(sampleTrack(session.engine, k, time, 'number')) : fallback; };
+      for (const prop of ['x', 'y', 'rotation', 'scaleX', 'scaleY']) {
+        const track = tr(prop);
+        if (!track) continue;
+        for (const k of track.keyframes) {
+          const v = convert(k.t,
+            prop === 'x' ? Number(k.v) : sample('x', k.t, Number(layer.props.x ?? 0)),
+            prop === 'y' ? Number(k.v) : sample('y', k.t, Number(layer.props.y ?? 0)),
+            prop === 'rotation' ? Number(k.v) : 0, prop === 'scaleX' ? Number(k.v) : 1, prop === 'scaleY' ? Number(k.v) : 1);
+          writes.push([k, r((v as any)[prop], prop === 'x' || prop === 'y' ? 10 : prop === 'rotation' ? 100 : 1000)]);
+        }
+      }
+    }
+    for (const [k, v] of writes) k.v = v;
+    layer.props.x = r(base.x, 10); layer.props.y = r(base.y, 10); layer.props.rotation = r(base.rotation, 100);
+    if (layer.props.scaleX !== undefined || Math.abs(base.scaleX - 1) > 1e-6) layer.props.scaleX = r(base.scaleX);
+    if (layer.props.scaleY !== undefined || Math.abs(base.scaleY - 1) > 1e-6) layer.props.scaleY = r(base.scaleY);
+    layer.link = parent;
+  });
 }

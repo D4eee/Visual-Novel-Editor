@@ -259,3 +259,10 @@ Expressions get `has("Name")`.
 - `type: 'param'` with `paramOf: '<layer arg id>'`;
 - `varType: 'list'` on `variable` arguments;
 - `optional: true` lets a slot stay empty (the value is `null`).
+
+## Puzzle shapes, parent links and in/out points (API 1.3, project format 4)
+
+- **Block shapes follow connections.** The editor draws blocks like Scratch: a notch on top, a bump below. `hat` blocks have no notch, `cap` blocks no bump, and a `c` block with `endsScript: true` (like *forever*) has a flat foot. Blocks that end a script only fit at the end of a list, and nothing can be dropped after them — mark your never-ending C blocks with `endsScript` so the editor shows and enforces that.
+- **Parent & link.** `Layer.link` names another element in the same group whose position, rotation and scale this element follows (its own opacity and layer order stay). The renderer composes `linkMatrix(view, layer)` before the element's own matrix; use `parentSpace(view, layer)` to convert between stage space and an element's x/y space (group + link).
+- **In/out points.** `AnimationClip.spans[layerId] = { in, out }` shows the element only between `in` and `out` while that animation plays: sampling the clip writes `__span: true / false` into the element's live properties, and layers with `__span === false` are not drawn or hit-tested. A custom renderer should skip them too.
+- `AnimationClip.markers` and `workArea` are editor aids; the runtime ignores them.

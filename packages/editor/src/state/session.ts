@@ -3,6 +3,7 @@ import { History, loadProject, validateProject, serializeProject, I18n, newId, h
 import { createEngine, ModuleHost, ModuleRecord, AssetLoader } from '@vne/runtime';
 import { call } from '../host';
 import { EditorExtensions, activateEditorModule } from '../modules/editorApi';
+import { getPrefs } from './prefs';
 
 export type WorkspaceTab = { kind: 'graph' } | { kind: 'node'; nodeId: string } | { kind: 'custom'; id: string };
 
@@ -22,11 +23,13 @@ export interface SceneUI {
   scriptId: string | null;
   /** The effect graph editor of the selected element is open. */
   effectsOpen?: boolean;
+  /** Tab of the element inspector: options (properties), effects or presets. */
+  inspectorTab?: 'options' | 'effects' | 'presets';
 }
 
 export const defaultSceneUI = (): SceneUI => ({
   selectedLayers: [], clipId: null, time: 0, playing: false, bottomTab: 'timeline', selectedLine: null, view: null,
-  record: false, subTab: 'composition', selectedKeys: [], showTextbox: true, snap: true, scriptId: null,
+  record: false, subTab: 'composition', selectedKeys: [], showTextbox: true, snap: getPrefs().snap, scriptId: null,
 });
 
 export interface SessionUI {
@@ -99,6 +102,7 @@ export class ProjectSession {
 
   constructor(readonly path: string, project: Project, readonly fileBase: string, readonly i18n: I18n) {
     this.history = new History(project);
+    this.history.limit = Math.max(20, Math.min(2000, getPrefs().undoLimit || 300));
     this.engine = createEngine();
     this.moduleHost = new ModuleHost(this.engine, i18n, { mode: 'editor', onError: (id, err, where) => this.moduleError(id, err, where) });
     this.assets = new AssetLoader(() => this.project, (a: Asset) => this.assetUrl(a));
@@ -112,7 +116,16 @@ export class ProjectSession {
     // Imported fonts are used by the canvas and previews too.
     this.assets.loadFonts();
     this.autosaveTimer = setInterval(() => this.autosave(), 15000);
+    // "Save automatically" (editor settings): save the project file itself once it has been dirty a while.
+    this.autoSaveTimer = setInterval(() => {
+      const p = getPrefs();
+      if (!p.autoSave || !this.dirty || this.saving) return;
+      const since = this.dirtySince || (this.dirtySince = Date.now());
+      if (Date.now() - since >= Math.max(10, p.autoSaveSeconds) * 1000) { this.dirtySince = 0; this.save().catch(() => {}); }
+    }, 5000);
   }
+  private autoSaveTimer: any = null;
+  private dirtySince = 0;
 
   get project(): Project {
     return this.history.state;
@@ -330,6 +343,7 @@ export class ProjectSession {
 
   dispose(): void {
     clearInterval(this.autosaveTimer);
+    clearInterval(this.autoSaveTimer);
     clearTimeout(this.validateTimer);
     for (const r of this.moduleRecords) try { r.deactivate?.(); } catch { /* ignore */ }
     this.ext.dispose();
