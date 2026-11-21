@@ -11,7 +11,7 @@ Start with the [getting-started tutorial](getting-started.md), then explore the 
 | Start | [Getting started](getting-started.md) | Create a story with two routes, preview it, and export it |
 | Plan | [Story flow](story-flow.md) | Chapters, nodes, choices, conditions, jumps, and endings |
 | Compose | [Scenes and layers](scenes.md) | Layout, dialogue, characters, and choices |
-| Animate | [Animation](animation.md) | Keyframes, interpolation curves, and media timing |
+| Animate | [Animation](animation.md) | The After Effects-style timeline: layer bars, keyframes, graph editor, parent links, motion paths, markers, and media timing |
 | Style | [Effects](effects.md) | Procedural effect graphs, presets, and shaders |
 | Interact | [Visual scripting](scripting.md) | Triggers, blocks, conditions, and reusable behaviors |
 | Build systems | [Game module](game-module.md) | Inheritance, global elements, sprites, lists, and collectibles |
@@ -21,17 +21,19 @@ Start with the [getting-started tutorial](getting-started.md), then explore the 
 | Test | [Preview and debugging](preview.md) | Preview scopes and debugging tools |
 | Publish | [Exporting your game](export.md) | Web, macOS, and Windows output |
 | Save | [Projects and recovery](projects.md) | Project files, saving, backups, and recovery |
+| Get help from AI | [AI assistant](ai-assistant.md) | Connect Claude or an OpenAI-compatible model and let it edit your project |
+| Personalize | [Settings](settings.md) | Language, theme and colors, font size, editing, and AI settings |
 | Reference | [Keyboard shortcuts](shortcuts.md) · [Glossary](glossary.md) | Controls and terminology |
 
 ## Find your way around
 
 | Area | Purpose |
 | --- | --- |
-| **Top bar** | Project tabs, undo/redo, preview scope, export, modules, project settings, and interface language |
+| **Top bar** | Project tabs, the ✦ AI assistant, undo/redo, preview scope, export, modules, Settings, and interface language |
 | **Left rail** | Story outline, assets, variables, characters, and module panels |
 | **Center workspace** | Chapter graphs, scene composition, and node logic, opened in separate tabs |
 | **Bottom dock** | Scene timelines and visual scripting; use Test to trace scripts |
-| **Inspector** | Properties of the selected node, element, or other object |
+| **Inspector** | Properties of the selected node, element, or other object; elements have Options, Effects, and Presets tabs. The AI assistant panel opens to its right |
 | **Status bar and console** | Save status, project location, and issues grouped by node, with severity and text filters |
 
 Hover a control or field label briefly to see its help text. On canvases, use the mouse wheel to zoom and drag empty space to pan.

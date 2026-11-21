@@ -5,7 +5,7 @@
   "description": { "en": "Tabletop-style skill checks: a Roll Dice data node and a Skill Check node with Success / Failure outputs. Shows custom story nodes, a custom port type and data connections.", "zh-CN": "桌游式检定：「掷骰」数据节点和带成功/失败出口的「技能检定」节点。演示自定义剧情节点、自定义端口类型与数据连线。" },
   "author": { "name": "Visual Novel Editor examples" },
   "license": "MIT",
-  "engine": ">=0.1.0 <1.0.0",
+  "engine": ">=0.1.0 <2.0.0",
   "api": "^1.0.0",
   "provides": { "nodes": ["rollDice", "skillCheck"], "portTypes": ["roll"] },
   "runtime": "runtime.js",

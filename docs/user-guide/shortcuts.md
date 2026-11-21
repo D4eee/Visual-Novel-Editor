@@ -9,6 +9,8 @@
 | Mod+K | Find node, chapter or asset |
 | Mod+P | Preview |
 | Mod+E | Export game |
+| Mod+J | AI assistant |
+| Mod+, | Settings |
 | Tab | Add node (story graph) |
 | Delete | Delete selection |
 | Mod+C / Mod+V | Copy / paste |
@@ -22,3 +24,5 @@
 | Mod+G | Group layers |
 | Arrow keys | Nudge layer (Shift ×10) |
 | , and . | Previous / next keyframe |
+
+The timeline has its own After Effects-style shortcuts (J / K, I / O, B / N, M, U, G, F9…): see [Animation → Shortcuts](animation.md#shortcuts-timeline-focused).

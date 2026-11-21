@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://github.com/D4eee/Visual-Novel-Editor/releases/latest">Download</a> ·
   <a href="docs/user-guide/README.md">User guide</a> ·
-  <a href="docs/release-notes/v0.3.1.md">Release notes</a> ·
+  <a href="docs/release-notes/v1.0.0.md">Release notes</a> ·
   <a href="docs/modding/README.md">Module development</a>
 </p>
 
@@ -32,13 +32,15 @@ The editor is available for **macOS, Windows, and Linux**, with **English and Si
 | **Story graph** | Organize chapters, connect scenes and choices, and build conditions, events, weighted random branches, waits, jumps, and endings. View one chapter or the whole story. |
 | **Scene composition** | Arrange backgrounds, character portraits, images, text, dialogue, shapes, buttons, hotspots, audio, and video. Use groups and reusable compositions to organize scenes. |
 | **Dialogue design** | Place dialogue boxes freely, create speech and thought bubbles, customize typography and appearance, import fonts, and add typewriter reveals. |
-| **Timeline animation** | Animate element properties with keyframes and editable interpolation curves. Coordinate motion with audio, video, and effects. |
+| **Timeline animation** | Animate in an After Effects-style timeline: layer bars with in and out points, grouped properties with stopwatches, a graph editor with bezier handles, markers, a work area, parent links, and motion paths on the canvas. Coordinate motion with audio, video, and effects. |
+| **Presets** | Apply entrance, emphasis, and exit animations; ready-made looks for text, shapes, buttons, and dialogue boxes; effect presets; and your own saved looks, from the inspector's Presets tab. |
 | **Procedural effects** | Build effects with node graphs, including blur, color adjustments, distortion, noise, and custom GLSL shaders. Save, reuse, and share presets as `.vnefx` files. |
-| **Visual scripting** | Connect triggers, actions, values, and conditions with Scratch-style blocks. Add clickable regions, control elements and media, create reusable behaviors, and trace execution in Test mode. |
+| **Visual scripting** | Connect triggers, actions, values, and conditions with Scratch-style puzzle blocks whose shapes show how they connect. Add clickable regions, control elements and media, create reusable behaviors, and trace execution in Test mode. |
 | **Game systems** | Keep music, looping animations, and scripts running between pages. Use global elements for HUDs and inventories, animate sprites, track parameters and lists, and unlock choices with collected items. |
+| **AI assistant** | Chat with Claude or any OpenAI-compatible model using your own API key. The assistant writes scenes, adds elements and animations, and builds interactions through MCP-style editor tools; every reply can be undone. |
 | **Preview and export** | Preview a scene, chapter, or complete game with the same runtime used in exported games. Inspect variables and execution logs, then export only the assets and runtime modules your game uses. |
 
-Projects also support **autosave, recovery, backups, undo/redo, and versioned data migration**. Validation helps locate broken routes, missing assets, and other issues before export.
+A **Settings** window sets the language, theme, background and accent colors, font size, interface zoom, automatic saving, and timeline time format. Projects also support **autosave, recovery, backups, undo/redo, and versioned data migration**. Validation helps locate broken routes, missing assets, and other issues before export.
 
 ## Download and launch
 
@@ -50,6 +52,7 @@ Get the ready-to-run editor from [GitHub Releases](https://github.com/D4eee/Visu
 | macOS · Intel | `Visual-Novel-Editor-<version>-mac-x64.zip` |
 | Windows · x64 | `Visual-Novel-Editor-<version>-win-x64.zip` |
 | Linux · x64 | `Visual-Novel-Editor-<version>-linux-x64.zip` |
+| Web editor · Node.js 20+ | `Visual-Novel-Editor-<version>-web.zip` (from 1.0.0) |
 
 **macOS:** Extract the archive and move `Visual Novel Editor.app` to Applications. The distributed app is not Apple-notarized. For a build you trust, the existing first-launch procedure is:
 
@@ -62,7 +65,7 @@ codesign --force --deep --sign - "/Applications/Visual Novel Editor.app"
 
 **Linux:** Extract the archive and run `visual-novel-editor`.
 
-Release assets include `SHA256SUMS.txt` for verifying downloads. The current **v0.3.1** release includes four desktop archives; a web editor archive is not attached to that release. To use the editor in a browser, [run it from source](#development) with Node.js 20 or later.
+Release assets include `SHA256SUMS.txt` for verifying downloads. From **v1.0.0**, releases also include the web editor archive, which runs in your browser with Node.js 20 or later; you can also [run it from source](#development). The earlier **v0.3.1** release has desktop archives only.
 
 > **Editor platforms and game export targets are different.** The Linux download runs the editor; the documented game export targets are web, macOS, and Windows.
 
@@ -76,16 +79,30 @@ Release assets include `SHA256SUMS.txt` for verifying downloads. The current **v
 
 Follow the [getting-started tutorial](docs/user-guide/getting-started.md) for a small story with two routes. For the Chinese tutorial, switch to the [Chinese README](README.zh-CN.md).
 
-## What's new in 0.3.1
+## What's new in 1.0.0
 
-- **Freely positioned dialogue boxes:** Custom shapes, speech and thought bubbles, styling, typewriter reveals, keyframe transforms, and dialogue-related scripting blocks.
-- **Custom fonts:** Import TTF, OTF, WOFF, or WOFF2 fonts for the canvas, previews, and exported games.
-- **A docked console:** Review issues grouped by node, filter by severity or text, and resize the console.
-- **Clearer preview controls:** The Preview button becomes a red Stop button while a preview is running.
-- **Start-screen improvements:** Manage recent projects from a context menu and browse examples in a scrollable icon grid.
-- **A scripting layout fix:** Wrapped block labels no longer overlap adjacent blocks.
+- **AI assistant:**
+  - a chat panel next to the tab bar (Ctrl/⌘+J);
+  - works with your own key for Claude or an OpenAI-compatible service;
+  - edits the project through 24 MCP-style editor tools;
+  - every reply can be undone, and there is a read-only mode.
+- **Settings window:** language, themes, background and accent colors, font size, interface zoom, automatic saving, default ease, timecode and frame rate, and the AI connection.
+- **After Effects-style timeline:**
+  - layer bars with in and out points;
+  - property groups with stopwatches, value scrubbing and keyframe navigators;
+  - a graph editor with bezier handles;
+  - box selection and time stretching, snapping, markers and a work area;
+  - parent & link, motion paths on the canvas, and AE shortcuts.
+- **Inspector tabs:**
+  - Options, Effects, and Presets;
+  - 18 animation presets and ready-made looks;
+  - your own saved looks.
+- **Puzzle-shaped blocks:**
+  - blocks interlock like Scratch;
+  - blocks that end a script have a flat bottom and fit only at the end.
+- **New app icon**, a web editor download, and project format 4 / module API 1.3.
 
-Read the [complete release notes](docs/release-notes/v0.3.1.md). The README describes the current source; release notes describe changes in that published version.
+Read the [complete release notes](docs/release-notes/v1.0.0.md). The README describes the current source; release notes describe changes in that published version. Earlier: [0.3.1](docs/release-notes/v0.3.1.md).
 
 ## Documentation
 
@@ -93,6 +110,8 @@ Read the [complete release notes](docs/release-notes/v0.3.1.md). The README desc
 | --- | --- |
 | Make my first story | [Getting started](docs/user-guide/getting-started.md) |
 | Learn the editor | [User guide](docs/user-guide/README.md) |
+| Let AI work on my project | [AI assistant](docs/user-guide/ai-assistant.md) |
+| Change colors, fonts, and other settings | [Settings](docs/user-guide/settings.md) |
 | Export a playable game | [Export guide](docs/user-guide/export.md) |
 | Build a module | [Module development](docs/modding/README.md) |
 | Look up SDK interfaces | [API reference](docs/api/README.md) |

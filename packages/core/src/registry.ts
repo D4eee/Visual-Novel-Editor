@@ -241,6 +241,11 @@ export interface BlockDef extends Registrable {
   color?: string;
   /** Where the block may be used. Default: both. */
   context?: 'scene' | 'story' | 'both';
+  /**
+   * Nothing can follow this block (it never finishes, like "forever"). `cap` blocks end
+   * a script anyway; set this on a `c` block to draw it without a bottom connector.
+   */
+  endsScript?: boolean;
   /** Statement execution. May return a promise to wait. */
   run?(ctx: any, args: Record<string, any>, block: Block): void | Promise<void>;
   /** Reporter / boolean blocks: compute the value (synchronously). */

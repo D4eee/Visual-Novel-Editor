@@ -47,6 +47,11 @@ export const migrations: { from: number; describe: string; run(p: any): void }[]
       }
     },
   },
+  {
+    from: 3,
+    describe: 'Format 4: parent links (Layer.link) and in/out points, markers and work areas on animations. Nothing to convert.',
+    run() { /* new optional fields only */ },
+  },
 ];
 
 export class ProjectFormatError extends Error {

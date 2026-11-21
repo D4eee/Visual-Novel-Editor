@@ -2,12 +2,11 @@ import { FontPicker } from '../inspect/PropEditor';
 import type { ProjectSettings as PS } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
-import { Modal } from '../ui/Modal';
-import { Field, TextInput, NumberInput, Select, Toggle, ColorInput, Section, Button } from '../ui/controls';
+import { Field, TextInput, NumberInput, Select, Toggle, ColorInput, Section } from '../ui/controls';
 import { AssetPicker } from '../inspect/AssetPicker';
-import { Icon } from '../ui/Icon';
 
-export function ProjectSettingsDialog({ session, onClose }: { session: ProjectSession; onClose: () => void }) {
+/** The current project's settings (a tab of the Settings window). */
+export function ProjectSettingsBody({ session }: { session: ProjectSession }) {
   useSession(session);
   const t = useT();
   const s = session.project.settings;
@@ -15,7 +14,6 @@ export function ProjectSettingsDialog({ session, onClose }: { session: ProjectSe
   const upd = (fn: (x: PS) => void, mk?: string) => session.update(t('settings.edit'), (d) => fn(d.settings), mk ? { mergeKey: mk } : undefined);
   const assetUrl = (id: string) => { const a = session.project.assets.find((x) => x.id === id); return a ? session.assetUrl(a) : null; };
   return (
-    <Modal title={t('settings.title')} onClose={onClose} width={720} icon={<Icon name="settings" size={18} />} footer={<Button kind="primary" onClick={onClose}>{t('common.done')}</Button>}>
       <div className="export-grid">
         <div>
           <Section id="set.game" title={t('settings.game')}>
@@ -64,6 +62,5 @@ export function ProjectSettingsDialog({ session, onClose }: { session: ProjectSe
           </Section>
         </div>
       </div>
-    </Modal>
   );
 }

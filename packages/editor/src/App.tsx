@@ -15,7 +15,9 @@ import { AssetLibrary } from './sidebar/AssetLibrary';
 import { DataPanel } from './sidebar/DataPanel';
 import { PreviewPanel } from './preview/PreviewPanel';
 import { ExportDialog } from './export/ExportDialog';
-import { ProjectSettingsDialog } from './settings/ProjectSettings';
+import { SettingsWindow } from './settings/SettingsWindow';
+import { ChatPanel, ChatToggle } from './ai/ChatPanel';
+import { setChatOpen } from './ai/agent';
 import { ModuleManager } from './modules/ModuleManager';
 import { ProblemsPanel } from './problems/Problems';
 import { MenuHost, openMenu, openMenuBelow } from './ui/Menu';
@@ -40,6 +42,8 @@ export function App() {
       if (mod && k === 'k') { e.preventDefault(); if (store.session) store.open({ kind: 'quickOpen' }); return; }
       if (mod && k === 'p') { e.preventDefault(); const ss = store.session; if (ss) ss.setUI({ preview: ss.ui.preview ? null : { scope: 'scene', nodeId: ss.currentNodeId, key: Date.now() } }); return; }
       if (mod && k === 'e') { e.preventDefault(); if (store.session) store.open({ kind: 'export' }); return; }
+      if (mod && k === 'j') { e.preventDefault(); setChatOpen(!document.querySelector('.ai-panel')); return; }
+      if (mod && k === ',') { e.preventDefault(); store.open({ kind: 'settings' }); return; }
       if (mod && k === 'n' && !e.shiftKey) { e.preventDefault(); store.open({ kind: 'newProject' }); return; }
       if (mod && k === 'o') { e.preventDefault(); store.pickProject(t('home.openTitle')).then((p) => { if (p) store.openProject(p); }); return; }
       if (inText || store.dialog) return;
@@ -87,11 +91,14 @@ export function App() {
   return (
     <div className="app">
       <TopBar />
-      {s ? <SessionView key={s.id} session={s} /> : <Home />}
+      <div className="app-main">
+        {s ? <SessionView key={s.id} session={s} /> : <Home />}
+        <ChatPanel />
+      </div>
       <PresetManagerHost session={s || null} />
       <DialogHost />
       {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}
-      {st.dialog?.kind === 'settings' && s && <ProjectSettingsDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'settings' && <SettingsWindow session={s || null} tab={st.dialog.tab} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'modules' && s && <ModuleManager session={s} onClose={() => st.open(null)} />}
       <MenuHost />
       <div className="toasts" aria-live="polite">
@@ -128,9 +135,11 @@ function TopBar() {
           ...(window.vneHost ? [{ label: t('home.newWindow'), icon: 'external', onClick: () => window.vneHost!.newWindow() }] : []),
           { label: t('home.title'), icon: 'home', onClick: () => st.activate(-1) },
         ])} />
+        <ChatToggle />
       </div>
       <div className="grow" />
       {s && <SessionActions session={s} />}
+      {!s && <IconButton icon="settings" title={`${t('prefs.title')} (${shortcut('Mod+,')})`} onClick={() => st.open({ kind: 'settings' })} />}
       <IconButton icon="keyboard" title={`${t('shortcuts.title')} (F1)`} onClick={() => st.open({ kind: 'shortcuts' })} />
       <button type="button" className="lang" onClick={() => st.setLocale(st.i18n.locale === 'zh-CN' ? 'en' : 'zh-CN')} title={t('app.language')}>
         <Icon name="globe" size={14} />{st.i18n.locale === 'zh-CN' ? '中' : 'EN'}
@@ -165,7 +174,7 @@ function SessionActions({ session }: { session: ProjectSession }) {
       )}
       <Button icon="export" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
       <IconButton icon="module" title={t('modules.manage')} onClick={() => store.open({ kind: 'modules' })} />
-      <IconButton icon="settings" title={t('settings.title')} onClick={() => store.open({ kind: 'settings' })} />
+      <IconButton icon="settings" title={`${t('prefs.title')} (${shortcut('Mod+,')})`} onClick={() => store.open({ kind: 'settings' })} />
     </div>
   );
 }

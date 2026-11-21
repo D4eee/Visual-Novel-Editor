@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Layer, LayerInstance, SceneData, Engine, Project } from '@vne/core';
-import { sceneLines, GLOBAL_NODE_ID, ensureGlobalNode, ensureInventoryVar } from '@vne/core';
-import { Stage, NarrativeUI, createEditView, drawScene, hitTest, regionPoints, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix } from '@vne/runtime';
+import { sceneLines, GLOBAL_NODE_ID, ensureGlobalNode, ensureInventoryVar, newId } from '@vne/core';
+import { Stage, NarrativeUI, createEditView, drawScene, hitTest, regionPoints, worldMatrix, layerCorners, layerSize, CanvasPool, ShaderRunner, invert, apply, VarStore, portraitAsset, interpolateVarsCompat, layerMatrix, parentSpace, sampleTrack, clipEnd, normalizeTrack } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { setLayerProps, addLayer, deleteLayers, duplicateLayers, sceneOf, updateScene } from './sceneOps';
@@ -183,9 +183,10 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     window.addEventListener('pointerup', up);
   };
 
+  /** Stage-space movement → the element's own x/y space (its group and its linked parent). */
   const parentInverse = (view: ReturnType<typeof buildView>, l: Layer) => {
-    if (!l.parentId) return null;
-    const pm = worldMatrix(view, l.parentId);
+    if (!l.parentId && !l.link) return null;
+    const pm = parentSpace(view, l);
     return invert([pm[0], pm[1], pm[2], pm[3], 0, 0]);
   };
 
@@ -428,6 +429,58 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   }).filter(Boolean) as any[] : [];
   const frame = st ? { x: st.offsetX, y: st.offsetY, w: W * st.scale, h: H * st.scale } : null;
 
+  // Motion path (After Effects-style): where the selected element's position travels in the
+  // current animation, with a handle per position keyframe that can be dragged on the stage.
+  const motion = (() => {
+    if (!view || selected.length !== 1) return null;
+    const l = scene.layers.find((x) => x.id === selected[0]);
+    const clip = ui.clipId ? scene.animations.find((a) => a.id === ui.clipId) : null;
+    if (!l || !clip || l.locked) return null;
+    const tx = clip.tracks.find((tr) => tr.layerId === l.id && tr.prop === 'x' && tr.keyframes.length);
+    const ty = clip.tracks.find((tr) => tr.layerId === l.id && tr.prop === 'y' && tr.keyframes.length);
+    if (!tx && !ty) return null;
+    const ps = parentSpace(view, l);
+    const at = (time: number) => {
+      const x = tx ? Number(sampleTrack(session.engine, tx, time, 'number')) : Number(l.props.x ?? 0);
+      const y = ty ? Number(sampleTrack(session.engine, ty, time, 'number')) : Number(l.props.y ?? 0);
+      return toScreen(apply(ps, x, y));
+    };
+    const endT = clipEnd(clip);
+    const pts: string[] = [];
+    for (let time = 0; time <= endT + 1e-9; time += Math.max(1 / 60, endT / 400)) { const p = at(time); pts.push(`${p.x},${p.y}`); }
+    const times = [...new Set([...(tx?.keyframes || []), ...(ty?.keyframes || [])].map((k) => k.t))].sort((a, b) => a - b);
+    return { l, clip, ps, pts: pts.join(' '), keys: times.map((time) => ({ time, p: at(time) })) };
+  })();
+
+  /** Drag a motion path key: writes x and y keys at that time (adding the missing one). */
+  const dragMotionKey = (e: React.PointerEvent, time: number) => {
+    if (!motion || !stageRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    session.setSceneUI(nodeId, { time });
+    const inv = invert(motion.ps);
+    if (!inv) return;
+    const stg = stageRef.current;
+    const mk = `mpath-${Date.now()}`;
+    const move = (ev: PointerEvent) => {
+      const q = apply(inv, stg.toStage(ev.clientX, ev.clientY).x, stg.toStage(ev.clientX, ev.clientY).y);
+      updateScene(session, nodeId, t('timeline.moveOnPath'), (s) => {
+        const c = s.animations.find((a) => a.id === motion.clip.id);
+        if (!c) return;
+        for (const [prop, v] of [['x', q.x], ['y', q.y]] as const) {
+          let tr = c.tracks.find((x) => x.layerId === motion.l.id && x.prop === prop);
+          if (!tr) { tr = { id: newId('trk'), layerId: motion.l.id, prop, keyframes: [] }; c.tracks.push(tr); }
+          const k = tr.keyframes.find((x) => Math.abs(x.t - time) < 1e-3);
+          if (k) k.v = Math.round(v * 10) / 10;
+          else { tr.keyframes.push({ id: newId('key'), t: time, v: Math.round(v * 10) / 10, ease: 'easeInOut' }); normalizeTrack(tr); }
+        }
+      }, mk);
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   return (
     <div className="comp-wrap">
       <div ref={hostRef} className={cx('comp-canvas', spaceDown && 'pan-ready')} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onCopy={(e) => onCopy(e)} onCut={(e) => onCopy(e, true)} onPaste={onPaste}
@@ -462,6 +515,13 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
           {guides.map((g, i) => g.x !== undefined
             ? <line key={i} x1={toScreen({ x: g.x, y: 0 }).x} y1={0} x2={toScreen({ x: g.x, y: 0 }).x} y2="100%" className="snap-guide" />
             : <line key={i} x1={0} y1={toScreen({ x: 0, y: g.y! }).y} x2="100%" y2={toScreen({ x: 0, y: g.y! }).y} className="snap-guide" />)}
+          {motion && (
+            <g className="motion-path">
+              <polyline points={motion.pts} />
+              {motion.keys.map((k) => <rect key={k.time} x={k.p.x - 4} y={k.p.y - 4} width={8} height={8} className={cx('motion-key', Math.abs(k.time - ui.time) < 1e-3 && 'current')}
+                transform={`rotate(45 ${k.p.x} ${k.p.y})`} onPointerDown={(e) => dragMotionKey(e, k.time)}><title>{`${k.time.toFixed(2)} s`}</title></rect>)}
+            </g>
+          )}
           {gizmos.map((g: any) => (
             <g key={g.l.id} className="gizmo">
               <polygon points={g.c.map((p: any) => `${p.x},${p.y}`).join(' ')} className="gizmo-box" />

@@ -54,6 +54,13 @@ export function sampleClip(engine: Engine, clip: AnimationClip, t: number, propD
     if (!rec) out.set(track.layerId, (rec = {}));
     rec[track.prop] = v;
   }
+  // In/out points: outside its span an element is not drawn (the special "__span" value).
+  if (clip.spans) for (const [layerId, sp] of Object.entries(clip.spans)) {
+    if (!sp) continue;
+    let rec = out.get(layerId);
+    if (!rec) out.set(layerId, (rec = {}));
+    rec.__span = t >= (sp.in || 0) - 1e-6 && (sp.out == null || t < sp.out - 1e-6);
+  }
   return out;
 }
 
@@ -68,6 +75,7 @@ export function normalizeTrack(track: Track): void {
 export function clipEnd(clip: AnimationClip): number {
   let end = clip.duration;
   for (const t of clip.tracks) for (const k of t.keyframes) end = Math.max(end, k.t);
+  for (const sp of Object.values(clip.spans || {})) if (sp?.out != null) end = Math.max(end, sp.out);
   return end;
 }
 

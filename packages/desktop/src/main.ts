@@ -4,7 +4,7 @@
  * - Exposes the host API over IPC (same table as browser mode).
  * - Supports several project windows and recovers from renderer crashes.
  */
-import { app, BrowserWindow, dialog, ipcMain, protocol, shell, Menu, net } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, protocol, shell, Menu, net, safeStorage } from 'electron';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createHost } from '../../host/src/api';
@@ -46,6 +46,11 @@ const host = createHost({
     },
     reveal(p: string) { shell.showItemInFolder(p); },
     async trash(p: string) { await shell.trashItem(p); },
+  },
+  // API keys for the AI assistant are stored encrypted with the system keychain when it is available.
+  secrets: {
+    encrypt: (v: string) => { if (!safeStorage.isEncryptionAvailable()) throw new Error('no keychain'); return safeStorage.encryptString(v).toString('base64'); },
+    decrypt: (v: string) => safeStorage.decryptString(Buffer.from(v, 'base64')),
   },
 });
 
@@ -165,6 +170,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle('vne:window.new', () => { createWindow(); return true; });
   ipcMain.handle('vne:locale', (_e, locale: string) => { if (locale !== menuLocale) buildMenu(locale); return true; });
+  ipcMain.handle('vne:zoom', (e, factor: number) => { const f = Math.max(0.7, Math.min(1.6, Number(factor) || 1)); e.sender.setZoomFactor(f); return f; });
   buildMenu();
   createWindow();
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });

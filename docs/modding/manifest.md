@@ -11,7 +11,7 @@
   "author": { "name": "Your Name", "url": "https://example.com" },
   "license": "MIT",
   "homepage": "https://example.com/relationships",
-  "engine": ">=0.1.0 <1.0.0",
+  "engine": ">=0.1.0 <2.0.0",
   "api": "^1.0.0",
   "kind": "combined",
   "runtime": "runtime.js",
@@ -57,3 +57,4 @@ produces `<id>-<version>.vnemod` — a zip with `module.json` at its root. The p
 - Bump `version` for every release. When two versions are available, the project's copy wins, then the newest library copy.
 - Keep ids, port ids and data fields backwards compatible; see [compatibility.md](compatibility.md).
 - The engine follows semantic versioning for the module API (`api`): additions in minor versions, breaking changes only in a new major version.
+- Editor 1.0.0 is the first 1.x engine. A module that says `<1.0.0` in `engine` is marked incompatible there: widen the range (for example `>=0.2.2 <2.0.0`) once you have checked it.
