@@ -12,9 +12,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to publish (for example v0.3.1)'
-        required: true
-        default: 'v0.3.1'
+        description: 'Tag to publish (leave empty: v + the version in package.json)'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -36,8 +36,12 @@ jobs:
       - name: Check the tag matches package.json
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if [ "v$VERSION" != "$TAG" ]; then echo "Tag $TAG does not match package.json version $VERSION"; exit 1; fi
+          # Run by hand with no tag: publish the version in package.json.
+          if [ "$TAG" = "${{ github.ref_name }}" ] && [ "${{ github.event_name }}" = "workflow_dispatch" ]; then TAG="v$VERSION"; fi
+          if [ -z "$TAG" ]; then TAG="v$VERSION"; fi
+          if [ "v$VERSION" != "$TAG" ]; then echo "::error::Tag $TAG does not match package.json version $VERSION — leave the tag empty or enter v$VERSION"; exit 1; fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
 
       - run: npm install --no-audit --no-fund
 
