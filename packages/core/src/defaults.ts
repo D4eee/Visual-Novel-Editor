@@ -3,7 +3,7 @@ import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION } from './types';
 import { newId } from './util';
 import type { Engine } from './registry';
 
-export const ENGINE_VERSION = '0.3.0';
+export const ENGINE_VERSION = '0.3.1';
 /** Public extension API major version. Modules declare `"api": "1"`. */
 export const API_VERSION = '1.2.0';
 

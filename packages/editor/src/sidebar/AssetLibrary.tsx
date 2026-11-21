@@ -1,3 +1,4 @@
+import { resolveFontFamily } from '@vne/runtime';
 import { useMemo, useRef, useState } from 'react';
 import type { Asset, AssetKind } from '@vne/core';
 import { assetUsage, hasSceneData } from '@vne/core';
@@ -159,7 +160,7 @@ function AssetDetails({ session, asset, uses, onRelink, onRemove, onClose }: { s
           {asset.kind === 'image' && <img src={url} alt="" onLoad={(e) => saveMeta({ width: (e.target as HTMLImageElement).naturalWidth, height: (e.target as HTMLImageElement).naturalHeight })} />}
           {asset.kind === 'audio' && <audio src={url} controls preload="metadata" onLoadedMetadata={(e) => saveMeta({ duration: Math.round((e.target as HTMLAudioElement).duration * 100) / 100 })} />}
           {asset.kind === 'video' && <video src={url} controls preload="metadata" muted onLoadedMetadata={(e) => { const v = e.target as HTMLVideoElement; saveMeta({ duration: Math.round(v.duration * 100) / 100, width: v.videoWidth, height: v.videoHeight }); }} />}
-          {asset.kind === 'font' && <div className="font-sample">Aa 永字八法 The quick brown fox</div>}
+          {asset.kind === 'font' && <div className="font-sample" style={{ fontFamily: resolveFontFamily(session.project, asset.id) }}>Aa 永字八法 The quick brown fox<br />0123456789 ！？…</div>}
         </div>
       )}
       <dl className="meta">

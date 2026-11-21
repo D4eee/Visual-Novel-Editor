@@ -42,6 +42,29 @@ Add a **Dialogue** layer (**Add layer → Dialogue**) and select it: the inspect
 
 Add each choice with **Add layer → Choice**. Choices appear on the canvas, where they were placed, after the last line. Each choice adds an output to the scene node, labelled with its id (C1, C2 …); hover the output for a second to see the choice's text, condition and effects. See [Story flow](story-flow.md#choices-and-their-outputs).
 
+### Free dialogue
+
+**Add layer → Text → Free dialogue** adds a dialogue box that you place and style yourself, independent of the game's text box. Use it for speech bubbles next to characters, thoughts, signs, chat messages or a custom dialogue UI. Its inspector groups the settings:
+
+| Group | Settings |
+| --- | --- |
+| Dialogue | Speaker, text (with `{variable}` and the same markup as dialogue lines), reveal (how much of the text shows) and typing speed |
+| Box | Shape (rounded, rectangle, pill, ellipse, speech bubble, thought bubble or none), width, height (0 fits the text), padding, corner radius, fill, a second color for a gradient, outline, shadow, and the tail's side, position and size |
+| Text | Font (including your own fonts), size, weight, italic, color, alignment, line height, letter spacing, outline and shadow |
+| Name | Name position (in the box, a name tag above, or hidden), font, size, color, weight, and the name tag's colors |
+
+It moves, scales, rotates and fades like every element. Every number and color can be keyframed on the timeline.
+
+In Interactions:
+
+- **[dialogue] says ( ) as ( ) wait** sets the text and speaker. With a typing speed above 0, the text types itself and the script can wait until it is done.
+- **When [dialogue] finishes typing** reacts to the end of the typing.
+- *Set text*, *set / change property* and the transform blocks work on it too.
+
+### Your own fonts
+
+Every font field has an **Upload** button that imports a `.ttf`, `.otf`, `.woff` or `.woff2` file into the project and selects it. Imported fonts are listed under *Imported* in every font menu, including the text box font in **Project settings**. The canvas, the preview and exported games all use them; exported games include only the fonts you use. Fonts can also be imported in **Assets**, which shows a sample in the font.
+
 ## Effects on elements
 
 Effects belong to one element. In the **Timeline**, use the ✦ button on an element's row to pick a preset or open its effect graph; the effect's parameters can be keyed like any property. For a full-screen effect, add a shape that covers the screen (a mask), and give that shape the effect. See [Effects](effects.md).

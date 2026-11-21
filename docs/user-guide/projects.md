@@ -9,6 +9,10 @@ A project is a folder. `project.vne.json` holds the whole story in a versioned J
 - The previous version is kept in `.vne/backups/` (the last 10 saves).
 - Unsaved work is **autosaved** to `.vne/autosave.json` every few seconds while you edit.
 
+## Deleting a project
+
+On the start screen, right-click a recent project → **Delete project…**. After you confirm, the project is closed if it is open, and its folder is moved to the system Trash (desktop) or, in the web edition, into the `trash` folder of the editor's data folder, so you can still restore it. **Remove from list** only removes it from *Recent projects*.
+
 ## Recovery
 
 If the editor or computer stops before you saved, opening the project offers to **restore the unsaved changes** from the autosave. If the project file itself is damaged, the newest backup is opened instead and you are told so. If the editor's window crashes, it reloads and offers recovery the same way.

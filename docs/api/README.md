@@ -1,6 +1,6 @@
 # API reference
 
-Module API version **1.2.0** · engine 0.3.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.2.0** · engine 0.3.1. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 

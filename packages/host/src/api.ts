@@ -28,6 +28,8 @@ export interface HostConfig {
     pickFolder(opts: { title?: string; defaultPath?: string }): Promise<string | null>;
     pickFiles(opts: { title?: string; filters?: { name: string; extensions: string[] }[]; multiple?: boolean }): Promise<string[]>;
     reveal(p: string): void;
+    /** Move a file or folder to the system Trash (desktop). */
+    trash?(p: string): Promise<void>;
   };
 }
 
@@ -60,6 +62,25 @@ export function createHost(cfg: HostConfig) {
     },
     async 'recent.list'() { return recent.list(); },
     async 'recent.remove'({ path: p }) { await recent.remove(p); return true; },
+    /**
+     * Delete a project: its folder goes to the system Trash (desktop) or, in browser mode,
+     * into "trash" in the editor's data folder, so it can still be recovered.
+     */
+    async 'project.trash'({ path: p }) {
+      const dir = path.resolve(String(p));
+      if (!(await exists(path.join(dir, PROJECT_FILE)))) throw new Error('Not a project folder');
+      const ex = path.resolve(cfg.examplesDir);
+      if (dir === ex || dir.startsWith(ex + path.sep)) throw new Error('Bundled examples cannot be deleted');
+      await recent.remove(dir);
+      await recent.remove(String(p));
+      if (cfg.dialogs?.trash) { await cfg.dialogs.trash(dir); return { where: 'trash' }; }
+      const bin = path.join(cfg.userDataDir, 'trash');
+      await fsp.mkdir(bin, { recursive: true });
+      const dest = path.join(bin, `${path.basename(dir)}-${new Date().toISOString().replace(/[:.]/g, '-')}`);
+      try { await fsp.rename(dir, dest); }
+      catch { await fsp.cp(dir, dest, { recursive: true }); await fsp.rm(dir, { recursive: true, force: true }); }
+      return { where: 'folder', path: dest };
+    },
 
     async 'fs.listDir'({ path: p }) {
       const dir = path.resolve(p || os.homedir());
@@ -80,7 +101,19 @@ export function createHost(cfg: HostConfig) {
         if (!ent.isDirectory()) continue;
         const pf = path.join(dir, ent.name, PROJECT_FILE);
         if (!(await exists(pf))) continue;
-        try { const p: Project = await readJson(pf); out.push({ id: ent.name, name: p.name, description: p.settings?.description || '', path: path.join(dir, ent.name) }); } catch { /* skip */ }
+        try {
+          const p: Project = await readJson(pf);
+          const root = path.join(dir, ent.name);
+          const icon = p.assets?.find((a) => a.id === p.settings?.iconAssetId);
+          out.push({
+            id: ent.name, name: p.settings?.title || p.name, description: p.settings?.description || '',
+            // Localized descriptions: settings.descriptions = { "zh-CN": "…" }.
+            descriptions: p.settings?.descriptions || {}, path: root,
+            iconUrl: icon && (await exists(path.join(root, icon.path))) ? fileUrl(root, icon.path) : null,
+            scenes: Object.values(p.nodes || {}).filter((n: any) => n.type === 'core.scene').length,
+            chapters: (p.chapters || []).length,
+          });
+        } catch { /* skip */ }
       }
       return out;
     },

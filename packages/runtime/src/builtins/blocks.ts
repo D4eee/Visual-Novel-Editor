@@ -6,7 +6,7 @@ import { StopThread } from '../script';
 const KEYS = ['Space', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((k) => `Key${k}`), ...'0123456789'.split('').map((d) => `Digit${d}`)];
 /** Element types that blocks are offered for (see BlockDef.layerTypes). '*' = every element, also audio. */
 const MEDIA = ['core.audio', 'core.video'];
-const TEXTY = ['core.text', 'core.button'];
+const TEXTY = ['core.text', 'core.button', 'core.freeDialogue'];
 const ANY = ['*'];
 const EASES = ['linear', 'easeIn', 'easeOut', 'easeInOut', 'backOut', 'bounce', 'elastic'];
 

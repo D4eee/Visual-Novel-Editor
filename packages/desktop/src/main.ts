@@ -45,6 +45,7 @@ const host = createHost({
       return r.canceled ? [] : r.filePaths;
     },
     reveal(p: string) { shell.showItemInFolder(p); },
+    async trash(p: string) { await shell.trashItem(p); },
   },
 });
 

@@ -1,3 +1,4 @@
+import { FontPicker } from '../inspect/PropEditor';
 import type { ProjectSettings as PS } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
@@ -58,7 +59,7 @@ export function ProjectSettingsDialog({ session, onClose }: { session: ProjectSe
             <Field label={t('settings.nameColor')}><ColorInput value={tb.nameColor} onChange={(v, tr) => upd((x) => { x.textbox.nameColor = v; }, tr ? 'tbnc' : undefined)} /></Field>
             <Field label={t('settings.choiceColor')}><ColorInput value={tb.choiceBackground} onChange={(v, tr) => upd((x) => { x.textbox.choiceBackground = v; }, tr ? 'tbcb' : undefined)} /></Field>
             <Field label={t('settings.choiceHover')}><ColorInput value={tb.choiceHover} onChange={(v, tr) => upd((x) => { x.textbox.choiceHover = v; }, tr ? 'tbch' : undefined)} /></Field>
-            <Field label={t('prop.font')}><TextInput value={tb.fontFamily} onChange={(v) => upd((x) => { x.textbox.fontFamily = v; })} /></Field>
+            <Field label={t('prop.font')}><FontPicker project={session.project} value={tb.fontFamily} onChange={(v) => upd((x) => { x.textbox.fontFamily = v || 'system-ui, sans-serif'; })} t={t} /></Field>
             <Toggle value={tb.showPortrait} onChange={(v) => upd((x) => { x.textbox.showPortrait = v; })} label={t('settings.showPortrait')} />
           </Section>
         </div>

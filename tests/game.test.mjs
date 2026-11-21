@@ -277,3 +277,45 @@ test('labels show values at a position and follow them', () => {
   pa.hideLabel('HP');
   assert.ok(!pa.layers.some((l) => l.name === 'HP'));
 });
+
+test('free dialogue: sizes to its text, types at its speed and is driven by the say block', async () => {
+  const { p, a } = threePages();
+  const fd = addLayer(p, a, 'core.freeDialogue', 'Bubble', { x: 300, y: 200, text: 'Hi', typeSpeed: 20, shape: 'bubble' });
+  const def = engine.layerTypes.get('core.freeDialogue');
+  assert.ok(def && def.props.some((d) => d.key === 'fill' && d.animatable) && def.props.some((d) => d.key === 'tailSide'));
+  const rt = fakeRuntime(p);
+  const pa = startPage(rt, a);
+  const st = pa.layerState.get(fd.id);
+  // Text changes type themselves at typeSpeed characters per second.
+  def.step(st, 0, { layer: fd, emit() {}, runtime: rt.api });
+  st.text = 'Hello there';
+  const events = [];
+  def.step(st, 0.1, { layer: fd, emit: (e) => events.push(e.type), runtime: rt.api });
+  assert.ok(st.reveal > 0 && st.reveal < 1);
+  for (let i = 0; i < 10; i++) def.step(st, 0.1, { layer: fd, emit: (e) => events.push(e.type), runtime: rt.api });
+  assert.equal(st.reveal, 1);
+  assert.deepEqual(events, ['dialogue.typed']);
+  // The say block sets speaker and text and (with a typing speed) waits until typed.
+  const ctx = new V.ScriptContext({ engine, project: p, vars: rt.vars, scene: pa, runtime: rt.api, sleep: rt.sleep, nextFrame: (tok) => new Promise((r) => setTimeout(r, 1)), emit() {}, reportError: rt.reportError, functions: rt.functions }, new V.CancelToken(), 'test', null);
+  pa.setProp(fd.id, 'typeSpeed', 0);
+  await V.runBlocks(ctx, [blk('core.freeSay', { layer: fd.id, text: lit('Welcome'), speaker: 'Seven', wait: true })]);
+  assert.equal(pa.getProp(fd.id, 'text'), 'Welcome');
+  assert.equal(pa.getProp(fd.id, 'speaker'), 'Seven');
+  assert.equal(pa.getProp(fd.id, 'reveal'), 1);
+  // Set text also works on it.
+  await V.runBlocks(ctx, [blk('core.setText', { layer: fd.id, text: lit('Bye') })]);
+  assert.equal(pa.getProp(fd.id, 'text'), 'Bye');
+  assert.deepEqual(rt.errors, []);
+});
+
+test('fonts: an imported font asset resolves to its registered family, other values stay CSS', () => {
+  const p = V.createProject('Fonts');
+  p.assets.push({ id: 'ast_f', name: 'Hand Written.ttf', kind: 'font', path: 'assets/fonts/Hand Written.ttf', size: 1, hash: 'x', tags: [], meta: {}, imported: '' });
+  assert.equal(V.fontFamilyName(p.assets[0]), 'vne-Hand_Written');
+  assert.ok(V.resolveFontFamily(p, 'ast_f').startsWith('"vne-Hand_Written"'));
+  assert.equal(V.resolveFontFamily(p, 'Georgia, serif'), 'Georgia, serif');
+  assert.equal(V.resolveFontFamily(p, ''), 'system-ui, sans-serif');
+  // Used fonts count as used assets (exported with the game).
+  p.settings.textbox.fontFamily = 'ast_f';
+  assert.ok(V.usedAssetIds(p).has('ast_f'));
+});
