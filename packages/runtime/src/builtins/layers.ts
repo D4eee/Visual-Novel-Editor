@@ -5,7 +5,8 @@ import { parseRich, layoutRich, drawRich, interpolateVars, TextStyle } from '../
 import type { RenderContext, SceneView } from '../render';
 import { drawLayerList, measureCtx } from '../render';
 import type { AudioCategory } from '../assets';
-import { fontFamilyName } from '../assets';
+import { resolveFontFamily } from '../assets';
+import { registerFreeDialogue } from './freeDialogue';
 
 export const TRANSFORM_PROPS: PropDef[] = [
   { key: 'x', type: 'number', label: 'prop.x', default: 0, step: 1, unit: 'px', animatable: true, group: 'transform' },
@@ -72,9 +73,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 function resolveFont(rc: { assets: any; project: any }, family: string): string {
-  if (!family) return 'system-ui, sans-serif';
-  const asset = rc.project.assets.find((a: any) => a.kind === 'font' && a.id === family);
-  return asset ? `"${fontFamilyName(asset)}", system-ui, sans-serif` : family;
+  return resolveFontFamily(rc.project, family);
 }
 
 function textStyle(rc: any, p: Record<string, any>): TextStyle {
@@ -486,6 +485,7 @@ export function registerBuiltinLayers(engine: Engine): void {
   });
 
   registerGameLayers(engine, reg);
+  registerFreeDialogue(engine, reg, TRANSFORM_PROPS);
 }
 
 /* ------------------------------------------------------------------ */

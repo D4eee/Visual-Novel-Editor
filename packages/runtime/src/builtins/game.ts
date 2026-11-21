@@ -12,6 +12,7 @@ const SPRITE = ['core.sprite'];
 const IMAGES = ['core.image', 'core.background', 'core.sprite'];
 const ANY = ['*'];
 const n = (v: any) => Number(v) || 0;
+const num = n;
 const lit = (v: any) => ({ k: 'lit', v });
 
 function scene(ctx: ScriptContext): any {
@@ -197,6 +198,20 @@ export function registerGameBlocks(engine: Engine): void {
     } });
   B({ id: 'core.spriteCurrent', category: 'game', shape: 'reporter', layerTypes: SPRITE, label: 'block.spriteCurrent', args: [SL], report: (ctx: ScriptContext, a) => Math.floor(n(ctx.scene?.getProp(a.layer, 'frame'))) || 1 });
   B({ id: 'core.spriteCount', category: 'game', shape: 'reporter', layerTypes: SPRITE, label: 'block.spriteCount', args: [SL], report: (ctx: ScriptContext, a) => (ctx.scene ? frames(ctx.scene, a.layer).length : 0) });
+
+  /* Free dialogue ------------------------------------------------------------- */
+  const FD = { id: 'layer', type: 'layer' as const, layerTypes: ['core.freeDialogue'] };
+  B({ id: 'core.freeSay', category: 'looks', shape: 'statement', layerTypes: ['core.freeDialogue'], label: 'block.freeSay', args: [FD, { id: 'text', type: 'expr', default: lit('Hello!') }, { id: 'speaker', type: 'string', default: '', optional: true }, { id: 'wait', type: 'boolean', default: true }],
+    async run(ctx: ScriptContext, a) {
+      const s = scene(ctx);
+      if (a.speaker) s.setProp(a.layer, 'speaker', String(a.speaker));
+      s.setProp(a.layer, 'text', asText(a.text));
+      s.setVisible(a.layer, true);
+      // With a typing speed the element types the text itself; otherwise it appears at once.
+      if (num(s.getProp(a.layer, 'typeSpeed')) > 0) { s.setProp(a.layer, 'reveal', 0); if (a.wait) await ctx.waitUntil(() => n(s.getProp(a.layer, 'reveal')) >= 1); }
+      else s.setProp(a.layer, 'reveal', 1);
+    } });
+  B({ id: 'core.whenDialogueTyped', category: 'events', shape: 'hat', layerTypes: ['core.freeDialogue'], label: 'block.whenDialogueTyped', args: [FD], event: 'dialogue.typed', context: 'scene', matches: (e, a) => e.layerId === a.layer });
 
   /* Collectibles ----------------------------------------------------------------- */
   const items = (ctx: ScriptContext) => {

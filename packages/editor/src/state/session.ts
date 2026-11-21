@@ -108,7 +108,9 @@ export class ProjectSession {
       scene: {}, logicTab: {}, inspectorOpen: true, problemsOpen: false, preview: null, graphFocus: null,
       views: { ...(project.editor?.views || {}) },
     };
-    this.history.subscribe(() => { this.bump(); this.scheduleValidate(); });
+    this.history.subscribe(() => { this.bump(); this.scheduleValidate(); this.assets.loadFonts(); });
+    // Imported fonts are used by the canvas and previews too.
+    this.assets.loadFonts();
     this.autosaveTimer = setInterval(() => this.autosave(), 15000);
   }
 

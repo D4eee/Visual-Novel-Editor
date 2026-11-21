@@ -546,6 +546,7 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     ...shapeOpts.map((o) => ({ label: t(o.label), icon: 'square', onClick: () => add('core.shape', { ...pos, shape: o.value }, t(o.label), hidden) })),
     { header: true, label: t('element.group.text') },
     { label: t('layer.text'), icon: 'type', onClick: () => add('core.text', pos, undefined, hidden) },
+    ...(has('core.freeDialogue') ? [{ label: t('layer.freeDialogue'), icon: 'quote', hint: t('layer.freeDialogue.hint'), onClick: () => add('core.freeDialogue', { ...pos, speaker: session.project.characters[0]?.name || t('layer.freeDialogue.speaker'), text: t('layer.freeDialogue.sample') }, undefined, hidden) }] : []),
     ...(has('core.dialogue') && !isGlobal ? [{ label: t('layer.dialogue'), icon: 'message', onClick: () => add('core.dialogue', {}) }] : []),
     { header: true, label: t('element.group.interactive') },
     ...(isGlobal ? [] : [{ label: t('layer.choice'), icon: 'choice', onClick: () => add('core.choice', {}) }]),
@@ -559,7 +560,7 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     // Global elements are on every page (music, HUD, inventory, health bar…).
     items.push({ header: true, label: t('element.group.global') }, { label: t('element.addGlobal'), icon: 'globe', hint: t('element.addGlobalHint'), submenu: addLayerMenu(session, GLOBAL_NODE_ID, t, at, { ...opts, nested: true }) });
   }
-  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition', 'core.sprite', 'core.inventory']);
+  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition', 'core.sprite', 'core.inventory', 'core.freeDialogue']);
   const rest = defs.filter((d) => !shown.has(d.id));
   const cats = ['effect', 'structure', 'module'];
   for (const c of cats) {

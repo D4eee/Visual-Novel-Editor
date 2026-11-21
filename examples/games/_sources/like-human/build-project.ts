@@ -56,6 +56,7 @@ for (const sub of ['images', 'audio', 'video']) {
 Object.assign(p, { id: 'prj_like_human', created: '2026-11-19T00:00:00.000Z' });
 p.settings.title = 'Like Human';
 p.settings.author = 'Visual Novel Editor examples';
+p.settings.descriptions = { 'zh-CN': '一个关于仿生人和制造她的工程师的小故事。展示了所有主要功能：分支、条件、跨章节跳转、动画、特效、脚本、模块，以及游戏模块（收集品、全局背包、帧动画角色和页面继承）。' };
 p.settings.identifier = 'com.example.likehuman';
 p.settings.description = 'A short story about an android and the engineer who built her. Shows every major feature: branching, conditions, cross-chapter jumps, animation, effects, scripts, modules and the Game module (a collectible, a global inventory, a sprite and page-to-page inheritance).';
 p.settings.iconAssetId = A.icon;

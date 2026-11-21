@@ -4,6 +4,9 @@ import { sceneChoices } from '@vne/core';
 import { ExprInput } from '../script/ExprInput';
 import { NumberInput, TextInput, ColorInput, Select, Toggle, Field, Section, IconButton, cx } from '../ui/controls';
 import { AssetPicker } from './AssetPicker';
+import { store } from '../state/store';
+import { importFiles } from '../sidebar/AssetLibrary';
+import { resolveFontFamily } from '@vne/runtime';
 
 export interface PropContext {
   project: Project;
@@ -26,6 +29,40 @@ const FONT_PRESETS = [
   '"Courier New", monospace',
   'Impact, "Arial Black", sans-serif',
 ];
+
+/**
+ * Font choice: system fonts, imported font files (with an Upload button that imports
+ * .ttf/.otf/.woff/.woff2 into the project) or any CSS font-family.
+ */
+export function FontPicker({ project, value, onChange, t }: { project: Project; value: any; onChange: (v: any) => void; t: (k: string, p?: any) => string }) {
+  const fonts = project.assets.filter((a) => a.kind === 'font');
+  const known = [...FONT_PRESETS, ...fonts.map((f) => f.id)];
+  const upload = async () => {
+    const s = store.session;
+    if (!s) return;
+    const paths = await store.pickFiles(t('font.uploadTitle'), [{ name: t('font.files'), extensions: ['ttf', 'otf', 'woff', 'woff2'] }]);
+    if (!paths?.length) return;
+    const assets = await importFiles(s, paths);
+    const font = assets.find((a) => a.kind === 'font');
+    if (font) { s.assets.loadFonts(); onChange(font.id); store.toast(t('font.uploaded', { name: font.name }), 'success'); }
+    else store.toast(t('font.notAFont'), 'error');
+  };
+  const current = fonts.find((f) => f.id === value);
+  return (
+    <div className="stack-sm">
+      <div className="font-pick">
+        <Select value={known.includes(value) ? value : '__custom'} options={[
+          ...FONT_PRESETS.map((f, i) => ({ value: f, label: t(`font.preset${i}`), group: t('font.system') })),
+          ...fonts.map((f) => ({ value: f.id, label: f.name, group: t('font.imported') })),
+          { value: '__custom', label: t('font.custom'), group: t('font.other') },
+        ]} onChange={(v) => { if (v !== '__custom') onChange(v); else onChange(''); }} />
+        <IconButton icon="upload" size={14} title={t('font.upload')} onClick={upload} />
+      </div>
+      {current && <div className="font-preview" style={{ fontFamily: resolveFontFamily(project, current.id) }}>Aa 永字 The quick brown fox</div>}
+      {!known.includes(value) && <TextInput value={String(value ?? '')} onChange={(v) => onChange(v)} placeholder="CSS font-family" />}
+    </div>
+  );
+}
 
 export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; value: any; onChange: (v: any, transient?: boolean) => void; ctx: PropContext; label?: ReactNode }) {
   const t = ctx.t;
@@ -83,21 +120,9 @@ export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; 
     case 'node':
       control = <Select value={value || ''} placeholder={t('common.choose')} options={Object.values(ctx.project.nodes).filter((n) => n.type !== 'core.comment').map((n) => ({ value: n.id, label: n.name, group: ctx.project.chapters.find((c) => c.id === n.chapterId)?.name }))} onChange={(v) => onChange(v)} />;
       break;
-    case 'font': {
-      const fonts = ctx.project.assets.filter((a) => a.kind === 'font');
-      const known = [...FONT_PRESETS, ...fonts.map((f) => f.id)];
-      control = (
-        <div className="stack-sm">
-          <Select value={known.includes(value) ? value : '__custom'} options={[
-            ...FONT_PRESETS.map((f, i) => ({ value: f, label: t(`font.preset${i}`), group: t('font.system') })),
-            ...fonts.map((f) => ({ value: f.id, label: f.name, group: t('font.imported') })),
-            { value: '__custom', label: t('font.custom'), group: t('font.other') },
-          ]} onChange={(v) => { if (v !== '__custom') onChange(v); }} />
-          {!known.includes(value) && <TextInput value={String(value ?? '')} onChange={(v) => onChange(v)} placeholder="CSS font-family" />}
-        </div>
-      );
+    case 'font':
+      control = <FontPicker project={ctx.project} value={value} onChange={onChange} t={t} />;
       break;
-    }
     case 'json':
       control = <code className="json-view">{JSON.stringify(value)}</code>;
       break;

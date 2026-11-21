@@ -198,7 +198,8 @@ textarea.input.code { font: 12px/1.45 var(--mono); }
 .split-caret { padding: 0 7px; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 1px solid rgba(255,255,255,.2) !important; }
 .lang { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--line-2); background: transparent; cursor: pointer; color: var(--text-2); font-weight: 600; font-size: 12px; }
 .lang:hover { background: var(--panel-2); color: var(--text); }
-.session { flex: 1; display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-rows: 1fr auto; min-height: 0; position: relative; }
+.session { flex: 1; display: grid; grid-template-columns: auto auto auto 1fr auto auto; grid-template-rows: minmax(0, 1fr) auto auto; min-height: 0; position: relative; }
+.session > .console { grid-column: 1 / -1; }
 .session > .statusbar { grid-column: 1 / -1; }
 .activity { grid-row: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 46px; padding: 8px 0; background: var(--bg-2); border-right: 1px solid var(--line); }
 .act { position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
@@ -732,11 +733,6 @@ body.dragging-block .blk-gap { height: 12px; }
 .result-row code { flex: 1; font-size: 11.5px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Problems panel */
-.problems-panel { position: absolute; right: 12px; bottom: 36px; z-index: 40; width: 440px; max-height: 50vh; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow); }
-.problems-panel header { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--line); }
-.problems-panel h3 { margin: 0; font-size: 13px; }
-.problems-panel header .muted { flex: 1; }
-.problems-body { overflow: auto; padding: 8px; }
 
 /* Home */
 .home { flex: 1; overflow: auto; display: flex; justify-content: center; background: radial-gradient(ellipse at 50% -20%, #232847 0%, var(--bg) 55%); }
@@ -975,3 +971,58 @@ body.dragging-block .blk-slot-val:not(.filled) { box-shadow: 0 0 0 1px rgba(255,
 .insp-context { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 8px; background: var(--panel-2); }
 .insp-context-name { display: flex; align-items: center; gap: 7px; font-weight: 650; }
 .insp-context p { margin: 0; }
+
+/* Scrolling column lists: items keep their own height (wrapped block labels used to be squeezed and overlap the next item). */
+.blk-palette-list > *, .fx-side > *, .fxp-list > *, .game-list > *, .game-section > *, .game-panel > * { flex-shrink: 0; }
+
+/* Home: examples as app icons in a box (3 per row, scrolls down) */
+.example-shelf { position: relative; max-height: 312px; overflow-y: auto; padding: 16px 12px; border-radius: 18px; background: var(--panel); border: 1px solid var(--line); }
+.example-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 10px; }
+.example-app { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 6px 2px; border: 0; border-radius: 12px; background: transparent; color: var(--text-2); cursor: pointer; min-width: 0; }
+.example-app:hover, .example-app.active { color: var(--text); }
+.example-app:hover .example-icon, .example-app.active .example-icon { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,.45); }
+.example-icon { width: 72px; height: 72px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 18px; overflow: hidden; background: linear-gradient(145deg, #3b3f8f, #151829); color: #cfd6ff; box-shadow: 0 3px 10px rgba(0,0,0,.35); transition: transform .15s, box-shadow .15s; }
+.example-icon img { width: 100%; height: 100%; object-fit: cover; }
+.example-icon.small { width: 38px; height: 38px; border-radius: 10px; }
+.example-name { max-width: 100%; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.example-info { position: fixed; z-index: 60; width: 300px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line-2); box-shadow: var(--shadow); animation: exampleInfoIn .16s ease-out; }
+.example-info-head { display: flex; align-items: center; gap: 10px; }
+.example-info p { margin: 0; color: var(--text-2); line-height: 1.5; }
+@keyframes exampleInfoIn { from { opacity: 0; transform: translate(-50%, -4px) scale(.98); } to { opacity: 1; transform: translateX(-50%); } }
+
+/* Console (problems), slides up from the status bar */
+.status-caret { margin-left: 2px; opacity: .8; }
+.console { position: relative; display: flex; flex-direction: column; min-height: 0; background: var(--bg-2); border-top: 1px solid var(--line-2); animation: consoleUp .16s ease-out; }
+@keyframes consoleUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.console-resize { position: absolute; left: 0; right: 0; top: -3px; height: 6px; cursor: ns-resize; z-index: 2; }
+.console-head { display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 12px; border-bottom: 1px solid var(--line); flex: none; }
+.console-head .grow { flex: 1; }
+.console-tab { display: inline-flex; align-items: center; gap: 6px; height: 100%; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; color: var(--text-2); box-shadow: inset 0 -2px 0 var(--accent); padding: 0 4px; }
+.console-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; padding: 0 5px; border-radius: 8px; background: var(--panel-3); color: var(--text-2); font-size: 10.5px; font-weight: 600; letter-spacing: 0; }
+.console-filter { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border-radius: 5px; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: 11.5px; }
+.console-filter.on { color: var(--text-2); background: var(--panel-2); border-color: var(--line-2); }
+.console-filter.error.on svg { color: var(--err); }
+.console-filter.warning.on svg { color: var(--warn); }
+.console-filter.info.on svg { color: var(--accent); }
+.console-search { display: inline-flex; align-items: center; gap: 5px; height: 22px; width: 190px; padding: 0 7px; border-radius: 5px; background: var(--panel); border: 1px solid var(--line-2); color: var(--muted); }
+.console-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font-size: 11.5px; color: var(--text); }
+.console-body { flex: 1; min-height: 0; overflow: auto; padding: 4px 0 8px; font-size: 12px; }
+.console-group { display: flex; flex-direction: column; }
+.console-group-head { display: flex; align-items: center; gap: 6px; width: 100%; height: 24px; padding: 0 12px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; font-weight: 600; text-align: left; cursor: pointer; }
+.console-group-head:hover { background: var(--panel); }
+.console-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 23px; padding: 2px 12px 2px 42px; border: 0; background: transparent; color: var(--text-2); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.console-row:hover:not(:disabled) { background: var(--panel); color: var(--text); }
+.console-row:disabled { cursor: default; }
+.console-row svg { flex: none; }
+.console-row.error svg { color: var(--err); }
+.console-row.warning svg { color: var(--warn); }
+.console-row.info svg { color: var(--accent); }
+.console-msg { flex: 1; min-width: 0; }
+.console-code { flex: none; color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.console-empty { display: flex; align-items: center; gap: 7px; padding: 12px 14px; color: var(--text-2); }
+.console-empty svg { color: var(--ok); }
+
+/* Font picker */
+.font-pick { display: flex; align-items: center; gap: 4px; }
+.font-pick .select { flex: 1; min-width: 0; }
+.font-preview { padding: 6px 8px; border-radius: 6px; background: var(--bg-2); border: 1px solid var(--line); font-size: 15px; line-height: 1.3; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

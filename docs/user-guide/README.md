@@ -27,7 +27,7 @@ Visual Novel Editor is a desktop application for making visual novels and other 
 | **Center** | The open workspace: the story graph of a chapter, a scene's composition, or a node's logic workspace. Tabs keep several open |
 | **Bottom dock** (scenes) | Timeline (keyframes, media and effects of every element) and Interactions (scripts, with Test) |
 | **Right** | Inspector for whatever is selected |
-| **Status bar** | Save state, number of errors and warnings (click to open the Problems list), project location |
+| **Status bar** | Save state, number of errors and warnings (click it — or the ▲ — to open the **console** at the bottom of the window, which lists every problem grouped by node, with filters), project location |
 
 Hints are kept out of the way: hover a control, a title or a field label for about 1.5 s to see what it does. On every canvas the mouse wheel zooms and dragging empty space pans.
 

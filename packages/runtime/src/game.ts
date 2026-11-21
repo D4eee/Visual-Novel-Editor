@@ -12,6 +12,7 @@ import { drawScene } from './render';
 import { SystemUI } from './ui';
 import { runtimeStrings } from './strings';
 import { GlobalPage, Items } from './globals';
+import { resolveFontFamily } from './assets';
 import { spriteFrames } from './builtins/layers';
 
 export interface GameOptions {
@@ -146,7 +147,7 @@ export class GameRuntime {
     this.stage = new Stage(opts.container, width, height, { fit: 'contain' });
     this.sceneCanvas = makeCanvas(width, height);
     this.narrative = new NarrativeUI(this.stage.overlay);
-    this.narrative.applyStyle(this.project.settings.textbox);
+    this.narrative.applyStyle({ ...this.project.settings.textbox, fontFamily: resolveFontFamily(this.project, this.project.settings.textbox.fontFamily) });
     this.hud = document.createElement('div');
     this.hud.className = 'vne-hud';
     this.flashEl = document.createElement('div');

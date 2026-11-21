@@ -3,7 +3,8 @@ import type { Issue } from '@vne/core';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { Icon } from '../ui/Icon';
-import { cx, IconButton, Empty } from '../ui/controls';
+import { cx, IconButton, useResizable } from '../ui/controls';
+import { useState } from 'react';
 
 export function goToIssue(session: ProjectSession, i: Issue): void {
   const tg = i.target;
@@ -49,22 +50,83 @@ export function IssueList({ session, issues, limit = 200 }: { session: ProjectSe
   );
 }
 
+type Sev = 'error' | 'warning' | 'info';
+
+/**
+ * The console: a panel that slides up from the bottom of the window (like VS Code's),
+ * listing every problem grouped by where it is. Opened from the status bar.
+ */
 export function ProblemsPanel({ session }: { session: ProjectSession }) {
   useSession(session);
   const t = useT();
-  const errors = session.issues.filter((i) => i.severity === 'error');
-  const warnings = session.issues.filter((i) => i.severity === 'warning');
-  const infos = session.issues.filter((i) => i.severity === 'info');
+  const [height, startResize] = useResizable('console', 240, 110, 640);
+  const [show, setShow] = useState<Record<Sev, boolean>>({ error: true, warning: true, info: true });
+  const [query, setQuery] = useState('');
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const count = (s: Sev) => session.issues.filter((i) => i.severity === s).length;
+  const modProblems = session.moduleRecords.filter((r) => r.status !== 'active' && r.status !== 'disabled');
+  const q = query.trim().toLowerCase();
+  const text = (i: Issue) => t(i.message, translateParams(session, i.params));
+  const list = session.issues.filter((i) => show[i.severity as Sev] && (!q || text(i).toLowerCase().includes(q)));
+  // Group by node (or chapter / project).
+  const groups = new Map<string, { label: string; icon: string; items: Issue[] }>();
+  const order: Record<Sev, number> = { error: 0, warning: 1, info: 2 };
+  for (const i of [...list].sort((a, b) => order[a.severity as Sev] - order[b.severity as Sev])) {
+    const n = i.target?.nodeId ? session.project.nodes[i.target.nodeId] : null;
+    const ch = !n && i.target?.chapterId ? session.project.chapters.find((c) => c.id === i.target!.chapterId) : null;
+    const key = n ? `n:${n.id}` : ch ? `c:${ch.id}` : 'project';
+    const label = n ? n.name : ch ? ch.name : t('console.project');
+    const icon = n ? session.engine.nodeTypes.get(n.type)?.icon || 'scene' : ch ? 'book' : 'settings';
+    if (!groups.has(key)) groups.set(key, { label, icon, items: [] });
+    groups.get(key)!.items.push(i);
+  }
+  const close = () => session.setUI({ problemsOpen: false });
   return (
-    <div className="problems-panel">
-      <header>
-        <h3>{t('problems.title')}</h3>
-        <span className="muted small">{t('problems.summary', { e: errors.length, w: warnings.length })}</span>
-        <IconButton icon="close" title={t('common.close')} onClick={() => session.setUI({ problemsOpen: false })} />
+    <section className="console" style={{ height }} aria-label={t('console.title')}
+      onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } }}>
+      <div className="console-resize" onPointerDown={(e) => startResize(e, -1, 'y')} role="separator" aria-orientation="horizontal" />
+      <header className="console-head">
+        <span className="console-tab active">{t('console.problems')}<span className="console-count">{session.issues.length}</span></span>
+        <span className="grow" />
+        {(['error', 'warning', 'info'] as Sev[]).map((s) => (
+          <button key={s} type="button" className={cx('console-filter', s, show[s] && 'on')} aria-pressed={show[s]} title={t(`console.show.${s}`)} onClick={() => setShow({ ...show, [s]: !show[s] })}>
+            <Icon name={s === 'error' ? 'error' : s === 'warning' ? 'warning' : 'info'} size={12} />{count(s)}
+          </button>
+        ))}
+        <span className="console-search"><Icon name="filter" size={12} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('console.filter')} aria-label={t('console.filter')} onKeyDown={(e) => e.stopPropagation()} /></span>
+        <IconButton icon="chevronDown" size={14} title={t('console.hide')} onClick={close} />
       </header>
-      <div className="problems-body">
-        {!session.issues.length ? <Empty icon="check" title={t('problems.none')}>{t('problems.noneText')}</Empty> : <IssueList session={session} issues={[...errors, ...warnings, ...infos]} />}
+      <div className="console-body">
+        {modProblems.length > 0 && (
+          <div className="console-group">
+            <div className="console-group-head"><Icon name="module" size={12} />{t('console.modules')}<span className="console-count">{modProblems.length}</span></div>
+            {modProblems.map((r) => (
+              <button key={r.manifest.id} type="button" className="console-row error" onClick={() => store.open({ kind: 'modules' })}>
+                <Icon name="error" size={13} /><span className="console-msg">{r.manifest.name || r.manifest.id}: {r.error || r.status}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {!session.issues.length && !modProblems.length && <div className="console-empty"><Icon name="check" size={14} />{t('problems.noneText')}</div>}
+        {session.issues.length > 0 && !list.length && <div className="console-empty muted">{t('console.noMatch')}</div>}
+        {[...groups.entries()].map(([key, g]) => {
+          const open = !collapsed.has(key);
+          return (
+            <div key={key} className="console-group">
+              <button type="button" className="console-group-head" aria-expanded={open} onClick={() => { const c = new Set(collapsed); if (open) c.add(key); else c.delete(key); setCollapsed(c); }}>
+                <Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} /><Icon name={g.icon} size={12} />{g.label}<span className="console-count">{g.items.length}</span>
+              </button>
+              {open && g.items.map((i, k) => (
+                <button key={k} type="button" className={cx('console-row', i.severity)} onClick={() => goToIssue(session, i)} disabled={!i.target}>
+                  <Icon name={i.severity === 'error' ? 'error' : i.severity === 'warning' ? 'warning' : 'info'} size={13} />
+                  <span className="console-msg">{text(i)}</span>
+                  <span className="console-code">{i.code}</span>
+                </button>
+              ))}
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }
