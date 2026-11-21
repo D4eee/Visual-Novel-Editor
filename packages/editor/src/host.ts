@@ -7,6 +7,7 @@ declare global {
       newWindow(): Promise<boolean>;
       onCommand(fn: (cmd: string) => void): () => void;
       setLocale?(locale: string): Promise<boolean>;
+      setZoom?(factor: number): Promise<number>;
       pathForFile(file: File): string;
     };
   }

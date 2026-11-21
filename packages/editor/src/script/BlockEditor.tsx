@@ -144,6 +144,8 @@ export function stackElements(s: WStack, engine: Engine): Set<string> {
 }
 
 const isValueShape = (d: BlockDef | undefined) => d?.shape === 'reporter' || d?.shape === 'boolean';
+/** Blocks with no bottom connector: nothing can be attached after them. */
+export const endsScript = (d: BlockDef | undefined) => d?.shape === 'cap' || !!d?.endsScript;
 
 function contains(b: Block, key: ListKey): boolean {
   if (`${b.id}.body` === key || `${b.id}.else` === key) return true;
@@ -156,11 +158,13 @@ function contains(b: Block, key: ListKey): boolean {
 
 type DragState =
   | { kind: 'new'; def: BlockDef; args?: Record<string, any> }
-  | { kind: 'move'; blockId: string; label: string; color: string; shape: string }
+  | { kind: 'move'; blockId: string; label: string; color: string; shape: string; ends?: boolean }
   | { kind: 'element'; layerId: string; label: string };
 type DropTarget = { list: ListKey; index: number } | { newStack: true; x: number; y: number } | { slot: { blockId: string; arg: string } } | { value: { blockId: string; arg: string } } | { discard: true } | null;
 
 const dragShape = (d: DragState): string => (d.kind === 'new' ? d.def.shape : d.kind === 'move' ? d.shape : 'element');
+/** A dragged block that ends a script fits only at the end of a list (like Scratch's cap blocks). */
+const dragEnds = (d: DragState): boolean => (d.kind === 'new' ? endsScript(d.def) : d.kind === 'move' ? !!d.ends : false);
 
 function useBlockDrag(onDrop: (d: DragState, target: DropTarget) => void) {
   const [drag, setDrag] = useState<(DragState & { x: number; y: number; target: string | null }) | null>(null);
@@ -188,12 +192,13 @@ function useBlockDrag(onDrop: (d: DragState, target: DropTarget) => void) {
         if (slot && (slot.dataset.accept !== 'boolean' || shape === 'boolean') && !(d.kind === 'move' && slot.closest(`[data-blk="${d.blockId}"]`))) return { value: { blockId: slot.dataset.block!, arg: slot.dataset.arg! } };
         return el?.closest('.blk-workspace-drop, .blk-palette') ? { discard: true as const } : null;
       }
+      const fits = (g: HTMLElement) => !dragEnds(d) || g.dataset.end === '1';
       const gap = el?.closest('.blk-gap') as HTMLElement | null;
-      if (gap) return { list: gap.dataset.list!, index: Number(gap.dataset.index) };
+      if (gap && fits(gap)) return { list: gap.dataset.list!, index: Number(gap.dataset.index) };
       // nearest gap within the hovered list
       const list = el?.closest('.blk-list') as HTMLElement | null;
       if (list) {
-        const gaps = [...list.querySelectorAll<HTMLElement>(':scope > .blk-gap')];
+        const gaps = [...list.querySelectorAll<HTMLElement>(':scope > .blk-gap')].filter(fits);
         let best: HTMLElement | null = null, bd = Infinity;
         for (const g of gaps) { const r = g.getBoundingClientRect(); const dd = Math.abs(r.top + r.height / 2 - y); if (dd < bd) { bd = dd; best = g; } }
         if (best) return { list: best.dataset.list!, index: Number(best.dataset.index) };
@@ -434,7 +439,7 @@ export function BlockWorkspace({ stacks, onChange, ctx, mode, selectedStack, onS
     ctx,
     running,
     drag,
-    startMove: (e, b) => { const def = engine.blocks.get(b.type); start(e, { kind: 'move', blockId: b.id, label: t(def?.label || b.type), color: blockColor(def), shape: def?.shape || 'statement' }); },
+    startMove: (e, b) => { const def = engine.blocks.get(b.type); start(e, { kind: 'move', blockId: b.id, label: t(def?.label || b.type), color: blockColor(def), shape: def?.shape || 'statement', ends: endsScript(def) }); },
     setArg: (blockId, arg, value) => onChange((draft) => { const b = findBlock(draft, blockId); if (b) b.args[arg] = value; }, t('script.editBlock')),
     remove: (blockId) => onChange((draft) => { if (!removeBlock(draft, blockId)) detachFromSlot(draft, blockId, engine); }, t('script.deleteBlock')),
     duplicate: (blockId) => onChange((draft) => {
@@ -573,11 +578,14 @@ interface BlockOps {
 }
 
 function BlockList({ list, listKey, ops }: { list: Block[]; listKey: string; ops: BlockOps }) {
-  const gap = (i: number) => <div key={`g${i}`} className={cx('blk-gap', ops.drag?.target === `${listKey}:${i}` && 'hot')} data-list={listKey} data-index={i} />;
+  // A block that ends the script (stop, go to scene, forever…) has no bottom connector:
+  // there is no drop gap after it, and blocks that end a script only fit at the very end.
+  const closed = list.length > 0 && endsScript(ops.ctx.engine.blocks.get(list[list.length - 1].type));
+  const gap = (i: number) => <div key={`g${i}`} className={cx('blk-gap', ops.drag?.target === `${listKey}:${i}` && 'hot')} data-list={listKey} data-index={i} data-end={i === list.length && !closed ? '1' : undefined} />;
   const items: ReactNode[] = [gap(0)];
   list.forEach((b, i) => {
     items.push(<BlockView key={b.id} block={b} ops={ops} />);
-    items.push(gap(i + 1));
+    if (!(closed && i === list.length - 1)) items.push(gap(i + 1));
   });
   return <div className={cx('blk-list', !list.length && 'empty')}>{items}</div>;
 }
@@ -603,8 +611,8 @@ function BlockView({ block, ops }: { block: Block; ops: BlockOps }) {
     ]);
   };
   return (
-    <div className={cx('blk-wrap', `shape-${def.shape}`)}>
-      <div className={cx('blk', `shape-${def.shape}`, ops.running?.has(block.id) && 'running')} style={{ ['--blk' as any]: color }} onPointerDown={(e) => ops.startMove(e, block)} onContextMenu={ctxMenu}
+    <div className={cx('blk-wrap', `shape-${def.shape}`, endsScript(def) && 'ends')}>
+      <div className={cx('blk', `shape-${def.shape}`, endsScript(def) && 'ends', ops.running?.has(block.id) && 'running')} style={{ ['--blk' as any]: color }} onPointerDown={(e) => ops.startMove(e, block)} onContextMenu={ctxMenu}
         onKeyDown={(e) => { if ((e.key === 'Delete' || e.key === 'Backspace') && e.target === e.currentTarget) { e.stopPropagation(); ops.remove(block.id); } }} tabIndex={0}>
         <BlockLabel def={def} block={block} ops={ops} />
         <IconButton icon="close" size={12} className="blk-del" title={t('common.delete')} onClick={() => ops.remove(block.id)} />
@@ -690,7 +698,8 @@ function PaletteBlock({ def, args, ctx, onPointerDown }: { def: BlockDef; args?:
     return null;
   };
   return (
-    <div className={cx('blk', `shape-${def.shape}`, 'palette')} style={{ ['--blk' as any]: blockColor(def) }} onPointerDown={onPointerDown}
+    <div className={cx('blk-wrap palette', `shape-${def.shape}`, endsScript(def) && 'ends')}>
+    <div className={cx('blk', `shape-${def.shape}`, endsScript(def) && 'ends', 'palette')} style={{ ['--blk' as any]: blockColor(def) }} onPointerDown={onPointerDown}
       title={def.shape === 'reporter' || def.shape === 'boolean' ? t('script.dragIntoSlot') : t('script.dragOrClick')}>
       <span className="blk-label">
         {label.split(/(\{\w+\})/g).filter(Boolean).map((part: string, i: number) => {
@@ -703,6 +712,14 @@ function PaletteBlock({ def, args, ctx, onPointerDown }: { def: BlockDef; args?:
           return <span key={i} className={cx('blk-slot', `t-${arg.type}`)}>{arg.type === 'boolean' ? '' : arg.type === 'layer' ? '◉' : ''}</span>;
         })}
       </span>
+    </div>
+    {(def.shape === 'c' || def.shape === 'c-else') && (
+      <div className="blk-c" style={{ ['--blk' as any]: blockColor(def) }} onPointerDown={onPointerDown}>
+        <div className="blk-c-body"><div className="blk-list empty" /></div>
+        {def.shape === 'c-else' && <><div className="blk-c-label">{t('block.else')}</div><div className="blk-c-body"><div className="blk-list empty" /></div></>}
+        <div className="blk-c-foot" />
+      </div>
+    )}
     </div>
   );
 }

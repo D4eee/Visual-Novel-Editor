@@ -6,12 +6,16 @@ Scripts sit on a canvas: the mouse wheel zooms, dragging empty space pans, and d
 
 ## Block shapes
 
+Blocks fit together like puzzle pieces, as in Scratch: a **notch** on top takes the **bump** under the block above. The shape tells you where a block can go:
+
 | Shape | What it is |
 | --- | --- |
-| Rounded top (yellow) | **Trigger** — starts a script |
-| Puzzle piece | **Action** — runs in order; C-shaped ones wrap other actions |
-| Round | **Value** (reporter): a number or text, e.g. *mouse x*, *( ) + ( )*, *x of [Mika]*, a variable |
-| Pointed | **Condition**: true or false, e.g. *mouse inside [area]?*, *( ) > ( )*, *key [Space] pressed?* |
+| Rounded top, bump below (yellow) | **Trigger** — starts a script; nothing goes above it |
+| Notch on top, bump below | **Action** — runs in order |
+| C shape | Wraps other actions (*if*, *repeat*…): the arm's bump takes the first inner block; the foot's bump continues the script |
+| Notch on top, flat bottom | **Ends the script** — *Stop this script*, *Go to scene*, *Continue*; *Forever* is a C with a flat foot. Nothing can be attached below, and these blocks fit only at the end of a script |
+| Round | **Value** (reporter): a number or text, e.g. *mouse x*, *( ) + ( )*, *x of [Mika]*, a variable — fits into slots |
+| Pointed | **Condition**: true or false, e.g. *mouse inside [area]?*, *( ) > ( )*, *key [Space] pressed?* — fits into slots |
 
 Drag a value or a condition into any slot of another block — number and text slots take both, condition slots (*if*, *wait until*, *repeat until*, *and*, *or*, *not*) take conditions. Values nest: *set [score] to ((score) + (random 1 to 6))*. Drag a value out of its slot to move it to another slot, or onto the canvas or the palette to remove it (the slot gets its typed value back).
 

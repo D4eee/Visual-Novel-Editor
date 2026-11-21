@@ -5,7 +5,7 @@
   "description": { "en": "Adds two animatable properties to every visual layer: Wobble (jelly squash) and Float (gentle bobbing). Shows custom animated properties and a custom interpolator.", "zh-CN": "为所有可见图层增加两个可做动画的属性：摇晃（果冻挤压）和漂浮（轻轻上下浮动）。演示自定义动画属性与自定义插值。" },
   "author": { "name": "Visual Novel Editor examples" },
   "license": "MIT",
-  "engine": ">=0.1.0 <1.0.0",
+  "engine": ">=0.1.0 <2.0.0",
   "api": "^1.0.0",
   "provides": { "properties": ["wobble", "float"], "interpolators": ["smoothstep"] },
   "runtime": "runtime.js",

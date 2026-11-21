@@ -5,9 +5,10 @@ import { ChoiceEffects } from './choices';
 import { animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
-import { sceneOf, setLayerProps, toggleKey, keyStateFor, updateScene } from './sceneOps';
+import { sceneOf, setLayerProps, updateScene, setParent, toggleKey, keyStateFor } from './sceneOps';
 import { PropEditor, PropContext } from '../inspect/PropEditor';
-import { Field, TextInput, ColorInput, Select, NumberInput, Toggle, Section, Button, IconButton } from '../ui/controls';
+import { Field, TextInput, ColorInput, Select, NumberInput, Toggle, Section, Button, IconButton, Tabs } from '../ui/controls';
+import { EffectsTab, PresetsTab, InspectorTab } from './ElementTabs';
 import { Icon } from '../ui/Icon';
 import { useEffect, useRef } from 'react';
 import { makeMountContext, safeMount } from '../modules/editorApi';
@@ -79,13 +80,22 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
     onToggleKey: (k) => toggleKey(session, nodeId, layer.id, k),
     layerId: layer.id,
   };
-  const fxParams = layer.effect?.kind === 'inline' ? layer.effect.graph.params : layer.effect?.kind === 'ref' ? session.project.effectGraphs.find((g) => g.id === (layer.effect as any).graphId)?.params || [] : [];
+  const tab: InspectorTab = ui.inspectorTab || 'options';
+  const visual = def?.visual !== false;
   return (
     <div className="inspector-body">
       <div className="insp-title">
         <span className="type-chip" title={def?.visual ? t('inspector.keyTip') : undefined}><Icon name={def?.icon || 'layers'} size={14} />{def ? t(def.label) : layer.type}</span>
         {ui.record && <span className="rec-chip"><Icon name="record" size={12} />{t('timeline.recording')}</span>}
       </div>
+      <Tabs<InspectorTab> className="insp-tabs" value={tab} onChange={(v) => session.setSceneUI(nodeId, { inspectorTab: v })} tabs={[
+        { id: 'options', label: t('insp.tab.options'), icon: 'sliders' },
+        { id: 'effects', label: t('insp.tab.effects'), icon: 'sparkles', badge: layer.effect ? '●' : null },
+        { id: 'presets', label: t('insp.tab.presets'), icon: 'bookmark' },
+      ]} />
+      {tab === 'effects' ? <EffectsTab session={session} nodeId={nodeId} scene={scene} layer={layer} />
+        : tab === 'presets' ? <PresetsTab session={session} nodeId={nodeId} scene={scene} layer={layer} />
+          : <>
       <Field label={t('common.name')}><TextInput value={layer.name} onChange={(v) => updateScene(session, nodeId, t('common.rename'), (s) => { s.layers.find((l) => l.id === layer.id)!.name = v; })} /></Field>
       {!def && <div className="issue error"><Icon name="error" size={14} />{t('layer.missingType', { type: layer.type })}</div>}
       {layer.type === DIALOGUE_LAYER && <DialogueLines session={session} nodeId={nodeId} layerId={layer.id} />}
@@ -104,11 +114,12 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
           <SpriteFramesEditor session={session} nodeId={nodeId} layer={layer} settings={false} />
         </Section>
       )}
-      {nodeId === GLOBAL_NODE_ID && def?.visual !== false && (
+      {nodeId === GLOBAL_NODE_ID && visual && (
         <Field label={t('global.zone')}>
           <Select value={layer.zone || 'front'} options={[{ value: 'front', label: t('global.zone.front') }, { value: 'back', label: t('global.zone.back') }]} onChange={(v) => updateScene(session, nodeId, t('global.behind'), (s) => { const l = s.layers.find((x) => x.id === layer.id); if (l) l.zone = v as any; })} />
         </Field>
       )}
+      {visual && <ParentField session={session} nodeId={nodeId} scene={scene} layer={layer} />}
       <Section id="insp.params" title={<>{t('params.title')}{layer.params?.length ? <span className="muted"> {layer.params.length}</span> : null}</>} tip={t('params.hint')} defaultOpen={!!layer.params?.length}>
         <ParamsEditor session={session} nodeId={nodeId} layer={layer} />
       </Section>
@@ -117,28 +128,23 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
           <ChoiceEffects session={session} nodeId={nodeId} layer={layer} />
         </Section>
       )}
-      {fxParams.length > 0 && (
-        <Section id="insp.fxparams" title={t('effects.params')}>
-          {fxParams.map((p) => (
-            <Field key={p.id} label={<>{p.name}<IconButton icon="keyframe" size={12} className={`key-toggle ${keyStateFor(session, scene, layer.id, `fx.${p.id}`)}`} title={t('timeline.addKey')} onClick={() => toggleKey(session, nodeId, layer.id, `fx.${p.id}`)} /></>}>
-              {p.type === 'number' ? <NumberInput value={Number(values[`fx.${p.id}`] ?? p.default)} min={p.min} max={p.max} step={0.01} onChange={(v, tr) => setLayerProps(session, nodeId, layer.id, { [`fx.${p.id}`]: v }, tr ? { mergeKey: `fx-${p.id}` } : {})} />
-                : p.type === 'color' ? <ColorInput value={String(values[`fx.${p.id}`] ?? p.default)} onChange={(v, tr) => setLayerProps(session, nodeId, layer.id, { [`fx.${p.id}`]: v }, tr ? { mergeKey: `fx-${p.id}` } : {})} />
-                  : <Toggle value={!!(values[`fx.${p.id}`] ?? p.default)} onChange={(v) => setLayerProps(session, nodeId, layer.id, { [`fx.${p.id}`]: v })} />}
-            </Field>
-          ))}
-        </Section>
-      )}
-      {def?.visual !== false && <Section id="insp.layer.blend" title={t('group.compositing')} defaultOpen={false}>
-        <Field label={t('prop.blend')}>
-          <Select value={layer.blend || 'normal'} options={['normal', 'multiply', 'screen', 'overlay', 'lighter', 'darken', 'lighten', 'color-dodge', 'color-burn', 'soft-light', 'hard-light', 'difference'].map((b) => ({ value: b, label: t(`blend.${b === 'normal' ? 'source-over' : b}`) }))}
-            onChange={(v) => updateScene(session, nodeId, t('layer.edit'), (s) => { s.layers.find((l) => l.id === layer.id)!.blend = v === 'normal' ? undefined : v; })} />
-        </Field>
-        <Field label={t('effects.title')}>
-          <Button small icon="sparkles" onClick={() => session.setSceneUI(nodeId, { selectedLayers: [layer.id], effectsOpen: true })}>{layer.effect ? t('effects.edit') : t('effects.add')}</Button>
-        </Field>
-      </Section>}
       {custom.map((c) => <ModuleInspector key={c.id} session={session} nodeId={nodeId} layer={layer} def={c} />)}
+          </>}
     </div>
+  );
+}
+
+/** Parent element (After Effects-style "parent & link"): the element moves, turns and scales with it. */
+function ParentField({ session, nodeId, scene, layer }: { session: ProjectSession; nodeId: string; scene: SceneData; layer: Layer }) {
+  const t = useT();
+  // An element cannot be parented to itself or to one of its own children.
+  const follows = (id: string, of: string): boolean => { let p = scene.layers.find((l) => l.id === id)?.link; for (let i = 0; p && i < 64; i++) { if (p === of) return true; p = scene.layers.find((l) => l.id === p)?.link; } return false; };
+  const options = scene.layers.filter((l) => l.id !== layer.id && (l.parentId || null) === (layer.parentId || null) && session.engine.layerTypes.get(l.type)?.visual !== false && !follows(l.id, layer.id));
+  return (
+    <Field label={<><Icon name="parent" size={12} /> {t('insp.parent')}</>} hint={t('insp.parentHint')}>
+      <Select value={layer.link || ''} options={[{ value: '', label: t('insp.noParent') }, ...options.map((l) => ({ value: l.id, label: l.name }))]}
+        onChange={(v) => setParent(session, nodeId, layer.id, v || null)} />
+    </Field>
   );
 }
 

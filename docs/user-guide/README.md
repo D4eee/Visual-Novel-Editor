@@ -1,34 +1,43 @@
 # User guide
 
-Visual Novel Editor is a desktop application for making visual novels and other branching stories, and exporting them as standalone games for macOS and Windows.
+**English** · [简体中文](README.zh-CN.md) · [All documentation](../README.md)
 
-- [Getting started](getting-started.md) — your first project in ten minutes ([中文](getting-started.zh-CN.md))
-- [The story flow graph](story-flow.md) — chapters, nodes, choices, conditions, jumps and endings
-- [Scenes and layers](scenes.md) — composing a scene, dialogue, choices, characters
-- [Animation](animation.md) — timeline, keyframes, interpolation curves, audio and video sync
-- [Effects](effects.md) — procedural effect graphs, presets and shaders
-- [Interactions (visual scripting)](scripting.md) — blocks, triggers and reusable behaviors
-- [Game module](game-module.md) — page-to-page inheritance, global elements, sprites, parameters, lists and collectibles ([中文](game-module.zh-CN.md))
-- [Assets](assets.md) — importing, previews, usage, missing files and relinking
-- [Variables and characters](data.md)
-- [Modules](modules.md) — installing and using extensions
-- [Preview and debugging](preview.md)
-- [Exporting your game](export.md)
-- [Projects, saving and recovery](projects.md)
-- [Keyboard shortcuts](shortcuts.md)
-- [Glossary / 术语表](glossary.md)
+Start with the [getting-started tutorial](getting-started.md), then explore the tools you need for your story.
 
-## The window at a glance
+## Guides
 
-| Area | What it is for |
+| Stage | Guide | What you will learn |
+| --- | --- | --- |
+| Start | [Getting started](getting-started.md) | Create a story with two routes, preview it, and export it |
+| Plan | [Story flow](story-flow.md) | Chapters, nodes, choices, conditions, jumps, and endings |
+| Compose | [Scenes and layers](scenes.md) | Layout, dialogue, characters, and choices |
+| Animate | [Animation](animation.md) | The After Effects-style timeline: layer bars, keyframes, graph editor, parent links, motion paths, markers, and media timing |
+| Style | [Effects](effects.md) | Procedural effect graphs, presets, and shaders |
+| Interact | [Visual scripting](scripting.md) | Triggers, blocks, conditions, and reusable behaviors |
+| Build systems | [Game module](game-module.md) | Inheritance, global elements, sprites, lists, and collectibles |
+| Organize | [Assets](assets.md) | Importing, previews, usage, and relinking missing files |
+| Track state | [Variables and characters](data.md) | Story data and character definitions |
+| Extend | [Modules](modules.md) | Installing and using extensions |
+| Test | [Preview and debugging](preview.md) | Preview scopes and debugging tools |
+| Publish | [Exporting your game](export.md) | Web, macOS, and Windows output |
+| Save | [Projects and recovery](projects.md) | Project files, saving, backups, and recovery |
+| Get help from AI | [AI assistant](ai-assistant.md) | Connect Claude or an OpenAI-compatible model and let it edit your project |
+| Personalize | [Settings](settings.md) | Language, theme and colors, font size, editing, and AI settings |
+| Reference | [Keyboard shortcuts](shortcuts.md) · [Glossary](glossary.md) | Controls and terminology |
+
+## Find your way around
+
+| Area | Purpose |
 | --- | --- |
-| **Top bar** | Project tabs, undo/redo, **Preview** (with a scope menu), **Export**, modules, project settings, shortcuts, interface language |
-| **Left rail** | Story outline (chapters and nodes), Assets, Variables & characters, and panels added by modules |
-| **Center** | The open workspace: the story graph of a chapter, a scene's composition, or a node's logic workspace. Tabs keep several open |
-| **Bottom dock** (scenes) | Timeline (keyframes, media and effects of every element) and Interactions (scripts, with Test) |
-| **Right** | Inspector for whatever is selected |
-| **Status bar** | Save state, number of errors and warnings (click it — or the ▲ — to open the **console** at the bottom of the window, which lists every problem grouped by node, with filters), project location |
+| **Top bar** | Project tabs, the ✦ AI assistant, undo/redo, preview scope, export, modules, Settings, and interface language |
+| **Left rail** | Story outline, assets, variables, characters, and module panels |
+| **Center workspace** | Chapter graphs, scene composition, and node logic, opened in separate tabs |
+| **Bottom dock** | Scene timelines and visual scripting; use Test to trace scripts |
+| **Inspector** | Properties of the selected node, element, or other object; elements have Options, Effects, and Presets tabs. The AI assistant panel opens to its right |
+| **Status bar and console** | Save status, project location, and issues grouped by node, with severity and text filters |
 
-Hints are kept out of the way: hover a control, a title or a field label for about 1.5 s to see what it does. On every canvas the mouse wheel zooms and dragging empty space pans.
+Hover a control or field label briefly to see its help text. On canvases, use the mouse wheel to zoom and drag empty space to pan.
 
-Everything you change can be undone (**Ctrl/⌘+Z**) and redone (**Ctrl/⌘+Shift+Z**).
+Use **Ctrl/⌘+Z** to undo and **Ctrl/⌘+Shift+Z** to redo.
+
+Chinese translations are available for [Getting started](getting-started.zh-CN.md) and [Game module](game-module.zh-CN.md). See the [Chinese index](README.zh-CN.md) for the current translation coverage.

@@ -29,7 +29,19 @@ Open a scene node to get its **Composition** workspace: the canvas in the middle
 
 On the canvas: the mouse wheel zooms, dragging empty space pans, dragging a layer moves it, corner handles to scale, the round handle to rotate. **Shift** keeps proportions while scaling, locks movement to one axis and rotates in 15° steps; **Alt** temporarily disables snapping; arrow keys nudge (Shift ×10). Snapping to edges and centers can be switched off below the canvas. **Ctrl/⌘+G** groups layers. Lock and hide layers in the Layers list; drag to reorder or re-parent.
 
-The inspector shows every property of the selected layer. Properties with a ◆ button can be animated (see [Animation](animation.md)).
+## The inspector: Options, Effects, Presets
+
+Selecting an element shows three tabs at the top of the inspector:
+
+- **Options** — every property of the element (name, position, size, text, style…), its **Parent** (see [Animation → Parent & link](animation.md#parent--link)), parameters and module settings. Properties with a ◆ button can be animated (see [Animation](animation.md)).
+- **Effects** — the element's picture effect: edit its graph, save it as a preset, remove it, and key its parameters; the built-in effects (Glow, Blur, Dreamy bloom, Old film, Heat wave, Ripple, Pulse, Spin, Mood…) and **your saved effects** to apply with one click; and the blend mode.
+- **Presets** — see below.
+
+### Presets
+
+- **Animation** — entrance (*Fade in*, *Slide in from left / right*, *Rise in*, *Pop in*, *Zoom in*, *Drop in*), emphasis (*Pulse*, *Shake*, *Bounce*, *Float*, *Wobble*, *Spin*, *Flash*) and exit (*Fade out*, *Slide out*, *Shrink out*). Set the length, place the playhead, click: the animation is written as ordinary keyframes in the current animation, starting from the element's current values, so you can adjust it on the timeline. Keys of the same properties inside that time are replaced.
+- **Looks** — ready-made looks for text (Title, Subtitle, Caption, Outlined, Neon, Warm glow), shapes (Card, Glass, Outline, Accent, Shade), buttons (Primary, Ghost, Pill, Light, Danger) and free dialogue (Classic box, Speech bubble, Thought bubble, Neon box, Paper note, Text only). They change colors, fonts and shapes; position and content stay.
+- **My presets** — save the current look of an element (its style properties, effect and blend mode — not its position or content) and apply it to other elements of the same kind, in any project.
 
 ## Dialogue and choices
 
@@ -67,7 +79,7 @@ Every font field has an **Upload** button that imports a `.ttf`, `.otf`, `.woff`
 
 ## Effects on elements
 
-Effects belong to one element. In the **Timeline**, use the ✦ button on an element's row to pick a preset or open its effect graph; the effect's parameters can be keyed like any property. For a full-screen effect, add a shape that covers the screen (a mask), and give that shape the effect. See [Effects](effects.md).
+Effects belong to one element. Use the inspector's **Effects** tab, or the ✦ button on an element's row in the **Timeline**, to pick a preset or open its effect graph; the effect's parameters can be keyed like any property. For a full-screen effect, add a shape that covers the screen (a mask), and give that shape the effect. See [Effects](effects.md).
 
 ## Scene settings
 

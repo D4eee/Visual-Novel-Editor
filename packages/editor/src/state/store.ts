@@ -9,7 +9,7 @@ export type Dialog =
   | { kind: 'newProject' }
   | { kind: 'openProject' }
   | { kind: 'export' }
-  | { kind: 'settings' }
+  | { kind: 'settings'; tab?: string }
   | { kind: 'modules' }
   | { kind: 'quickOpen' }
   | { kind: 'shortcuts' }

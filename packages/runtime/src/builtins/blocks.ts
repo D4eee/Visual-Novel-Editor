@@ -69,7 +69,7 @@ export function registerBuiltinBlocks(engine: Engine): void {
     async run(ctx: ScriptContext, _a, b) {
       while (!truthy(ctx.evaluate(b.args.cond ?? false))) { await ctx.runBody(b.body); await ctx.host.nextFrame(ctx.token); }
     } });
-  B({ id: 'core.forever', category: 'control', shape: 'c', label: 'block.forever', args: [],
+  B({ id: 'core.forever', category: 'control', shape: 'c', label: 'block.forever', args: [], endsScript: true,
     async run(ctx: ScriptContext, _a, b) { for (;;) { await ctx.runBody(b.body); await ctx.host.nextFrame(ctx.token); } } });
   B({ id: 'core.stop', category: 'control', shape: 'cap', label: 'block.stop', args: [], run: () => { throw new StopThread(); } });
   B({ id: 'core.broadcast', category: 'control', shape: 'statement', label: 'block.broadcast', args: [{ id: 'message', type: 'message', default: 'go' }],

@@ -1,7 +1,7 @@
 {
   "name": "visual-novel-editor",
   "productName": "Visual Novel Editor",
-  "version": "0.3.1",
+  "version": "1.0.0",
   "description": "Visual Novel Editor — desktop edition (Electron app for macOS and Windows): story flow graph, scene composition, timeline animation, procedural effects, visual scripting, modules and one-click game export.",
   "license": "MIT",
   "private": true,

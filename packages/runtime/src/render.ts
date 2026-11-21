@@ -70,6 +70,38 @@ export function childrenOf(layers: Layer[], parentId: string | null): Layer[] {
   return layers.filter((l) => l.parentId === parentId);
 }
 
+/**
+ * Transform of an element's linked parents ("parent & link"): each parent's anchor position,
+ * rotation and scale, outermost first. Identity when the element has no (valid) parent link.
+ * A link only counts between elements in the same group; loops are ignored.
+ */
+export function linkMatrixWith(layers: Layer[], layer: Layer, propsOf: (l: Layer) => Record<string, any>): Mat {
+  if (!layer.link) return IDENTITY;
+  const chain: Layer[] = [];
+  const guard = new Set<string>([layer.id]);
+  let cur: Layer | undefined = layer;
+  while (cur?.link) {
+    const p: Layer | undefined = layers.find((l) => l.id === cur!.link);
+    if (!p || guard.has(p.id) || (p.parentId || null) !== (layer.parentId || null)) break;
+    guard.add(p.id);
+    chain.unshift(p);
+    cur = p;
+  }
+  let m: Mat = IDENTITY;
+  for (const p of chain) m = multiply(m, layerMatrix(propsOf(p), 0, 0));
+  return m;
+}
+
+export function linkMatrix(view: SceneView, layer: Layer, layers: Layer[] = view.layers): Mat {
+  return linkMatrixWith(layers, layer, (l) => view.props(l));
+}
+
+/** Matrix from the space an element's x/y are measured in (its group and linked parent) to stage coordinates. */
+export function parentSpace(view: SceneView, layer: Layer): Mat {
+  const base = layer.parentId && view.layers.some((l) => l.id === layer.parentId) ? worldMatrix(view, layer.parentId) : IDENTITY;
+  return multiply(base, linkMatrix(view, layer));
+}
+
 /** Matrix from layer-local box coordinates to stage coordinates. */
 export function worldMatrix(view: SceneView, layerId: string, layers: Layer[] = view.layers): Mat {
   const chain: Layer[] = [];
@@ -84,6 +116,7 @@ export function worldMatrix(view: SceneView, layerId: string, layers: Layer[] = 
   for (const l of chain) {
     const p = view.props(l);
     const s = layerSize(view, l, p);
+    if (l.link) m = multiply(m, linkMatrix(view, l, layers));
     m = multiply(m, layerMatrix(p, s.width, s.height));
   }
   return m;
@@ -101,6 +134,7 @@ export function effectiveVisible(view: SceneView, layer: Layer): boolean {
   while (cur && !guard.has(cur.id)) {
     guard.add(cur.id);
     if (!view.visible(cur)) return false;
+    if (view.props(cur).__span === false) return false;
     const pid: string | null = cur.parentId;
     cur = pid ? view.layers.find((l) => l.id === pid) : undefined;
   }
@@ -211,10 +245,12 @@ function drawLayer(ctx: CanvasRenderingContext2D, view: SceneView, layer: Layer,
   const def = view.engine.layerTypes.get(layer.type);
   if (def && !def.visual) return;
   const props = view.props(layer);
+  if (props.__span === false) return; // outside its in/out points in a playing animation
   const opacity = props.opacity === undefined ? 1 : num(props.opacity, 1);
   if (opacity <= 0 && view.mode === 'play') return;
   const size = layerSize(view, layer, props);
-  const m = layerMatrix(props, size.width, size.height);
+  const own = layerMatrix(props, size.width, size.height);
+  const m = layer.link ? multiply(linkMatrix(view, layer, layers), own) : own;
   ctx.save();
   ctx.transform(m[0], m[1], m[2], m[3], m[4], m[5]);
   ctx.globalAlpha *= Math.max(0, Math.min(1, opacity));

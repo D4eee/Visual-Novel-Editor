@@ -22,6 +22,10 @@ const MAP: Record<string, IconType> = {
   bookmark: L.LuBookmark, bookmarkPlus: L.LuBookmarkPlus, library: L.LuLibrary,
   game: L.LuGamepad2, backpack: L.LuBackpack, sprite: L.LuGalleryHorizontal, gem: L.LuGem, inherit: L.LuCornerDownRight, tag: L.LuTag,
   images: L.LuImages, listOrdered: L.LuListOrdered, paused: L.LuCirclePause, stack: L.LuSquareStack,
+  bot: L.LuBot, send: L.LuSend, stopwatch: L.LuTimer, graph: L.LuChartSpline, marker: L.LuMapPin, path: L.LuRoute, parent: L.LuLink2,
+  stepForward: L.LuStepForward, stepBack: L.LuStepBack, sparkle: L.LuSparkle, chat: L.LuMessagesSquare, key: L.LuKeyRound, sun: L.LuSun, moon: L.LuMoon,
+  boxSelect: L.LuSquareDashedMousePointer, pointer: L.LuMousePointer2, plug: L.LuPlug, textSize: L.LuALargeSmall, brush: L.LuPaintbrush,
+  workArea: L.LuChevronsLeftRight, toIn: L.LuArrowLeftToLine, toOut: L.LuArrowRightToLine, brain: L.LuBrain,
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {

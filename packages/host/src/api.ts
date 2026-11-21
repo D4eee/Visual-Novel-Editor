@@ -11,6 +11,8 @@ import { ModuleStore, ModuleScope } from './modules';
 import { TemplateStore, ELECTRON_VERSION } from './templates';
 import { exportGame, ExportOptions } from './exporter';
 import { EffectPresetStore } from './effectPresets';
+import { ElementPresetStore } from './elementPresets';
+import { AiService, AiSecrets } from './ai';
 
 export interface HostConfig {
   mode: 'electron' | 'browser';
@@ -31,6 +33,8 @@ export interface HostConfig {
     /** Move a file or folder to the system Trash (desktop). */
     trash?(p: string): Promise<void>;
   };
+  /** Encrypts saved API keys with the operating system's keychain (desktop). */
+  secrets?: AiSecrets;
 }
 
 export const b64url = (s: string) => Buffer.from(s, 'utf8').toString('base64url');
@@ -47,6 +51,8 @@ export function createHost(cfg: HostConfig) {
   const libraryDir = path.join(cfg.userDataDir, 'modules');
   const store = new ModuleStore(libraryDir, [path.join(cfg.examplesDir, 'extensions')]);
   const effectPresets = new EffectPresetStore(path.join(cfg.userDataDir, 'effect-presets'));
+  const elementPresets = new ElementPresetStore(path.join(cfg.userDataDir, 'element-presets'));
+  const ai = new AiService(path.join(cfg.userDataDir, 'ai.json'), cfg.secrets);
   const templates = new TemplateStore(path.join(cfg.userDataDir, 'runtime-templates'), cfg.templateDirs || []);
   const fileUrl = (root: string, rel = '') => `${cfg.urlBase}${allowRoot(root)}/${rel.split('/').map(encodeURIComponent).join('/')}`;
   allowRoot(path.join(cfg.examplesDir));
@@ -180,6 +186,13 @@ export function createHost(cfg: HostConfig) {
     async 'assets.relink'({ path: p, asset, file }) { return relinkAsset(p, asset, file); },
 
     // Effect presets (the user's library, shared by all projects)
+    async 'elementPresets.list'() { return elementPresets.list(); },
+    async 'elementPresets.save'({ preset }) { return elementPresets.save(preset); },
+    async 'elementPresets.delete'({ id }) { await elementPresets.remove(String(id)); return true; },
+    async 'ai.config'() { return ai.getPublic(); },
+    async 'ai.configure'({ patch }) { return ai.update(patch); },
+    async 'ai.chat'(args) { return ai.chat({ requestId: args?.requestId, system: args?.system, messages: args?.messages || [], tools: args?.tools || [], maxTokens: args?.maxTokens }); },
+    async 'ai.cancel'({ requestId }) { return ai.cancel(String(requestId)); },
     async 'effectPresets.list'() { return effectPresets.list(); },
     async 'effectPresets.save'({ preset }) { return effectPresets.save(preset); },
     async 'effectPresets.delete'({ id }) { await effectPresets.remove(String(id)); return true; },

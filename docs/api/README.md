@@ -1,6 +1,6 @@
 # API reference
 
-Module API version **1.2.0** · engine 0.3.1. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.3.0** · engine 1.0.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 
@@ -50,6 +50,11 @@ export interface Layer {
   params?: ParamDef[];
   /** Global page only: drawn in front of (default) or behind each page's elements (API 1.2). */
   zone?: 'front' | 'back';
+  /**
+   * Parent element (API 1.3, "parent & link"): this element follows the parent's position,
+   * rotation and scale; its x/y are measured from the parent's anchor point. Same group only.
+   */
+  link?: Id | null;
 }
 /** 'list' (API 1.2): an array of numbers, texts and booleans. */
 export interface VariableDef { id: Id; name: string; type: 'number' | 'string' | 'boolean' | 'list'; initial: VarValue; scope: 'game' | 'persistent' }
@@ -377,6 +382,12 @@ export interface BlockDef {
   args: BlockArgDef[];
   color?: string;
   context?: 'scene' | 'story' | 'both';
+  /**
+   * API 1.3: nothing can follow this block (it never finishes, like "forever"). The editor
+   * draws it without a bottom connector and only lets it end a script. `cap` blocks already
+   * end a script; set this on a `c` block.
+   */
+  endsScript?: boolean;
   run?(ctx: ScriptContext, args: Record<string, any>, block: Block): void | Promise<void>;
   /** Reporter / boolean blocks: return the value (synchronously). Arguments arrive already evaluated, nested blocks included. */
   report?(ctx: ScriptContext, args: Record<string, any>, block: Block): any;

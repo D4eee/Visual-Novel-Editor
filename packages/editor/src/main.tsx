@@ -3,12 +3,14 @@ import { App } from './App';
 import { store } from './state/store';
 import './styles.css';
 import { installTooltips } from './ui/Tooltip';
+import { applyPrefs } from './state/prefs';
 
 // Used by module mount contexts and a few non-React helpers.
 (globalThis as any).__vneStore = store;
 (globalThis as any).__vneT = (k: string, p?: any) => store.t(k, p);
 
 installTooltips();
+applyPrefs();
 
 async function boot() {
   const root = createRoot(document.getElementById('root')!);
