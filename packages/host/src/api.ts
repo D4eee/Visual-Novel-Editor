@@ -1,6 +1,7 @@
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { createHash } from 'node:crypto';
 import type { Project } from '@vne/core';
 import { loadProject } from '@vne/core';
 import { exists, isDir, readJson, within } from './fsutil';
@@ -90,7 +91,24 @@ export function createHost(cfg: HostConfig) {
       if (!(await exists(path.join(src, PROJECT_FILE)))) throw new Error(`Example "${id}" not found`);
       if (!cfg.examplesReadOnly) return { path: src };
       const dest = path.join(cfg.userDataDir, 'examples', path.basename(String(id)));
-      if (!(await exists(path.join(dest, PROJECT_FILE)))) await copyProjectFolder(src, dest);
+      const hash = async (f: string) => createHash('sha1').update(await fsp.readFile(f)).digest('hex');
+      const marker = path.join(dest, '.vne', 'example-source.json');
+      const srcHash = await hash(path.join(src, PROJECT_FILE));
+      if (await exists(path.join(dest, PROJECT_FILE))) {
+        const m = await readJson<{ srcHash?: string; copyHash?: string }>(marker).catch(() => null);
+        if (m?.srcHash === srcHash) return { path: dest };
+        // A newer version of the example ships with this editor. An untouched copy is
+        // replaced; an edited one (or one made by an older editor) is kept next to it.
+        if (m && m.copyHash === (await hash(path.join(dest, PROJECT_FILE)))) await fsp.rm(dest, { recursive: true, force: true });
+        else {
+          let keep = `${dest} (your copy ${new Date().toISOString().slice(0, 10)})`, i = 2;
+          while (await exists(keep)) keep = `${dest} (your copy ${new Date().toISOString().slice(0, 10)} ${i++})`;
+          await fsp.rename(dest, keep);
+        }
+      }
+      await copyProjectFolder(src, dest);
+      await fsp.mkdir(path.dirname(marker), { recursive: true });
+      await fsp.writeFile(marker, JSON.stringify({ srcHash, copyHash: await hash(path.join(dest, PROJECT_FILE)) }));
       return { path: dest };
     },
 
