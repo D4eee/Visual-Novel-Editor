@@ -3,9 +3,9 @@ import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION } from './types';
 import { newId } from './util';
 import type { Engine } from './registry';
 
-export const ENGINE_VERSION = '0.2.2';
+export const ENGINE_VERSION = '0.3.0';
 /** Public extension API major version. Modules declare `"api": "1"`. */
-export const API_VERSION = '1.1.0';
+export const API_VERSION = '1.2.0';
 
 export function defaultSettings(name: string): ProjectSettings {
   return {
@@ -68,8 +68,11 @@ export function createProject(name: string): Project {
     behaviors: [],
     modules: [],
     extensions: {},
+    items: [],
+    inventoryVarId: null,
     editor: { views: {}, lastChapterId: chapter.id },
   };
+  ensureGlobalNode(project);
   return project;
 }
 
@@ -155,4 +158,26 @@ export function nextSceneNumber(project: Project): string {
     if (Number.isFinite(v) && v > max) max = v;
   }
   return String(max + 1);
+}
+
+/**
+ * The global page: elements on it appear on every page (BGM, HUD, inventory, health
+ * bars…) and keep their state between pages; its scripts run on every page. It is a
+ * hidden node of type core.global with scene data, so the scene editor edits it.
+ */
+export const GLOBAL_NODE_ID = 'global';
+export const GLOBAL_NODE_TYPE = 'core.global';
+
+export function ensureGlobalNode(p: Project): StoryNode<SceneData> {
+  let n = p.nodes[GLOBAL_NODE_ID] as StoryNode<SceneData> | undefined;
+  if (!n || n.type !== GLOBAL_NODE_TYPE) {
+    n = { id: GLOBAL_NODE_ID, type: GLOBAL_NODE_TYPE, chapterId: '', name: 'Global', x: 0, y: 0, data: { ...createSceneData('G'), background: 'transparent' }, modules: [] };
+    p.nodes[GLOBAL_NODE_ID] = n;
+  }
+  return n;
+}
+
+/** Is this node a page with elements (a scene, or the global page)? */
+export function hasSceneData(n: StoryNode | undefined | null): n is StoryNode<SceneData> {
+  return !!n && (n.type === 'core.scene' || n.type === GLOBAL_NODE_TYPE);
 }

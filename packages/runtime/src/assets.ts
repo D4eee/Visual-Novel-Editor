@@ -151,6 +151,10 @@ export class AudioManager {
     this.fadeTo(el, 0, fade, () => { el.pause(); el.src = ''; });
   }
 
+  pauseMusic(): void { this.bgm?.el.pause(); }
+  resumeMusic(): void { if (this.bgm?.el.paused) this.bgm.el.play().catch(() => {}); }
+  get musicPlaying(): boolean { return !!this.bgm && !this.bgm.el.paused; }
+
   get musicAssetId(): string | null {
     return this.bgm?.assetId ?? null;
   }

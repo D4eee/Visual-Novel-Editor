@@ -1,5 +1,5 @@
 import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION, Project } from './types';
-import { defaultSettings, TRANSFORM_DEFAULTS } from './defaults';
+import { defaultSettings, TRANSFORM_DEFAULTS, ensureGlobalNode, GLOBAL_NODE_TYPE } from './defaults';
 import { CHOICE_STYLE, DIALOGUE_LAYER, CHOICE_LAYER } from './elements';
 
 /**
@@ -17,7 +17,16 @@ export const migrations: { from: number; describe: string; run(p: any): void }[]
       for (const n of Object.values<any>(p.nodes || {})) {
         if (n.type !== 'core.scene' || !n.data) continue;
         const d = n.data;
-        if (!Array.isArray(d.layers)) d.layers = [];
+        if (!Array.isArray(d.layers)) d.layers = [  {
+    from: 2,
+    describe: 'Game module: global page, items and inventory, list variables',
+    run(p) {
+      // New fields only; fillDefaults adds the global page, items and inventory.
+      if (!Array.isArray(p.items)) p.items = [];
+      if (p.inventoryVarId === undefined) p.inventoryVarId = null;
+    },
+  },
+];
         const lines = Array.isArray(d.dialogue) ? d.dialogue : [];
         const choices = Array.isArray(d.choices) ? d.choices : [];
         if (lines.length) d.layers.push({ id: `${n.id}_dialogue`, type: DIALOGUE_LAYER, name: 'Dialogue', parentId: null, visible: true, locked: false, props: { lines } });
@@ -29,6 +38,7 @@ export const migrations: { from: number; describe: string; run(p: any): void }[]
               ...TRANSFORM_DEFAULTS, ...CHOICE_STYLE, x: res.width / 2, y: top + i * gap,
               text: c.text || '', condition: c.condition ?? null, hidden: !!c.hidden, unavailable: c.unavailable || 'hide',
               effects: Array.isArray(c.effects) ? c.effects : [], animationId: c.animationId ?? null,
+              requiresItem: c.requiresItem ?? null, consumeItem: !!c.consumeItem,
             },
           });
         });
@@ -89,10 +99,15 @@ export function fillDefaults(p: any): void {
   if (!p.extensions || typeof p.extensions !== 'object') p.extensions = {};
   if (!p.editor) p.editor = { views: {} };
   if (p.chapters.length === 0) p.chapters.push({ id: 'chp_default', name: 'Chapter 1' });
+  if (!Array.isArray(p.items)) p.items = [];
+  if (p.inventoryVarId === undefined) p.inventoryVarId = null;
+  ensureGlobalNode(p);
   for (const n of Object.values<any>(p.nodes)) {
     if (!Array.isArray(n.modules)) n.modules = [];
-    if (!n.chapterId || !p.chapters.some((c: any) => c.id === n.chapterId)) n.chapterId = p.chapters[0].id;
-    if (n.type === 'core.scene' && n.data) {
+    // The global page belongs to no chapter.
+    if (n.type === GLOBAL_NODE_TYPE) n.chapterId = '';
+    else if (!n.chapterId || !p.chapters.some((c: any) => c.id === n.chapterId)) n.chapterId = p.chapters[0].id;
+    if ((n.type === 'core.scene' || n.type === GLOBAL_NODE_TYPE) && n.data) {
       for (const k of ['layers', 'animations', 'scripts', 'localVariables']) if (!Array.isArray(n.data[k])) n.data[k] = [];
       for (const a of n.data.animations) { if (!Array.isArray(a.tracks)) a.tracks = []; if (!Array.isArray(a.media)) a.media = []; }
     }

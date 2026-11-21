@@ -4,7 +4,7 @@ Open **Variables & characters** in the left rail.
 
 ## Variables
 
-Each variable has a name, a type (number, text or true/false), an initial value and a scope:
+Each variable has a name, a type (number, text, true/false or **list**), an initial value and a scope. Click *Edit…* in a variable's menu (or double-click it in *Interactions → Game*) to edit a list's starting items. Below the variables, **Collectibles** lists the project's items (see [Game module](game-module.md)).
 
 | Scope | Lifetime |
 | --- | --- |

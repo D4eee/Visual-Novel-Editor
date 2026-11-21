@@ -13,3 +13,5 @@ export * from './i18n';
 export * from './modules';
 export * from './elements';
 export * from './effectPresets';
+export * from './inherit';
+export * from './items';

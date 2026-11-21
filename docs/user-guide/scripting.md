@@ -36,11 +36,12 @@ A **detection area** (*Add element → Interactive → Detection area*) is an in
 | Elements | The scene's elements with their blocks; *Start* (show, play media and its timeline clips; optionally wait), *Stop* |
 | Events | When scene starts / ends, when *element* is clicked, pointer enters / leaves, when the mouse enters *element* (any element, exact shape), key pressed, animation finished, media ended, variable changes, line shown, dialogue ends, choice selected, message received, after *n* seconds, every *n* seconds |
 | Control | Wait, wait until, if, if / else, repeat, repeat until, forever, stop, broadcast message, run behavior, log |
+| Game | Element transforms (turn, point, spin, move by, glide by, size, scale, opacity, fade in/out, flip, front/back); *when the page changes, remove / pause*, pause, resume; element parameters; labels; sprite frames; collectibles — see [Game module](game-module.md) |
 | Looks | Show, hide, move to x y, glide to x y, set size, set opacity, set / change property, tween property, play / stop animation, set text, set image, set portrait, shake screen, flash screen |
 | Sound | Play / pause / stop media, play sound, play music, stop music |
 | Sensing | mouse inside *element*?, *element* touching *element*?, *element* visible?, *property* of *element*, mouse x, mouse y, mouse down?, key pressed?, timer, reset timer |
 | Operators | + − × ÷ mod, random *a* to *b*, > < =, and, or, not, join, letter *n* of, length of, contains?, round, abs / floor / ceiling / sqrt / sin / cos / tan / ln / log / e^ |
-| Variables | Every variable as a value block; set, change, toggle variable |
+| Variables | Every variable as a value block; set, change, toggle variable; list blocks (add, insert, replace, delete, remove, delete all, item, position, length, contains) |
 | Story | Show / hide choice, go to line, advance, show / hide text box, continue (leave the scene), go to node |
 
 Modules can add blocks and categories. The *Extra Blocks* example adds *With N % chance*, *Show notification* and *When … reaches …*; *Relationships* adds *Change affection* and the value *affection of [character]*; *Speech Bubble* gives every bubble element *[bubble] says ( ) for ( ) s* and *text of [bubble]*.

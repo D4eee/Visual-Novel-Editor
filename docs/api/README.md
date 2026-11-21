@@ -1,14 +1,14 @@
 # API reference
 
-Module API version **1.1.0** · engine 0.2.2. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.2.0** · engine 0.3.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 
 ## Contents
 
-- [Project data (subset relevant to modules)](#project-data-subset-relevant-to-modules) — `Id`, `VarValue`, `Expr`, `ModuleInstance`, `StoryNode`, `Layer`, `VariableDef`, `Character`, `Asset`, `Project`, `Issue`
+- [Project data (subset relevant to modules)](#project-data-subset-relevant-to-modules) — `Id`, `VarValue`, `Expr`, `ModuleInstance`, `StoryNode`, `ParamDef`, `Layer`, `VariableDef`, `ItemDef`, `Character`, `Asset`, `Project`, `Issue`
 - [Property schema — drives generated inspectors and animation](#property-schema-drives-generated-inspectors-and-animation) — `PropType`, `PropDef`
-- [Runtime contexts](#runtime-contexts) — `RuntimeEvent`, `VarStore`, `AudioApi`, `GameApi`, `SceneApi`, `InputState`, `ScriptContext`, `StoryContext`, `ComponentContext`, `RenderContext`, `SizeContext`, `Block`
+- [Runtime contexts](#runtime-contexts) — `RuntimeEvent`, `VarStore`, `AudioApi`, `GameApi`, `ItemsApi`, `SceneApi`, `InputState`, `ScriptContext`, `StoryContext`, `ComponentContext`, `RenderContext`, `SizeContext`, `Block`
 - [Definitions modules register](#definitions-modules-register) — `PortDef`, `NodeRunResult`, `NodeTypeDef`, `PortTypeDef`, `LayerInstance`, `LayerTypeDef`, `PropertyExtensionDef`, `InterpolatorDef`, `BlockArgDef`, `BlockDef`, `EffectPortDef`, `EffectContext`, `EffectNodeDef`, `TransitionDef`, `ComponentDef`, `SystemInstance`, `SystemDef`, `FunctionDef`
 - [Runtime API — `export function activate(api)` in runtime.js](#runtime-api-export-function-activate-api-in-runtime-js) — `RuntimeApi`
 - [Editor API — `export function activateEditor(api)` in editor.js](#editor-api-export-function-activateeditor-api-in-editor-js) — `MountContext`, `Mount`, `EditorApi`
@@ -32,7 +32,7 @@ See docs/modding/ for guides and docs/api/ for the reference.
 
 ```ts
 export type Id = string;
-export type VarValue = number | string | boolean;
+export type VarValue = number | string | boolean | (number | string | boolean)[];
 export type Expr =
   | { k: 'lit'; v: VarValue }
   | { k: 'var'; id: Id }
@@ -42,14 +42,27 @@ export type Expr =
 
 export interface ModuleInstance { id: Id; moduleId: string; component: string; enabled: boolean; data: Record<string, unknown> }
 export interface StoryNode<D = any> { id: Id; type: string; chapterId: Id; name: string; x: number; y: number; data: D; modules: ModuleInstance[] }
-export interface Layer { id: Id; type: string; name: string; parentId: Id | null; visible: boolean; locked: boolean; props: Record<string, any>; data?: Record<string, unknown> }
-export interface VariableDef { id: Id; name: string; type: 'number' | 'string' | 'boolean'; initial: VarValue; scope: 'game' | 'persistent' }
+/** A value an element keeps for scripts (hp, speed…). Its live value is props["param.<id>"]. */
+export interface ParamDef { id: Id; name: string; type: 'number' | 'string' | 'boolean'; initial: number | string | boolean }
+export interface Layer {
+  id: Id; type: string; name: string; parentId: Id | null; visible: boolean; locked: boolean; props: Record<string, any>; data?: Record<string, unknown>;
+  /** Custom parameters (API 1.2). */
+  params?: ParamDef[];
+  /** Global page only: drawn in front of (default) or behind each page's elements (API 1.2). */
+  zone?: 'front' | 'back';
+}
+/** 'list' (API 1.2): an array of numbers, texts and booleans. */
+export interface VariableDef { id: Id; name: string; type: 'number' | 'string' | 'boolean' | 'list'; initial: VarValue; scope: 'game' | 'persistent' }
+/** A collectible (API 1.2). The inventory is a list variable of item names (Project.inventoryVarId). */
+export interface ItemDef { id: Id; name: string; assetId: Id | null; description?: string }
 export interface Character { id: Id; name: string; color: string; portraits: { id: Id; name: string; assetId: Id | null }[] }
 export interface Asset { id: Id; name: string; kind: 'image' | 'audio' | 'video' | 'font' | 'other'; path: string; tags: string[]; meta: Record<string, unknown> }
 export interface Project {
   id: Id; name: string; settings: { title: string; resolution: { width: number; height: number }; [k: string]: any };
   chapters: { id: Id; name: string }[]; nodes: Record<Id, StoryNode>; edges: { id: Id; from: { node: Id; port: string }; to: { node: Id; port: string } }[];
   variables: VariableDef[]; characters: Character[]; assets: Asset[];
+  /** Collectibles and the list variable holding the inventory (API 1.2). */
+  items: ItemDef[]; inventoryVarId: Id | null;
   /** Project-level data owned by modules, keyed by module id. */
   extensions: Record<string, unknown>;
   [k: string]: unknown;
@@ -62,7 +75,7 @@ export interface Issue { severity: 'error' | 'warning' | 'info'; code: string; m
 
 ```ts
 export type PropType = 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select' | 'asset' | 'character' | 'portrait'
-  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr';
+  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item';
 
 export interface PropDef {
   key: string;
@@ -114,6 +127,8 @@ export interface GameApi {
   readonly hud: HTMLElement;
   readonly i18n: { t(key: string, params?: Record<string, any>): string; locale: string };
   readonly scene: SceneApi | null;
+  /** Collectibles (API 1.2). Items are given by id or name. */
+  readonly items: ItemsApi;
   readonly currentNodeId: Id | null;
   readonly time: number;
   system<T = any>(id: string): T | undefined;
@@ -124,6 +139,21 @@ export interface GameApi {
   debugLog(message: string): void;
   evaluate(expr: Expr): VarValue;
   sleep(seconds: number): Promise<void>;
+}
+
+/** The player's collectibles (API 1.2). */
+export interface ItemsApi {
+  has(item: string): boolean;
+  count(item: string): number;
+  /** Add to the inventory (fires "item.collected"). */
+  add(item: string, amount?: number): void;
+  /** Take one (or every) item of that kind (fires "item.removed"). */
+  remove(item: string, all?: boolean): void;
+  /** Select an item to use it on an element (fires "item.selected"); null deselects. */
+  select(item: string | null): void;
+  readonly selected: string | null;
+  /** Item names in the inventory (or another list variable). */
+  list(listVar?: Id | null): string[];
 }
 
 /** The scene that is playing. Layer ids or layer names are accepted. */
@@ -157,6 +187,20 @@ export interface SceneApi {
   /** Seconds since the scene started or the timer was reset. */
   readonly timer: number;
   resetTimer(): void;
+  /** Every element on the page: global (behind), inherited, own, labels, global (in front). API 1.2. */
+  readonly layers: Layer[];
+  /** Where an element comes from on this page (API 1.2). */
+  layerOrigin(layer: string): 'own' | 'carried' | 'global' | 'label' | null;
+  /** Bring an element in front of / behind everything (API 1.2). */
+  reorder(layer: string, to: 'front' | 'back'): void;
+  /** Pause / resume an element's media, animations and frame playback (API 1.2). */
+  pauseElement(layer: string): void;
+  resumeElement(layer: string | null): void;
+  /** Show text at a position; the value is re-read every frame (API 1.2). */
+  showLabel(name: string, value: () => string, x: number, y: number, style?: { fontSize?: number; color?: string; align?: 'left' | 'center' | 'right' }, global?: boolean): void;
+  hideLabel(name: string | null): void;
+  /** Hide an element and put an item in the inventory; it stays gone when the page is visited again (API 1.2). */
+  pickUp(layer: string, item: string | null): void;
 }
 
 /** Pointer and keyboard state (runtime.input in blocks: ctx.runtime.input). */
@@ -282,6 +326,12 @@ export interface LayerTypeDef {
    * the "mouse inside" block and scene.contains(). Default: the whole rectangle.
    */
   hitTest?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }): boolean;
+  /** Advance live state each frame while the game plays; change `state` in place (API 1.2). */
+  step?(state: Record<string, any>, dt: number, ctx: { layer: Layer; emit(e: RuntimeEvent): void; runtime: GameApi }): void;
+  /** A click in local coordinates while the game plays; return true when handled (API 1.2). */
+  pointer?(layer: Layer, props: Record<string, any>, x: number, y: number, size: { width: number; height: number }, ctx: { emit(e: RuntimeEvent): void; runtime: GameApi }): boolean;
+  /** Always receives clicks, even when no script listens (API 1.2). */
+  interactive?: boolean;
 }
 
 export interface PropertyExtensionDef {
@@ -298,18 +348,25 @@ export interface InterpolatorDef { id: string; label: string; ease(t: number, ke
 
 export interface BlockArgDef {
   id: string;
-  type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line' | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message';
+  type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line' | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message'
+    | 'item' | 'param';
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';
   /** `layer` arguments: element types the slot accepts (default: any). */
   layerTypes?: string[];
+  /** `variable` arguments: only variables of this type, e.g. 'list' (API 1.2). */
+  varType?: 'number' | 'string' | 'boolean' | 'list';
+  /** `param` arguments: id of the `layer` argument whose parameters are listed (API 1.2). */
+  paramOf?: string;
+  /** May be left empty (passed as null) (API 1.2). */
+  optional?: boolean;
 }
 
 /**
  * hat: starts a script · statement / c / c-else / cap: script steps ·
  * reporter (round) / boolean (pointed): values dropped into other blocks' slots.
- * Categories: elements, events, control, looks, sound, sensing, operators, variables, story, or your own.
+ * Categories: elements, events, control, looks, game, sound, sensing, operators, variables, story, or your own.
  */
 export interface BlockDef {
   id: string;

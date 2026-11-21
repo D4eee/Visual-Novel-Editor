@@ -5,11 +5,14 @@ import { Stage } from './stage';
 import { NarrativeUI } from './narrative';
 import { VarStore } from './state';
 import { ScenePlayer } from './scene';
+import type { Carry } from './scene';
 import { CancelToken, ScriptEngine, ScriptHost, RuntimeEvent } from './script';
 import { CanvasPool, ShaderRunner, makeCanvas, ctx2d, Canvas } from './effects';
 import { drawScene } from './render';
 import { SystemUI } from './ui';
 import { runtimeStrings } from './strings';
+import { GlobalPage, Items } from './globals';
+import { spriteFrames } from './builtins/layers';
 
 export interface GameOptions {
   project: Project;
@@ -51,6 +54,8 @@ export interface SaveData {
   systems: Record<string, unknown>;
   thumb?: string;
   text?: string;
+  /** Game module: global elements' state, picked-up elements, the selected item. */
+  game?: { globals?: { state?: Record<string, Record<string, any>>; visible?: Record<string, boolean> }; collected?: string[]; selected?: string | null };
 }
 
 export interface PlayerSettings {
@@ -87,6 +92,10 @@ export class GameRuntime {
   settings: { textSpeed: number; autoDelay: number };
   playerSettings: PlayerSettings;
   scene: ScenePlayer | null = null;
+  /** The global page's elements (shared by every page). */
+  readonly globals: GlobalPage;
+  /** The player's collectibles. */
+  readonly items: Items;
   currentNodeId: string | null = null;
   path: string[] = [];
   visited = new Set<string>();
@@ -123,6 +132,9 @@ export class GameRuntime {
     this.project = opts.project;
     this.storageKey = `vne:${opts.storageKey || opts.project.id}`;
     this.functions = this.engine.functionTable(builtinFunctions);
+    this.globals = new GlobalPage(this);
+    this.items = new Items(this);
+    this.functions.has = { id: 'has', label: 'has', args: 1, fn: (x) => this.items.has(x) };
     this.i18n = new I18n(opts.locale || 'en');
     for (const [loc, dict] of Object.entries(runtimeStrings)) this.i18n.add(loc, dict);
     this.assets = new AssetLoader(() => this.project, opts.resolveAssetUrl);
@@ -179,6 +191,17 @@ export class GameRuntime {
       i18n: this.i18n,
       mode: this.opts.mode,
       get scene() { return rt.scene; },
+      /** Collectibles: has/count/add/remove/select, the selected item and the inventory list. */
+      items: {
+        has: (k: unknown) => rt.items.has(k),
+        count: (k: unknown) => rt.items.count(k),
+        add: (k: unknown, n = 1) => rt.items.add(k, n),
+        remove: (k: unknown, all = false) => rt.items.remove(k, all),
+        select: (k: unknown | null) => rt.items.select(k),
+        get selected() { return rt.items.selected; },
+        list: (listVar: string | null = null) => rt.items.list(listVar),
+      },
+      get globals() { return rt.globals; },
       /** Mouse position (stage pixels), button and held keys. */
       get input() { return rt.input; },
       get currentNodeId() { return rt.currentNodeId; },
@@ -335,6 +358,7 @@ export class GameRuntime {
 
   newGame(): void {
     this.vars.reset();
+    this.resetGameState();
     this.backlog = [];
     this.visited.clear();
     this.path = [];
@@ -343,9 +367,23 @@ export class GameRuntime {
     this.startAt(s.id, 0, true);
   }
 
+  /** Forget the global page's state and the picked-up elements (new game, back to title). */
+  resetGameState(): void {
+    this.scene?.dispose();
+    this.scene = null;
+    this.globals.reset();
+    this.items.reset();
+  }
+
   startAt(nodeId: string, resumeLine = 0, fresh = false): void {
     this.ui.hideTitle();
-    if (fresh) { this.path = []; }
+    if (fresh) {
+      this.path = [];
+      // A fresh start does not inherit from the page shown before.
+      this.storyToken?.cancel();
+      this.scene?.dispose();
+      this.scene = null;
+    }
     this.storyToken?.cancel();
     const token = new CancelToken();
     this.storyToken = token;
@@ -446,7 +484,7 @@ export class GameRuntime {
 
   private actionHost(): ScriptHost {
     return {
-      engine: this.engine, project: this.project, vars: this.vars, scene: this.scene, runtime: this.api,
+      engine: this.engine, project: this.project, vars: this.vars, scene: this.scene, runtime: this.api, functions: this.functions,
       sleep: (s, tok) => this.sleep(s, tok),
       nextFrame: (tok) => this.nextFrame(tok),
       emit: (e) => { if (this.scene) this.scene.dispatch(e); else this.debugEvent(e); },
@@ -463,19 +501,27 @@ export class GameRuntime {
     const prev = this.scene;
     const tr = node.data.transition || this.project.settings.defaultTransition;
     const from = prev ? this.snapshot() : null;
+    // What is still running on the last page continues on this one.
+    let carry: Carry | null = null;
+    try { carry = prev ? prev.handOff(node) : null; } catch (err) { this.reportError('scene', err, { nodeId: prev?.node.id }); }
     prev?.dispose();
-    const player = new ScenePlayer(this, node, resume);
+    const player = new ScenePlayer(this, node, resume, carry);
     this.scene = player;
     // preload images used by the scene before showing it (avoids pop-in during transitions)
-    const ids = node.data.layers.map((l) => l.props.assetId).filter(Boolean);
-    await this.assets.preloadImages(ids);
+    const ids: string[] = [];
+    for (const l of player.layers) {
+      if (l.props.assetId) ids.push(l.props.assetId);
+      for (const f of spriteFrames(l.props)) if (f.assetId) ids.push(f.assetId);
+    }
+    for (const it of this.project.items) if (it.assetId) ids.push(it.assetId);
+    await this.assets.preloadImages([...new Set(ids)]);
     if (token.cancelled) return '__cancelled';
     if (from && tr && tr.type !== 'none' && tr.duration > 0 && !this.skipMode) {
       this.transition = { from, start: this.clock, dur: tr.duration, type: tr.type, params: tr.params || {} };
     }
     this.autosave(node);
     const port = await player.play();
-    player.scripts.stopAll();
+    player.freeze();
     return port;
   }
 
@@ -502,8 +548,7 @@ export class GameRuntime {
 
   toTitle(): void {
     this.storyToken?.cancel();
-    this.scene?.dispose();
-    this.scene = null;
+    this.resetGameState();
     this.audio.stopMusic();
     this.audio.stopSounds();
     this.narrative.setBoxVisible(false);
@@ -533,6 +578,7 @@ export class GameRuntime {
       v: 1, projectId: this.project.id, time: new Date().toISOString(), nodeId: this.currentNodeId, nodeName: node?.name || '',
       lineIndex: this.scene && this.scene.node.id === this.currentNodeId ? this.scene.lineIndex : 0,
       vars: this.vars.snapshot(), visited: [...this.visited], music: this.audio.musicAssetId, systems, thumb, text: last ? `${last.name ? last.name + ': ' : ''}${last.text}`.slice(0, 120) : '',
+      game: { globals: this.globals.snapshot(), collected: [...this.items.collected], selected: this.items.selected },
     };
     try { localStorage.setItem(this.saveKey(slot), JSON.stringify(data)); }
     catch (err) { this.reportError('save', err); return null; }
@@ -551,6 +597,10 @@ export class GameRuntime {
     if (!s || !this.project.nodes[s.nodeId]) { this.ui.toast(this.i18n.t('rt.loadFailed')); return false; }
     this.vars.restore(s.vars);
     this.visited = new Set(s.visited);
+    this.resetGameState();
+    this.globals.restore(s.game?.globals);
+    for (const k of s.game?.collected || []) this.items.collected.add(k);
+    this.items.selected = s.game?.selected ?? null;
     for (const [id, data] of Object.entries(s.systems || {})) { const sys = this.systems.get(id); if (sys?.load) try { sys.load(data); } catch (err) { this.reportError('load', err); } }
     if (s.music) this.audio.playMusic(s.music); else this.audio.stopMusic();
     this.backlog = [];

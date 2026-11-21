@@ -1,4 +1,4 @@
-import type { BinaryOp, Expr, VarOp, VarValue, VariableDef } from './types';
+import type { BinaryOp, Expr, VarOp, VarValue, VariableDef, ScalarValue } from './types';
 
 /** Anything that can resolve a variable id to a value. */
 export interface VarScope {
@@ -22,9 +22,15 @@ export const builtinFunctions: Record<string, ExprFunction> = {
   abs: { id: 'abs', label: 'abs', args: 1, fn: (a) => Math.abs(Number(a)) },
   round: { id: 'round', label: 'round', args: 1, fn: (a) => Math.round(Number(a)) },
   floor: { id: 'floor', label: 'floor', args: 1, fn: (a) => Math.floor(Number(a)) },
-  length: { id: 'length', label: 'length', args: 1, fn: (a) => String(a).length },
+  length: { id: 'length', label: 'length', args: 1, fn: (a) => (Array.isArray(a) ? a.length : String(a).length) },
+  /** item(list, n): the n-th item (1-based). */
+  item: { id: 'item', label: 'item', args: 2, fn: (l, n) => (Array.isArray(l) ? l[Math.floor(Number(n)) - 1] ?? '' : '') },
+  /** count(list, value): how many times value is in the list. */
+  count: { id: 'count', label: 'count', args: 2, fn: (l, v) => (Array.isArray(l) ? l.filter((x) => String(x).toLowerCase() === String(v).toLowerCase()).length : 0) },
   upper: { id: 'upper', label: 'upper', args: 1, fn: (a) => String(a).toUpperCase() },
   lower: { id: 'lower', label: 'lower', args: 1, fn: (a) => String(a).toLowerCase() },
+  /** has(item): does the player carry this collectible (name or id)? Answered by the game while it plays. */
+  has: { id: 'has', label: 'has', args: 1, fn: () => false },
 };
 
 export function lit(v: VarValue): Expr {
@@ -41,12 +47,14 @@ export function isExpr(v: unknown): v is Expr {
 
 function toNum(v: VarValue | undefined): number {
   if (typeof v === 'number') return v;
+  if (Array.isArray(v)) return v.length;
   if (typeof v === 'boolean') return v ? 1 : 0;
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
 }
 
 function truthy(v: VarValue | undefined): boolean {
+  if (Array.isArray(v)) return v.length > 0;
   if (typeof v === 'string') return v !== '' && v !== 'false' && v !== '0';
   return !!v;
 }
@@ -54,6 +62,7 @@ function truthy(v: VarValue | undefined): boolean {
 export function applyOp(op: BinaryOp, a: VarValue, b: VarValue): VarValue {
   switch (op) {
     case '+':
+      if (Array.isArray(a) || Array.isArray(b)) return [...toList(a), ...toList(b)];
       if (typeof a === 'string' || typeof b === 'string') return String(a) + String(b);
       return toNum(a) + toNum(b);
     case '-': return toNum(a) - toNum(b);
@@ -68,14 +77,15 @@ export function applyOp(op: BinaryOp, a: VarValue, b: VarValue): VarValue {
     case '>=': return cmp(a, b) >= 0;
     case 'and': return truthy(a) && truthy(b);
     case 'or': return truthy(a) || truthy(b);
-    case 'contains': return String(a).includes(String(b));
+    case 'contains': return Array.isArray(a) ? a.some((x) => String(x).toLowerCase() === String(b).toLowerCase()) : String(a).includes(String(b));
     case 'startsWith': return String(a).startsWith(String(b));
-    case 'join': return String(a) + String(b);
+    case 'join': return (Array.isArray(a) ? a.join(', ') : String(a)) + (Array.isArray(b) ? b.join(', ') : String(b));
   }
   return false;
 }
 
 function looseEq(a: VarValue, b: VarValue): boolean {
+  if (Array.isArray(a) || Array.isArray(b)) return JSON.stringify(toList(a)) === JSON.stringify(toList(b));
   if (typeof a === typeof b) return a === b;
   if (typeof a === 'number' || typeof b === 'number') return toNum(a) === toNum(b);
   if (typeof a === 'boolean' || typeof b === 'boolean') return truthy(a) === truthy(b);
@@ -114,16 +124,27 @@ export function evaluateBool(expr: Expr | null | undefined, scope: VarScope, fns
 }
 
 export function coerce(type: VariableDef['type'], v: VarValue): VarValue {
+  if (type === 'list') return toList(v);
+  if (Array.isArray(v)) v = v.join(', ');
   if (type === 'number') return toNum(v);
   if (type === 'boolean') return truthy(v);
   return String(v);
+}
+
+/** A list value: lists are copied, text "a, b" is split, other values become one item, empty means []. */
+export function toList(v: VarValue | null | undefined): ScalarValue[] {
+  if (Array.isArray(v)) return v.map((x) => (Array.isArray(x) ? String(x) : x));
+  if (v === null || v === undefined || v === '') return [];
+  if (typeof v === 'string') return v.split(',').map((s) => s.trim()).filter(Boolean);
+  return [v];
 }
 
 export function applyVarOp(def: VariableDef | undefined, current: VarValue | undefined, op: VarOp): VarValue {
   const type = def?.type ?? (typeof op.value as VariableDef['type']);
   switch (op.op) {
     case 'set': return coerce(type, op.value);
-    case 'add': return type === 'string' ? String(current ?? '') + String(op.value) : toNum(current) + toNum(op.value);
+    case 'add': if (type === 'list') return [...toList(current), ...toList(op.value as VarValue)];
+      return type === 'string' ? String(current ?? '') + String(op.value) : toNum(current) + toNum(op.value);
     case 'sub': return toNum(current) - toNum(op.value);
     case 'toggle': return !truthy(current);
   }

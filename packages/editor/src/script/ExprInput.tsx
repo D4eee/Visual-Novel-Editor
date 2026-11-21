@@ -81,7 +81,7 @@ function ExprPill({ expr, onChange, ctx, root, allowClear, numeric }: { expr: Ex
       return (
         <span className={cx('expr pill', isNum ? 'num' : 'str')}>
           {handle}
-          <LitInput value={v} numeric={isNum || numeric} onChange={(nv) => onChange({ k: 'lit', v: nv })} />
+          <LitInput value={Array.isArray(v) ? v.join(", ") : v} numeric={isNum || numeric} onChange={(nv) => onChange({ k: 'lit', v: nv })} />
         </span>
       );
     }

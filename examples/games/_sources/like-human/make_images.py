@@ -182,6 +182,20 @@ def icon():
     b += '<path d="M350 150 c 20 -20 50 -10 50 15 c 0 30 -50 55 -50 55 c 0 0 -50 -25 -50 -55 c 0 -25 30 -35 50 -15z" fill="#ff6f9f" transform="translate(30 0) scale(.8)"/>'
     render('icon', svg(b, 512, 512, defs), 512, 512)
 
+def items():
+    # A collectible: an old photo (father in his TV repair room).
+    b = '<g transform="rotate(-8 128 128)"><rect x="34" y="28" width="188" height="206" rx="6" fill="#f4efe4" stroke="#c9bfa8" stroke-width="3"/>'
+    b += '<rect x="48" y="42" width="160" height="140" fill="#3a2a22"/>'
+    b += '<rect x="58" y="96" width="70" height="56" rx="8" fill="#1d1512"/><rect x="66" y="104" width="54" height="40" rx="5" fill="#9fe0d8" opacity=".85"/>'
+    b += '<circle cx="168" cy="92" r="17" fill="#d8b49a"/><path d="M140 182 q0 -60 28 -66 q28 6 30 66z" fill="#5d7d9a"/>'
+    b += '<rect x="48" y="42" width="160" height="140" fill="#ffcc88" opacity=".18"/>'
+    b += '<text x="128" y="214" font-family="Georgia, serif" font-size="17" fill="#6b5d4a" text-anchor="middle" font-style="italic">Dad, 1998</text></g>'
+    render('item_photo', svg(b, 256, 256), 256, 256)
+    # Three frames of a status light (a sprite).
+    for i, (c, g) in enumerate([('#ff5d6c', .35), ('#ffc857', .6), ('#7ff3ff', 1)]):
+        b = f'<circle cx="48" cy="48" r="40" fill="{c}" opacity="{g * .25}"/><circle cx="48" cy="48" r="22" fill="#11131c"/><circle cx="48" cy="48" r="16" fill="{c}" opacity="{g}"/><circle cx="43" cy="42" r="5" fill="#fff" opacity=".7"/>'
+        render(f'led_{i}', svg(b, 96, 96), 96, 96)
+
 lab()
 city('bg_rooftop', '#0b1030', '#3a2f6b', '#ffd27a', .9)
 city('bg_dawn', '#ff9a7a', '#ffd9a0', '#fff1cf', .15, sun='#fff3c4')
@@ -189,4 +203,5 @@ memory()
 title()
 characters()
 icon()
+items()
 print('images done')

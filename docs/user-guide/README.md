@@ -8,6 +8,7 @@ Visual Novel Editor is a desktop application for making visual novels and other 
 - [Animation](animation.md) — timeline, keyframes, interpolation curves, audio and video sync
 - [Effects](effects.md) — procedural effect graphs, presets and shaders
 - [Interactions (visual scripting)](scripting.md) — blocks, triggers and reusable behaviors
+- [Game module](game-module.md) — page-to-page inheritance, global elements, sprites, parameters, lists and collectibles ([中文](game-module.zh-CN.md))
 - [Assets](assets.md) — importing, previews, usage, missing files and relinking
 - [Variables and characters](data.md)
 - [Modules](modules.md) — installing and using extensions

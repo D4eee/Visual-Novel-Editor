@@ -7,12 +7,14 @@ import { Icon } from '../ui/Icon';
 import { IconButton, Button, Select, TextInput, ColorInput, Section, cx } from '../ui/controls';
 import { AssetPicker } from '../inspect/AssetPicker';
 import { openMenu } from '../ui/Menu';
+import { VariableModal, ItemModal, newItem, initialFor } from '../script/GameEditors';
 
 export function DataPanel({ session }: { session: ProjectSession }) {
   useSession(session);
   return (
     <div className="data-panel">
       <VariablesSection session={session} />
+      <ItemsSection session={session} />
       <CharactersSection session={session} />
       <BehaviorsSection session={session} />
       <CompositionsSection session={session} />
@@ -20,14 +22,31 @@ export function DataPanel({ session }: { session: ProjectSession }) {
   );
 }
 
-function initialFor(type: VarType): any {
-  return type === 'number' ? 0 : type === 'boolean' ? false : '';
+function ItemsSection({ session }: { session: ProjectSession }) {
+  const t = useT();
+  const project = session.project;
+  const [open, setOpen] = useState<string | null>(null);
+  const url = (id: string | null) => { const a = id ? project.assets.find((x) => x.id === id) : null; return a ? session.assetUrl(a) : null; };
+  return (
+    <Section id="data.items" title={<>{t('items.title')} <span className="muted">{project.items.length}</span></>} tip={t('items.hint')} defaultOpen={project.items.length > 0}
+      actions={<IconButton icon="plus" size={14} title={t('items.add')} onClick={() => setOpen(newItem(session))} />}>
+      {!project.items.length && <div className="muted small pad">{t('items.empty')}</div>}
+      {project.items.map((it) => (
+        <button key={it.id} type="button" className="item-row" onClick={() => setOpen(it.id)} title={it.description || t('items.rowHint')}>
+          {url(it.assetId) ? <img src={url(it.assetId)!} alt="" className="item-thumb" /> : <span className="item-thumb icon"><Icon name="gem" size={13} /></span>}
+          <span className="item-name">{it.name}</span>
+        </button>
+      ))}
+      {open && <ItemModal session={session} itemId={open} onClose={() => setOpen(null)} />}
+    </Section>
+  );
 }
 
 function VariablesSection({ session }: { session: ProjectSession }) {
   const t = useT();
   const project = session.project;
   const usage = useMemo(() => variableUsage(project), [project]);
+  const [editing, setEditing] = useState<string | null>(null);
   const add = () => {
     let n = project.variables.length + 1;
     while (project.variables.some((v) => v.name === `var${n}`)) n++;
@@ -43,11 +62,15 @@ function VariablesSection({ session }: { session: ProjectSession }) {
         return (
           <div key={v.id} className="var-row">
             <TextInput value={v.name} className={cx(dup && 'invalid')} onChange={(name) => upd(v.id, (x) => { x.name = name.trim() || x.name; })} ariaLabel={t('common.name')} />
-            <Select value={v.type} title={t('vars.type')} options={[{ value: 'number', label: t('vars.number') }, { value: 'boolean', label: t('vars.boolean') }, { value: 'string', label: t('vars.string') }]} onChange={(type) => upd(v.id, (x) => { x.type = type as VarType; x.initial = initialFor(type as VarType); })} />
-            {v.type === 'boolean'
+            <Select value={v.type} title={t('vars.type')} options={[{ value: 'number', label: t('vars.number') }, { value: 'boolean', label: t('vars.boolean') }, { value: 'string', label: t('vars.string') }, { value: 'list', label: t('vars.list') }]} onChange={(type) => upd(v.id, (x) => { x.type = type as VarType; x.initial = initialFor(type as VarType); })} />
+            {v.type === 'list'
+              ? <button type="button" className="btn btn-sm narrow" title={t('vars.listItems')} onClick={() => setEditing(v.id)}>{t('vars.nItems', { n: Array.isArray(v.initial) ? v.initial.length : 0 })}</button>
+              : v.type === 'boolean'
               ? <Select value={String(v.initial)} title={t('vars.initial')} options={[{ value: 'false', label: t('expr.false') }, { value: 'true', label: t('expr.true') }]} onChange={(x) => upd(v.id, (y) => { y.initial = x === 'true'; })} />
               : <TextInput value={String(v.initial)} className="narrow" ariaLabel={t('vars.initial')} onChange={(x) => upd(v.id, (y) => { y.initial = v.type === 'number' ? Number(x) || 0 : x; })} />}
             <IconButton icon="more" size={14} title={t('common.more')} onClick={(e) => openMenu(e, [
+              { label: t('game.edit'), icon: 'settings', onClick: () => setEditing(v.id) },
+              { separator: true },
               { header: true, label: t('vars.scope') },
               { label: t('vars.scope.game'), checked: v.scope === 'game', onClick: () => upd(v.id, (x) => { x.scope = 'game'; }) },
               { label: t('vars.scope.persistent'), checked: v.scope === 'persistent', hint: t('vars.scope.persistentHint'), onClick: () => upd(v.id, (x) => { x.scope = 'persistent'; }) },
@@ -62,6 +85,7 @@ function VariablesSection({ session }: { session: ProjectSession }) {
           </div>
         );
       })}
+      {editing && <VariableModal session={session} varId={editing} onClose={() => setEditing(null)} />}
     </Section>
   );
 }

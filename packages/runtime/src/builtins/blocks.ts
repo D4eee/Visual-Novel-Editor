@@ -87,7 +87,7 @@ export function registerBuiltinBlocks(engine: Engine): void {
   // Element blocks: drop any element into the slot. "Start" shows it, plays its media and every animation that moves it.
   const clipsOf = (scene: any, layerId: string): string[] => {
     const id = scene.layer(layerId)?.id;
-    return (scene.data.animations || []).filter((c: any) => c.tracks.some((tr: any) => tr.layerId === id) || c.media.some((m: any) => m.layerId === id)).map((c: any) => c.id);
+    return (scene.clips || scene.data.animations || []).filter((c: any) => c.tracks.some((tr: any) => tr.layerId === id) || c.media.some((m: any) => m.layerId === id)).map((c: any) => c.id);
   };
   B({ id: 'core.startElement', category: 'elements', shape: 'statement', layerTypes: ANY, label: 'block.startElement', args: [{ id: 'layer', type: 'layer' }, { id: 'wait', type: 'boolean', default: false }],
     async run(ctx: ScriptContext, a) {
