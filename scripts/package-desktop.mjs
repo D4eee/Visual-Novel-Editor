@@ -86,6 +86,27 @@ function setPlist(plist, key, value) {
   return re.test(plist) ? plist.replace(re, `$1${esc}$3`) : plist.replace(/<\/dict>\s*<\/plist>\s*$/, `\t<key>${key}</key>\n\t<string>${esc}</string>\n</dict>\n</plist>\n`);
 }
 
+/**
+ * Puts resources/icons/app.ico into the Windows executable (replacing Electron's icon).
+ * Uses the optional `resedit` package (pure JavaScript, works on any system); without it
+ * the .exe keeps Electron's icon and the window still shows ours.
+ */
+async function setExeIcon(exe) {
+  let ResEdit;
+  try { ResEdit = await import('resedit'); } catch { log('  (resedit not installed: the .exe keeps the Electron icon; run npm install)'); return; }
+  const R = ResEdit.default && !ResEdit.NtExecutable ? ResEdit.default : ResEdit;
+  const bin = R.NtExecutable.from(await readFile(exe), { ignoreCert: true });
+  const res = R.NtExecutableResource.from(bin);
+  const ico = R.Data.IconFile.from(await readFile(path.join(root, 'resources', 'icons', 'app.ico')));
+  const groups = R.Resource.IconGroupEntry.fromEntries(res.entries);
+  const id = groups[0]?.id ?? 1;
+  const lang = groups[0]?.lang ?? 1033;
+  R.Resource.IconGroupEntry.replaceIconsForResource(res.entries, id, lang, ico.icons.map((i) => i.data));
+  res.outputResource(bin);
+  await writeFile(exe, Buffer.from(bin.generate()));
+  log('  set the .exe icon');
+}
+
 const DOC_TYPES = `\t<key>CFBundleDocumentTypes</key>
 \t<array>
 \t\t<dict>
@@ -133,6 +154,7 @@ async function packageTarget(target) {
     result = app;
   } else if (os === 'win') {
     await rename(path.join(dir, 'electron.exe'), path.join(dir, `${NAME}.exe`));
+    await setExeIcon(path.join(dir, `${NAME}.exe`)).catch((e) => log(`  (could not set the .exe icon: ${e.message})`));
     const res = path.join(dir, 'resources');
     await rm(path.join(res, 'default_app.asar'), { force: true });
     await writeAppCode(path.join(res, 'app'));
@@ -145,6 +167,7 @@ async function packageTarget(target) {
     await rm(path.join(res, 'default_app.asar'), { force: true });
     await writeAppCode(path.join(res, 'app'));
     await writeExtraResources(res);
+    await copyFile(path.join(root, 'resources', 'icons', 'app.png'), path.join(dir, 'icon.png'));
     result = exe;
   }
   log(`  → ${result}`);

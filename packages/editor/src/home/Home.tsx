@@ -103,7 +103,7 @@ export function Home() {
     <div className="home">
       <div className="home-inner">
         <header className="home-head">
-          <div className="logo-mark"><Icon name="logo" size={30} /></div>
+          <img className="logo-mark" src="./icon.png" alt="" draggable={false} />
           <div>
             <h1>{t('app.name')}</h1>
             <p className="muted">{t('home.tagline')}</p>
