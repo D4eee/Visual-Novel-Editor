@@ -113,7 +113,7 @@ function TopBar() {
   const s = st.session;
   return (
     <header className="topbar">
-      <button type="button" className={cx('brand', !s && 'active')} onClick={() => st.activate(-1)} title={t('home.title')}><Icon name="logo" size={18} /></button>
+      <button type="button" className={cx('brand', !s && 'active')} onClick={() => st.activate(-1)} title={t('home.title')}><img className="brand-icon" src="./icon.png" alt="" draggable={false} /></button>
       <div className="project-tabs" role="tablist">
         {st.sessions.map((x, i) => (
           <div key={x.id} className={cx('ptab', i === st.active && 'active')} role="tab" aria-selected={i === st.active} onClick={() => st.activate(i)} title={x.path}>
