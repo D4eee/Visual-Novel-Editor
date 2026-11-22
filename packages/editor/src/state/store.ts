@@ -10,6 +10,9 @@ export type Dialog =
   | { kind: 'openProject' }
   | { kind: 'export' }
   | { kind: 'settings'; tab?: string }
+  | { kind: 'translations' }
+  | { kind: 'importScript' }
+  | { kind: 'generateImage'; imageKind?: 'background' | 'character' | 'other' }
   | { kind: 'modules' }
   | { kind: 'quickOpen' }
   | { kind: 'shortcuts' }

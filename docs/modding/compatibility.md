@@ -45,9 +45,10 @@ Only the runtime entry (`runtime`), locales and declared assets are copied into 
 
 | API | Engine | Added |
 | --- | --- | --- |
+| 1.4.0 | 1.1.0 | `PropDef.translatable` and `BlockArgDef.translatable` (texts players read go into the translation table), `Project.localization` (translations; games play the localized copy, so modules read translated texts with no extra work), `Composition.animation` (compositions play their own animation; composition elements have `startAt`, `speed`, `playback`), `Track.expr` (track expressions). Project format 5 |
 | 1.3.0 | 1.0.0 | `BlockDef.endsScript` (C blocks that end a script, drawn without a bottom connector), `Layer.link` (parent & link — `linkMatrix`, `parentSpace` in the runtime), animation in/out points (`AnimationClip.spans`; layers outside their span read `__span: false` and are not drawn), `AnimationClip.markers` / `workArea` (editor only). Project format 4 |
 | 1.2.0 | 0.3.0 | Game module: `Layer.params` and `Layer.zone`, list variables (`VarValue` arrays), `Project.items` / `inventoryVarId`, `runtime.items`, block arg types `item` and `param`, `BlockArgDef.varType` / `paramOf` / `optional`, category `game`, `LayerTypeDef.step` / `pointer` / `interactive`, prop type `item`, scene `layers`, `layerOrigin`, `reorder`, `pauseElement` / `resumeElement`, `showLabel` / `hideLabel`, `pickUp`. The global page (node type `core.global`) and page-to-page inheritance. Project format 3 |
 | 1.1.0 | 0.2.2 | Reporter and condition blocks (`shape: 'reporter' | 'boolean'`, `report()`), per-element blocks (`BlockDef.layerTypes`, `BlockArgDef.layerTypes`), `LayerTypeDef.hitTest`, scene sensing (`contains`, `touching`, `isVisible`, `bounds`, `timer`), `runtime.input` |
 | 1.0.0 | 0.1.0 | First public API |
 
-Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1, 1.2 or 1.3 features should declare `"api": "^1.1.0"`, `"^1.2.0"` or `"^1.3.0"` so older editors refuse it with a clear message instead of failing.
+Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1, 1.2, 1.3 or 1.4 features should declare `"api": "^1.1.0"`, `"^1.2.0"`, `"^1.3.0"` or `"^1.4.0"` so older editors refuse it with a clear message instead of failing.

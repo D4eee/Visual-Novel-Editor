@@ -71,6 +71,11 @@ export type PropType =
 
 export interface PropDef {
   key: string;
+  /**
+   * Shown to players as text, so it goes into the translation table (API 1.4). Long `text`
+   * properties and `string` properties named `text` are translatable without this.
+   */
+  translatable?: boolean;
   type: PropType;
   /** Label: plain text or an i18n key. */
   label: string;
@@ -216,6 +221,8 @@ export type BlockCategory = 'elements' | 'events' | 'control' | 'looks' | 'sound
 
 export interface BlockArgDef {
   id: string;
+  /** `string` / literal `expr` arguments shown to players (API 1.4): they go into the translation table. */
+  translatable?: boolean;
   type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line'
     | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message'
     | 'item' | 'param';

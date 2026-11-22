@@ -80,7 +80,9 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
         engine,
         container: host,
         mode: 'preview',
-        locale: session.i18n.locale,
+        // Previewing a translation shows the game's menus in that language too (when they exist).
+        locale: session.ui.previewLocale ? undefined : session.i18n.locale,
+        storyLocale: session.ui.previewLocale || snapshot.localization?.source || undefined,
         storageKey: `preview-${snapshot.id}`,
         resolveAssetUrl: (a: Asset) => session.assetUrl(a),
       });

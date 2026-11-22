@@ -16,11 +16,15 @@ import { DataPanel } from './sidebar/DataPanel';
 import { PreviewPanel } from './preview/PreviewPanel';
 import { ExportDialog } from './export/ExportDialog';
 import { SettingsWindow } from './settings/SettingsWindow';
+import { TranslationsDialog } from './l10n/TranslationsDialog';
+import { ImportScriptDialog } from './story/ImportScript';
+import { GenerateImageDialog } from './assets/ImageGen';
+import { projectLanguages, languageName } from '@vne/core';
 import { ChatPanel, ChatToggle } from './ai/ChatPanel';
 import { setChatOpen } from './ai/agent';
 import { ModuleManager } from './modules/ModuleManager';
 import { ProblemsPanel } from './problems/Problems';
-import { MenuHost, openMenu, openMenuBelow } from './ui/Menu';
+import { MenuHost, openMenu, openMenuBelow, MenuItem } from './ui/Menu';
 import { IconButton, Button, cx, shortcut, useResizable } from './ui/controls';
 import { Icon } from './ui/Icon';
 import { makeMountContext } from './modules/editorApi';
@@ -98,6 +102,9 @@ export function App() {
       <PresetManagerHost session={s || null} />
       <DialogHost />
       {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'translations' && s && <TranslationsDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'importScript' && s && <ImportScriptDialog session={s} onClose={() => st.open(null)} />}
+      {st.dialog?.kind === 'generateImage' && s && <GenerateImageDialog session={s} kind={st.dialog.imageKind} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'settings' && <SettingsWindow session={s || null} tab={st.dialog.tab} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'modules' && s && <ModuleManager session={s} onClose={() => st.open(null)} />}
       <MenuHost />
@@ -156,6 +163,11 @@ function SessionActions({ session }: { session: ProjectSession }) {
     { label: t('preview.scope.scene'), icon: 'scene', hint: t('preview.scope.sceneHint'), onClick: () => session.setUI({ preview: { scope: 'scene', nodeId: session.currentNodeId, key: Date.now() } }) },
     { label: t('preview.scope.chapter'), icon: 'book', onClick: () => session.setUI({ preview: { scope: 'chapter', nodeId: session.currentNodeId, key: Date.now() } }) },
     { label: t('preview.scope.game'), icon: 'flag', onClick: () => session.setUI({ preview: { scope: 'game', nodeId: null, key: Date.now() } }) },
+    ...(projectLanguages(session.project).length ? [
+      { separator: true } as MenuItem,
+      { header: true, label: t('l10n.previewLanguage') } as MenuItem,
+      ...projectLanguages(session.project).map((code, i) => ({ label: languageName(code), checked: (session.ui.previewLocale || projectLanguages(session.project)[0]) === code, onClick: () => session.setUI({ previewLocale: i === 0 ? null : code }) })),
+    ] : []),
   ]);
   return (
     <div className="session-actions">
@@ -172,6 +184,7 @@ function SessionActions({ session }: { session: ProjectSession }) {
           <button type="button" className="btn btn-primary split-caret" onClick={previewMenu} aria-label={t('preview.scope')}><Icon name="chevronDown" size={14} /></button>
         </div>
       )}
+      <IconButton icon="languages" title={t('l10n.title')} active={!!session.project.localization} onClick={() => store.open({ kind: 'translations' })} />
       <Button icon="export" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
       <IconButton icon="module" title={t('modules.manage')} onClick={() => store.open({ kind: 'modules' })} />
       <IconButton icon="settings" title={`${t('prefs.title')} (${shortcut('Mod+,')})`} onClick={() => store.open({ kind: 'settings' })} />

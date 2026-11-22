@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://github.com/D4eee/Visual-Novel-Editor/releases/latest">Download</a> ·
   <a href="docs/user-guide/README.md">User guide</a> ·
-  <a href="docs/release-notes/v1.0.0.md">Release notes</a> ·
+  <a href="docs/release-notes/v1.1.0.md">Release notes</a> ·
   <a href="docs/modding/README.md">Module development</a>
 </p>
 
@@ -29,16 +29,17 @@ The editor is available for **macOS, Windows, and Linux**, with **English and Si
 
 | Workspace | What you can create |
 | --- | --- |
-| **Story graph** | Organize chapters, connect scenes and choices, and build conditions, events, weighted random branches, waits, jumps, and endings. View one chapter or the whole story. |
+| **Story graph** | Organize chapters, connect scenes and choices, and build conditions, events, weighted random branches, waits, jumps, and endings. View one chapter or the whole story. Import a plain-text script to create scenes, dialogue, and choices at once. |
 | **Scene composition** | Arrange backgrounds, character portraits, images, text, dialogue, shapes, buttons, hotspots, audio, and video. Use groups and reusable compositions to organize scenes. |
 | **Dialogue design** | Place dialogue boxes freely, create speech and thought bubbles, customize typography and appearance, import fonts, and add typewriter reveals. |
-| **Timeline animation** | Animate in an After Effects-style timeline: layer bars with in and out points, grouped properties with stopwatches, a graph editor with bezier handles, markers, a work area, parent links, and motion paths on the canvas. Coordinate motion with audio, video, and effects. |
+| **Timeline animation** | Animate in an After Effects-style timeline: layer bars with in and out points, grouped properties with stopwatches, a graph editor with bezier handles, markers, a work area, parent links, motion paths, expressions (follow, wiggle, loop), and precompositions you can reuse. Line motion up with audio waveforms, video, and effects. |
 | **Presets** | Apply entrance, emphasis, and exit animations; ready-made looks for text, shapes, buttons, and dialogue boxes; effect presets; and your own saved looks, from the inspector's Presets tab. |
 | **Procedural effects** | Build effects with node graphs, including blur, color adjustments, distortion, noise, and custom GLSL shaders. Save, reuse, and share presets as `.vnefx` files. |
 | **Visual scripting** | Connect triggers, actions, values, and conditions with Scratch-style puzzle blocks whose shapes show how they connect. Add clickable regions, control elements and media, create reusable behaviors, and trace execution in Test mode. |
 | **Game systems** | Keep music, looping animations, and scripts running between pages. Use global elements for HUDs and inventories, animate sprites, track parameters and lists, and unlock choices with collected items. |
-| **AI assistant** | Chat with Claude or any OpenAI-compatible model using your own API key. The assistant writes scenes, adds elements and animations, and builds interactions through MCP-style editor tools; every reply can be undone. |
-| **Preview and export** | Preview a scene, chapter, or complete game with the same runtime used in exported games. Inspect variables and execution logs, then export only the assets and runtime modules your game uses. |
+| **AI assistant** | Chat with Claude or any OpenAI-compatible model using your own API key. The assistant writes scenes, adds elements and animations, and builds interactions through MCP-style editor tools; it can look at the canvas, and every reply can be undone. Draft backgrounds and character sketches with OpenAI-format, Stability AI, or Replicate image services. |
+| **Multi-language games** | Ship one project in several languages: a translation table for dialogue, choices, names, and texts, AI batch translation, and CSV round trips. Players switch language in the game. |
+| **Preview and export** | Preview a scene, chapter, or complete game with the same runtime used in exported games. Inspect variables and execution logs, then export only the assets and runtime modules your game uses. Games come with save and load, quick save, a log with voice replay, auto mode, and skip that stops at unread text. |
 
 A **Settings** window sets the language, theme, background and accent colors, font size, interface zoom, automatic saving, and timeline time format. Projects also support **autosave, recovery, backups, undo/redo, and versioned data migration**. Validation helps locate broken routes, missing assets, and other issues before export.
 

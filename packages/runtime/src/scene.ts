@@ -154,6 +154,7 @@ export class ScenePlayer {
       (layerId, prop, v) => this.writeProp(layerId, prop, v),
       (animId) => this.dispatch({ type: 'anim.finished', animId }),
       { play: (id, offset) => this.instances.get(id)?.play?.(offset), stop: (id) => this.instances.get(id)?.stop?.() },
+      (k) => { const ls = this.view.layers; const l = ls.find((x) => x.id === k) || ls.find((x) => x.name.toLowerCase() === k.toLowerCase()); return l ? { id: l.id, props: this.view.props(l) } : undefined; },
     );
     const host: ScriptHost = {
       engine, project: rt.project, vars: rt.vars, scene: this, runtime: rt.api,
@@ -451,6 +452,14 @@ export class ScenePlayer {
   /** The scene's dialogue lines (from its dialogue element). */
   get lines() { return sceneLines(this.data); }
 
+  /** Line texts in a language the player switched to during this scene. */
+  private lineTexts: Map<string, string> | null = null;
+  relocalize(project: { nodes: Record<string, any> }): void {
+    const n = project.nodes[this.node.id];
+    if (!n?.data) return;
+    this.lineTexts = new Map(sceneLines(n.data).map((l) => [l.id, l.text]));
+  }
+
   private async runNarrative(): Promise<void> {
     const lines = this.lines;
     const ui = this.rt.narrative;
@@ -463,12 +472,14 @@ export class ScenePlayer {
       const pAsset = ch ? portraitAsset(this.rt.project, ch.id, portraitId) : null;
       // Characters on stage take the expression chosen for their line.
       if (ch && portraitId) for (const l of this.data.layers) if (l.type === 'core.character' && l.props.characterId === ch.id) this.setProp(l.id, 'portraitId', portraitId);
-      const text = interpolateVarsCompat(line.text, this.rt.project, this.rt.vars);
+      const text = interpolateVarsCompat(this.lineTexts?.get(line.id) ?? line.text, this.rt.project, this.rt.vars);
+      if (this.rt.skipMode && !this.rt.playerSettings.skipUnread && !this.rt.isRead(line.id)) this.rt.stopSkip();
       this.rt.narrative.setBoxVisible(this.textboxVisible);
       const typing = ui.showLine({ name, nameColor: ch?.color, portraitUrl: pAsset ? this.rt.assets.url(pAsset) : null, text }, this.rt.skipMode ? 0 : this.rt.settings.textSpeed);
       this.currentTyping = typing;
-      this.rt.backlogPush({ kind: 'line', name, text, nodeId: this.node.id });
-      if (line.voiceAssetId) this.rt.playVoice(line.voiceAssetId);
+      this.rt.backlogPush({ kind: 'line', name, text, nodeId: this.node.id, voice: line.voiceAssetId || null });
+      if (line.voiceAssetId && !this.rt.skipMode) this.rt.playVoice(line.voiceAssetId);
+      else this.rt.stopVoice();
       this.dispatch({ type: 'dialogue.line', lineId: line.id, index: this.lineIndex });
       // wait for the typewriter (or a click that completes it)
       await Promise.race([typing.done, this.waitAdvance()]);
@@ -476,9 +487,14 @@ export class ScenePlayer {
       if (this.jumpTo === null) {
         const autoDelay = line.auto && line.auto > 0 ? line.auto : this.rt.autoMode ? this.rt.settings.autoDelay : 0;
         if (this.rt.skipMode) await this.rt.sleepPlain(0.06);
-        else if (autoDelay > 0) await Promise.race([this.rt.sleepPlain(autoDelay), this.waitAdvance()]);
+        else if (autoDelay > 0) {
+          // Auto mode lets the voice finish first (players can turn this off).
+          if (this.rt.autoMode && line.voiceAssetId && this.rt.playerSettings.autoWaitVoice !== false) await Promise.race([this.rt.voiceDone(), this.waitAdvance()]);
+          await Promise.race([this.rt.sleepPlain(autoDelay), this.waitAdvance()]);
+        }
         else await this.waitAdvance();
       }
+      this.rt.markRead(line.id);
       if (this.exited) return;
       if (this.jumpTo !== null) { this.lineIndex = this.jumpTo; this.jumpTo = null; continue; }
       this.lineIndex++;

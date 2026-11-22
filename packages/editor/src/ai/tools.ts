@@ -16,14 +16,21 @@ import type { ProjectSession } from '../state/session';
 import { newBlock } from '../script/BlockEditor';
 import { ANIM_PRESETS, STYLE_PRESETS, applyAnimPreset, applyStyle } from '../scene/ElementTabs';
 import { EFFECT_PRESETS } from '../effects/presets';
-import { setParent } from '../scene/sceneOps';
+import { setParent, unlinkDeleted } from '../scene/sceneOps';
+import { applyScript } from '../story/ImportScript';
+import { sceneImage } from './snapshot';
+import { addGeneratedImage, errorText, generateImages, useAsBackground } from '../assets/ImageGen';
+import { parseScript } from '@vne/core';
 
 /** An MCP tool definition. */
 export interface McpTool { name: string; description: string; inputSchema: Record<string, any>; readOnly?: boolean }
 
-export interface ToolResult { text: string; isError?: boolean }
+export interface ToolResult { text: string; isError?: boolean; images?: { mediaType: string; data: string }[] }
 
-type Run = (session: ProjectSession, input: any, label: (s: string) => string) => string | object;
+/** A tool answer with pictures (for vision models). */
+class WithImages { constructor(readonly value: string | object, readonly images: { mediaType: string; data: string }[]) {} }
+
+type Run = (session: ProjectSession, input: any, label: (s: string) => string) => string | object | Promise<string | object>;
 
 const S = {
   str: (description: string) => ({ type: 'string', description }),
@@ -157,6 +164,17 @@ const TOOLS: (McpTool & { run: Run })[] = [
         animations: s.animations.map((a) => ({ id: a.id, name: a.name, duration: a.duration, autoplay: a.autoplay, loop: a.loop, tracks: a.tracks.map((tr) => ({ element: tr.layerId, prop: tr.prop, keys: tr.keyframes.map((k) => [round(k.t), round(k.v), k.ease]) })) })),
         scripts: s.scripts.map((st) => ({ id: st.id, trigger: st.hat?.type, blocks: st.body.length, enabled: st.enabled })),
       };
+    },
+  },
+  {
+    name: 'view_scene', readOnly: true,
+    description: 'Look at a scene: returns a picture of its stage (what players see, with the text box sketched in). Use it to check layout, overlaps, colors and readability after changes. Needs a model that accepts images.',
+    inputSchema: S.obj({ node_id: S.str('Scene (default: the scene open in the editor)'), time: S.num('Seconds into the scene\'s first animation (default 0)') }),
+    run: async (session, i) => {
+      const id = i.node_id ? sceneNode(session.project, i.node_id).id : session.currentNodeId;
+      if (!id || !hasSceneData(session.project.nodes[id])) fail('No scene is open; pass node_id.');
+      const img = await sceneImage(session, id!, { time: typeof i.time === 'number' ? i.time : 0 });
+      return new WithImages({ node_id: id, name: session.project.nodes[id!].name, width: img.width, height: img.height, stage: session.project.settings.resolution }, [img]);
     },
   },
   {
@@ -326,6 +344,40 @@ const TOOLS: (McpTool & { run: Run })[] = [
     },
   },
   {
+    name: 'import_script',
+    description: 'Create scenes, dialogue and choices from a screenplay in one step (faster than many add_* calls for a whole story). Format, one item per line: "## Scene name" starts a scene; "# Chapter" starts a chapter; "Name: text" or "Name (portrait): text" is a line; other lines (or "> text") are narration; "* Choice text -> Scene name" adds a choice; "-> Scene name" or "-> END" says where the scene continues; "[bg: #hex or image asset name]", "[music: asset]", "[voice: asset]" (next line); "//" comments. Scenes without choices or "->" continue to the next scene. Missing characters are created.',
+    inputSchema: S.obj({ script: S.str('The screenplay text'), chapter_id: S.str('Chapter for scenes outside a "#" chapter (default: the one shown)'), make_chapters: S.bool('Create chapters for "#" headings (default true)') }, ['script']),
+    run: (session, i, label) => {
+      const parsed = parseScript(String(i.script || ''));
+      if (!parsed.chapters.some((c) => c.scenes.length)) fail('The script has no scenes.');
+      const r = applyScript(session, parsed, { chapterId: i.chapter_id ? chapterOf(session.project, i.chapter_id).id : session.ui.chapterId, chapters: i.make_chapters !== false, label: label('import script') });
+      return { node_ids: r.nodeIds, first_node_id: r.firstNodeId, characters_created: r.characters, warnings: r.warnings.map((w) => `line ${w.line}: ${w.code} ${w.text}`) };
+    },
+  },
+  {
+    name: 'generate_image',
+    description: 'Draft an image with the image service set up in Settings → Image generation and add it to the assets. kind "background" makes a stage-sized scene background (set use_as_background_of to put it behind a scene); "character" makes a full-body sprite sketch (add portraits to a character in the Characters panel). Generating can cost money: only do it when the user asked for images. Returns the asset id.',
+    inputSchema: S.obj({
+      prompt: S.str('What to draw (subject, setting, style, light, mood)'),
+      kind: { type: 'string', enum: ['background', 'character', 'other'], description: 'background (default), character or other' },
+      name: S.str('Asset name (default: from the prompt)'),
+      negative: S.str('Things to avoid'),
+      use_as_background_of: S.str('Scene to use the image as background'),
+    }, ['prompt']),
+    run: async (session, i) => {
+      const kind = ['background', 'character', 'other'].includes(i.kind) ? i.kind : 'background';
+      const target = i.use_as_background_of ? sceneNode(session.project, i.use_as_background_of) : null;
+      let r;
+      try { r = await generateImages(session, { prompt: String(i.prompt), kind, negative: i.negative, count: 1 }); }
+      catch (e) { return fail(`Image generation failed: ${errorText(session.i18n.t, e)}`); }
+      const img = r.images[0];
+      const asset = await addGeneratedImage(session, img, i.name || `${kind}-${i.prompt}`);
+      if (!asset) return fail('The image could not be added to the assets.');
+      if (target) useAsBackground(session, target.id, asset);
+      return new WithImages({ asset_id: asset.id, name: asset.name, model: r.model, ...(target ? { background_of: target.id } : {}) }, [{ mediaType: img.mediaType, data: img.data }]);
+    },
+  },
+  {
     name: 'add_element',
     description: 'Add an element (layer) to a scene: text, image, shape, button, character sprite, free dialogue box, audio… props uses the type\'s property keys (see list_element_types). Position x/y is the anchor point in stage pixels. Returns the element id.',
     inputSchema: S.obj({ node_id: S.str('Scene'), type: S.str('Element type, e.g. core.text, core.shape, core.image, core.freeDialogue'), name: S.str('Element name'), props: S.any('Property values, e.g. {"text":"Hello","x":640,"y":120,"fontSize":48}') }, ['node_id', 'type']),
@@ -367,8 +419,10 @@ const TOOLS: (McpTool & { run: Run })[] = [
         const n = sceneNode(d, i.node_id);
         const ids = new Set((i.element_ids || []).map((x: string) => layerOf(n.data, x).id));
         const before = choiceLayers(n.data).map((l) => l.id);
+        const ui = session.sceneUI(n.id);
+        unlinkDeleted(session, n.data, ids as Set<string>, ui.clipId, ui.time);
         n.data.layers = n.data.layers.filter((l) => !ids.has(l.id));
-        for (const l of n.data.layers) { if (l.parentId && ids.has(l.parentId)) l.parentId = null; if (l.link && ids.has(l.link)) l.link = null; }
+        for (const l of n.data.layers) { if (l.parentId && ids.has(l.parentId)) l.parentId = null; }
         for (const a of n.data.animations) { a.tracks = a.tracks.filter((t) => !ids.has(t.layerId)); a.media = a.media.filter((m) => !ids.has(m.layerId)); }
         syncSceneChoiceEdges(d, n.id, before);
       });
@@ -528,14 +582,16 @@ export function mcpTools(readOnly = false): McpTool[] {
 export const TOOL_NAMES = TOOLS.map((t) => ({ name: t.name, readOnly: !!t.readOnly }));
 
 /** Run one tool call; errors come back as text so the model can correct itself. */
-export function runTool(session: ProjectSession, name: string, input: any, labelPrefix: string, readOnly = false): ToolResult {
+export async function runTool(session: ProjectSession, name: string, input: any, labelPrefix: string, readOnly = false): Promise<ToolResult> {
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return { text: `Unknown tool ${name}`, isError: true };
   if (readOnly && !tool.readOnly) return { text: 'The user set the assistant to read-only: describe the change instead of making it.', isError: true };
   try {
-    const out = tool.run(session, input || {}, (s) => `${labelPrefix}${s}`);
+    let out = await tool.run(session, input || {}, (s) => `${labelPrefix}${s}`);
+    let images: ToolResult['images'];
+    if (out instanceof WithImages) { images = out.images; out = out.value; }
     const text = typeof out === 'string' ? out : JSON.stringify(out);
-    return { text: text.length > 60000 ? `${text.slice(0, 60000)}…(truncated)` : text };
+    return { text: text.length > 60000 ? `${text.slice(0, 60000)}…(truncated)` : text, ...(images ? { images } : {}) };
   } catch (e: any) {
     return { text: e instanceof ToolError ? e.message : `Error: ${e?.message || e}`, isError: true };
   }

@@ -10,7 +10,7 @@
 export type Id = string;
 
 export const PROJECT_FORMAT = 'vne.project';
-export const PROJECT_FORMAT_VERSION = 4;
+export const PROJECT_FORMAT_VERSION = 5;
 
 export interface Project {
   format: typeof PROJECT_FORMAT;
@@ -38,6 +38,8 @@ export interface Project {
   items: ItemDef[];
   /** The list variable that is the player's inventory (holds item names). */
   inventoryVarId: Id | null;
+  /** Languages the game is offered in and their translations (see localize.ts). */
+  localization?: import('./localize').Localization;
   /** Editor-only view state (stripped from exported games). */
   editor?: EditorState;
   [key: string]: unknown;
@@ -198,6 +200,8 @@ export interface Composition {
   width: number;
   height: number;
   layers: Layer[];
+  /** The composition's own animation (keys and in/out points of its layers), played by each instance. */
+  animation?: AnimationClip | null;
 }
 
 export interface Behavior {
@@ -297,6 +301,8 @@ export interface Track {
   layerId: Id;
   prop: string;
   keyframes: Keyframe[];
+  /** Expression computing the value from time, the keyframed value and other elements (see runtime/trackExpr.ts). */
+  expr?: string | null;
 }
 
 export interface Keyframe {

@@ -12,15 +12,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnimationClip, Keyframe, SceneData, Track, Layer, PropDef } from '@vne/core';
 import { newId, createAnimation, DIALOGUE_LAYER } from '@vne/core';
 import { effectMenuItems, saveEffectAsPreset, loadEffectPresets } from '../effects/userPresets';
-import { normalizeTrack, clipEnd, sampleTrack, propKind, cubicBezier } from '@vne/runtime';
+import { normalizeTrack, clipEnd, sampleTrack, propKind, cubicBezier, animatedProps, compileExpr } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT, store } from '../state/store';
 import { usePrefs, getPrefs } from '../state/prefs';
-import { sceneOf, updateScene, layerTree, clipOf, setLayerProps, setParent } from './sceneOps';
+import { sceneOf, updateScene, layerTree, clipOf, setLayerProps, setParent, precompose } from './sceneOps';
 import { IconButton, NumberInput, Select, Toggle, Button, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { openMenu, MenuItem } from '../ui/Menu';
 import { Modal } from '../ui/Modal';
+import { Waveform } from './Waveform';
 
 const EASES = ['linear', 'easeIn', 'easeOut', 'easeInOut', 'backOut', 'bounce', 'elastic', 'step', 'bezier'];
 /** Bezier curves close to the built-in eases, used when a curve handle is first dragged. */
@@ -58,6 +59,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
   const [pps, setPps] = useState(() => Number(localStorage.getItem('vne.timeline.pps')) || 120);
   const [curve, setCurve] = useState<{ track: string; key: string } | null>(null);
   const [layerOpen, setLayerOpen] = useState<Map<string, boolean>>(new Map());
+  const [exprOpen, setExprOpen] = useState<Set<string>>(new Set());
   const [groupOpen, setGroupOpen] = useState<Map<string, boolean>>(new Map());
   const [onlyAnimated, setOnlyAnimated] = useState(() => localStorage.getItem('vne.timeline.onlyAnimated') === '1');
   const [graph, setGraph] = useState(() => localStorage.getItem('vne.timeline.graph') === '1');
@@ -303,7 +305,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
   const deleteKeys = (ids: Set<string>) => {
     upd(t('timeline.deleteKeys'), (c) => {
       for (const tr of c.tracks) tr.keyframes = tr.keyframes.filter((k) => !ids.has(kid(tr, k)));
-      c.tracks = c.tracks.filter((tr) => tr.keyframes.length);
+      c.tracks = c.tracks.filter((tr) => tr.keyframes.length || tr.expr);
     });
     setSelectedKeys([]);
   };
@@ -353,18 +355,26 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
   };
   const currentValue = (layer: Layer, prop: string): any => {
     const tr = trackOf(layer.id, prop);
+    if (tr?.expr && compileExpr(tr.expr).ast) return animatedProps(session.engine, scene, layer, clip.id, ui.time)[prop];
     if (tr && tr.keyframes.length) return sampleTrack(session.engine, tr, ui.time, propKind(session.engine.layerProps(layer.type).find((p) => p.key === prop), tr.keyframes[0]?.v));
     const def = session.engine.layerProps(layer.type).find((p) => p.key === prop);
     if (prop.startsWith('fx.')) { const fp = fxParamsOf(layer).find((x) => `fx.${x.id}` === prop); return layer.props[prop] ?? fp?.default ?? 0; }
     return layer.props[prop] ?? def?.default ?? 0;
   };
+  /** Set or clear a property's expression (a track without keys keeps just the expression). */
+  const setExpr = (layer: Layer, prop: string, expr: string) => upd(expr ? t('timeline.setExpr') : t('timeline.removeExpr'), (c) => {
+    let x = c.tracks.find((y) => y.layerId === layer.id && y.prop === prop);
+    if (!expr) { if (x) { delete x.expr; if (!x.keyframes.length) c.tracks = c.tracks.filter((y) => y !== x); } return; }
+    if (!x) { x = { id: newId('trk'), layerId: layer.id, prop, keyframes: [] }; c.tracks.push(x); }
+    x.expr = expr;
+  });
   const toggleKeyAtPlayhead = (layer: Layer, prop: string) => {
     const tr = trackOf(layer.id, prop);
     const atKey = tr?.keyframes.find((k) => Math.abs(k.t - ui.time) < 1e-3);
     const v = currentValue(layer, prop);
     upd(atKey ? t('timeline.removeKey') : t('timeline.addKey'), (c) => {
       let x = c.tracks.find((y) => y.layerId === layer.id && y.prop === prop);
-      if (atKey && x) { x.keyframes = x.keyframes.filter((k) => k.id !== atKey.id); if (!x.keyframes.length) c.tracks = c.tracks.filter((y) => y !== x); return; }
+      if (atKey && x) { x.keyframes = x.keyframes.filter((k) => k.id !== atKey.id); if (!x.keyframes.length && !x.expr) c.tracks = c.tracks.filter((y) => y !== x); return; }
       if (!x) { x = { id: newId('trk'), layerId: layer.id, prop, keyframes: [] }; c.tracks.push(x); }
       x.keyframes.push({ id: newId('key'), t: ui.time, v, ease: prefs.defaultEase || 'easeInOut' });
       normalizeTrack(x);
@@ -602,6 +612,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
   const parentName = (l: Layer) => (l.link ? scene.layers.find((x) => x.id === l.link)?.name : null);
 
   /* ---------------- rows ---------------- */
+  const waveformsOn = prefs.timelineWaveforms !== false;
   const rows: JSX.Element[] = [];
   const graphTracks: { track: Track; label: string; color: string; layer: Layer; def?: PropDef }[] = [];
 
@@ -619,7 +630,15 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
     const allKeyTimes = [...new Set(tracks.flatMap((tr) => tr.keyframes.map((k) => k.t)))];
     rows.push(
       <div key={`L${layer.id}`} className={cx('tl-row layer-head', selLayers.has(layer.id) && 'active')}>
-        <div className="tl-left" onClick={(e) => session.setSceneUI(nodeId, { selectedLayers: e.shiftKey || e.metaKey || e.ctrlKey ? [...new Set([...ui.selectedLayers, layer.id])] : [layer.id] })}>
+        <div className="tl-left" onClick={(e) => session.setSceneUI(nodeId, { selectedLayers: e.shiftKey || e.metaKey || e.ctrlKey ? [...new Set([...ui.selectedLayers, layer.id])] : [layer.id] })}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            const ids = selLayers.has(layer.id) ? [...selLayers] : [layer.id];
+            openMenu(e, [
+              { label: t('layer.precompose'), icon: 'package', hint: t('layer.precomposeHint'), onClick: () => precompose(session, nodeId, ids) },
+              ...(layer.type === 'core.composition' ? [{ label: t('layer.compStartHere'), icon: 'clock', onClick: () => setLayerProps(session, nodeId, layer.id, { startAt: Math.round(ui.time * 1000) / 1000 }, { label: t('prop.compStart') }) }] : []),
+            ]);
+          }}>
           <button type="button" className="twisty" onClick={(e) => { e.stopPropagation(); setLayerOpen(new Map(layerOpen).set(layer.id, !open)); }} aria-expanded={open}><Icon name={open ? 'chevronDown' : 'chevronRight'} size={12} /></button>
           <Icon name={def?.icon || 'layers'} size={12} className="tl-layer-icon" />
           <span className="tl-layer-name" title={layer.name}>{layer.name}</span>
@@ -685,6 +704,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
             <IconButton icon="close" size={12} title={t('common.remove')} onClick={() => upd(t('timeline.removeMedia'), (c) => { c.media = c.media.filter((x) => x.id !== m.id); })} /></div>
           <div className="tl-lane" style={{ width }} onPointerDown={lanePointerDown}>
             <div className="media-bar" style={{ left: m.start * pps, width: Math.max(8, dur * pps) }} onPointerDown={(e) => dragMedia(e, m.id, 'move', assetDur)} title={`${t('timeline.start')}: ${m.start.toFixed(2)}s · ${t('timeline.trim')}: ${m.trimIn.toFixed(2)}s`}>
+              {waveformsOn && <Waveform url={(() => { const a = session.project.assets.find((x) => x.id === layer.props.assetId); return a ? session.assetUrl(a) : null; })()} trimIn={m.trimIn} duration={dur} width={Math.max(8, dur * pps)} />}
               <span className="media-edge in" onPointerDown={(e) => dragMedia(e, m.id, 'in', assetDur)} />
               <span className="media-label">{session.project.assets.find((a) => a.id === layer.props.assetId)?.name || layer.name}</span>
               <span className="media-edge out" onPointerDown={(e) => dragMedia(e, m.id, 'out', assetDur)} />
@@ -716,6 +736,8 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
               ? <ScrubValue value={Number(val) || 0} step={p.def?.step ?? (p.key.startsWith('scale') || p.key === 'opacity' ? 0.01 : 1)} min={p.def?.min} max={p.def?.max}
                   onChange={(v, transient) => setLayerProps(session, nodeId, layer.id, { [p.key]: v }, transient ? { mergeKey: `tl-${layer.id}-${p.key}` } : {})} />
               : <span className="prop-val" title={String(val ?? '')}>{typeof val === 'string' && /^#|rgb/.test(val) ? <span className="prop-swatch" style={{ background: val }} /> : String(val ?? '').slice(0, 10)}</span>}
+            <button type="button" className={cx('expr-btn', tr?.expr && 'on', exprOpen.has(gid) && 'open')} title={tr?.expr ? `${t('timeline.expr')}: ${tr.expr}` : t('timeline.exprHint')}
+              onClick={() => { const s2 = new Set(exprOpen); if (s2.has(gid)) s2.delete(gid); else s2.add(gid); setExprOpen(s2); }}>=</button>
             <span className="key-nav">
               <button type="button" disabled={!keyTimes.some((x) => x < ui.time - 1e-3)} onClick={() => jumpKey(keyTimes, -1)} title={t('timeline.prevKey')}><Icon name="chevronLeft" size={11} /></button>
               <button type="button" className={cx('key-dia', atKey ? 'key' : tr ? 'animated' : '')} onClick={() => toggleKeyAtPlayhead(layer, p.key)} title={atKey ? t('timeline.removeKey') : t('timeline.addKey')}><Icon name="keyframe" size={11} /></button>
@@ -750,9 +772,19 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
         </div>
       );
     };
+    const exprRow = (p: PropRowInfo, depth: number) => {
+      const gid = `${layer.id}|${p.key}`;
+      if (!exprOpen.has(gid)) return null;
+      const tr = trackOf(layer.id, p.key);
+      return (
+        <ExprRow key={`E${gid}`} depth={depth} width={width} value={tr?.expr || ''} others={scene.layers.filter((l) => l.id !== layer.id).map((l) => l.name)} t={t}
+          onCommit={(v) => setExpr(layer, p.key, v)} onClose={() => { const s2 = new Set(exprOpen); s2.delete(gid); setExprOpen(s2); }} />
+      );
+    };
+    const propRows = (p: PropRowInfo, depth: number) => { rows.push(propRow(p, depth)); const e = exprRow(p, depth); if (e) rows.push(e); };
 
     if (onlyAnimated) {
-      for (const p of props) if (trackOf(layer.id, p.key)) rows.push(propRow(p, 1));
+      for (const p of props) if (trackOf(layer.id, p.key)) propRows(p, 1);
       continue;
     }
     const groups: string[] = [];
@@ -774,7 +806,7 @@ export function Timeline({ session, nodeId }: { session: ProjectSession; nodeId:
           </div>
         </div>,
       );
-      if (gOpen) for (const p of gp) rows.push(propRow(p, 2));
+      if (gOpen) for (const p of gp) propRows(p, 2);
     }
   }
 
@@ -871,6 +903,38 @@ function followsLayer(scene: SceneData, id: string, of: string): boolean {
 }
 
 /** A number you can drag left/right to change (Shift ×10, Alt ×0.1) or click to type. */
+/** Expression editor under a property row: formula, examples and errors. */
+function ExprRow({ depth, width, value, others, t, onCommit, onClose }: { depth: number; width: number; value: string; others: string[]; t: (k: string, v?: any) => string; onCommit: (v: string) => void; onClose: () => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const err = draft.trim() ? compileExpr(draft.trim()).error : null;
+  const commit = (v = draft) => { const x = v.trim(); if (x === value) return; if (x && compileExpr(x).error) return; onCommit(x); };
+  const other = JSON.stringify(others[0] || 'Name');
+  const examples: [string, string][] = [
+    [`follow(${other}, 0.2)`, t('timeline.expr.follow')],
+    ['value + wiggle(2, 10)', t('timeline.expr.wiggle')],
+    ['loop()', t('timeline.expr.loop')],
+    ['value + sin(time * 3) * 20', t('timeline.expr.sin')],
+  ];
+  return (
+    <div className="tl-row expr-row">
+      <div className={cx('tl-left prop', `d${depth}`)}>
+        <span className="expr-eq">=</span>
+        <input className={cx('expr-input', err && 'bad')} value={draft} spellCheck={false} placeholder={t('timeline.exprPlaceholder')} autoFocus={!value}
+          onChange={(e) => setDraft(e.target.value)} onBlur={() => commit()}
+          onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') { setDraft(value); onClose(); } }} />
+        <IconButton icon="more" size={12} title={t('timeline.exprExamples')} onClick={(e) => openMenu(e, [
+          ...examples.map(([x, label]) => ({ label: x, hint: label, onClick: () => { setDraft(x); commit(x); } })),
+          ...(value ? [{ separator: true } as MenuItem, { label: t('timeline.removeExpr'), icon: 'trash', danger: true, onClick: () => { setDraft(''); onCommit(''); onClose(); } }] : []),
+        ])} />
+      </div>
+      <div className="tl-lane expr-lane" style={{ width }}>
+        <span className={cx('expr-msg', err && 'bad')}>{err ? err : value ? t('timeline.exprActive') : t('timeline.exprHelp')}</span>
+      </div>
+    </div>
+  );
+}
+
 function ScrubValue({ value, step, min, max, onChange }: { value: number; step: number; min?: number; max?: number; onChange: (v: number, transient?: boolean) => void }) {
   const [edit, setEdit] = useState<string | null>(null);
   const clamp = (v: number) => Math.max(min ?? -Infinity, Math.min(max ?? Infinity, v));

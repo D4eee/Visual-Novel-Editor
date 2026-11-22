@@ -35,9 +35,11 @@ export function createEditView(o: EditViewOptions): SceneView {
     const l = o.scene.layers.find((x) => x.id === layerId);
     return l ? o.engine.layerProps(l.type).find((p) => p.key === prop) : undefined;
   };
+  const all = o.context ? [...o.context.under, ...o.scene.layers, ...o.context.over] : o.scene.layers;
+  const lookup = (k: string) => { const l = all.find((x) => x.id === k) || all.find((x) => x.name.toLowerCase() === k.toLowerCase()); return l ? { id: l.id, props: l.props } : undefined; };
   for (const id of o.clipIds) {
     const clip = o.scene.animations.find((a) => a.id === id);
-    if (clip) sampleClip(o.engine, clip, Math.min(o.time, Math.max(clip.duration, 0)), propDef, anim);
+    if (clip) sampleClip(o.engine, clip, Math.min(o.time, Math.max(clip.duration, 0)), propDef, anim, lookup);
   }
   let drives = new Map<string, Record<string, any>>();
   const view: SceneView = {
@@ -69,6 +71,8 @@ export function animatedProps(engine: Engine, scene: SceneData, layer: Layer, cl
   if (!clipId) return layer.props;
   const clip = scene.animations.find((a) => a.id === clipId);
   if (!clip) return layer.props;
-  const out = sampleClip(engine, clip, time, (lid, prop) => (lid === layer.id ? engine.layerProps(layer.type).find((p) => p.key === prop) : undefined));
+  const propDef = (lid: string, prop: string) => { const l = scene.layers.find((x) => x.id === lid); return l ? engine.layerProps(l.type).find((p) => p.key === prop) : undefined; };
+  const lookup = (k: string) => { const l = scene.layers.find((x) => x.id === k) || scene.layers.find((x) => x.name.toLowerCase() === k.toLowerCase()); return l ? { id: l.id, props: l.props } : undefined; };
+  const out = sampleClip(engine, clip, time, propDef, new Map(), lookup);
   return { ...layer.props, ...(out.get(layer.id) || {}) };
 }

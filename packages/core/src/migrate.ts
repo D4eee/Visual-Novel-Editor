@@ -52,6 +52,11 @@ export const migrations: { from: number; describe: string; run(p: any): void }[]
     describe: 'Format 4: parent links (Layer.link) and in/out points, markers and work areas on animations. Nothing to convert.',
     run() { /* new optional fields only */ },
   },
+  {
+    from: 4,
+    describe: 'Format 5: translations (Project.localization), animations inside compositions and track expressions. Nothing to convert.',
+    run() { /* new optional fields only; older editors would drop them, so they refuse format 5 */ },
+  },
 ];
 
 export class ProjectFormatError extends Error {

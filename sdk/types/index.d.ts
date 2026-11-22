@@ -80,6 +80,11 @@ export interface PropDef {
   group?: string;
   description?: string;
   hidden?: boolean;
+  /**
+   * Players read this value as text: it goes into the project's translation table (API 1.4).
+   * Long `text` properties and `string` properties named `text` are translatable without it.
+   */
+  translatable?: boolean;
 }
 
 /* ------------------------------------------------------------------ */
@@ -350,6 +355,8 @@ export interface BlockArgDef {
   paramOf?: string;
   /** May be left empty (passed as null) (API 1.2). */
   optional?: boolean;
+  /** `string` / `message` arguments players read: listed in the translation table (API 1.4). */
+  translatable?: boolean;
 }
 
 /**

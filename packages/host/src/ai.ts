@@ -16,10 +16,15 @@ import * as path from 'node:path';
 
 export type AiProvider = 'anthropic' | 'openai';
 
+/** A picture for vision models (Anthropic's block shape; converted for OpenAI-compatible services). */
+export type AiImage = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
 export type AiBlock =
   | { type: 'text'; text: string }
+  | AiImage
   | { type: 'tool_use'; id: string; name: string; input: any }
-  | { type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean };
+  | { type: 'tool_result'; tool_use_id: string; content: string | ({ type: 'text'; text: string } | AiImage)[]; is_error?: boolean };
+
+const dataUrl = (b: AiImage) => `data:${b.source.media_type};base64,${b.source.data}`;
 
 export interface AiMessage { role: 'user' | 'assistant'; content: string | AiBlock[] }
 export interface AiTool { name: string; description: string; inputSchema: any }
@@ -213,9 +218,19 @@ export function toOpenAiMessages(system: string | undefined, messages: AiMessage
       out.push({ role: 'assistant', content: text || null, ...(calls.length ? { tool_calls: calls } : {}) });
     } else {
       // Tool results become "tool" messages (they must directly follow the assistant's calls); text follows as a user message.
-      for (const b of m.content) if (b.type === 'tool_result') out.push({ role: 'tool', tool_call_id: b.tool_use_id, content: b.is_error ? `Error: ${b.content}` : b.content });
+      // Tool messages only carry text, so pictures from tools follow in a user message.
+      const images: AiImage[] = [];
+      for (const b of m.content) if (b.type === 'tool_result') {
+        const parts = typeof b.content === 'string' ? [{ type: 'text' as const, text: b.content }] : b.content;
+        const text = parts.filter((x): x is { type: 'text'; text: string } => x.type === 'text').map((x) => x.text).join('\n');
+        images.push(...parts.filter((x): x is AiImage => x.type === 'image'));
+        out.push({ role: 'tool', tool_call_id: b.tool_use_id, content: b.is_error ? `Error: ${text}` : text });
+      }
+      const own = m.content.filter((b): b is AiImage => b.type === 'image');
       const text = m.content.filter((b) => b.type === 'text').map((b: any) => b.text).join('\n');
-      if (text) out.push({ role: 'user', content: text });
+      if (images.length) out.push({ role: 'user', content: [{ type: 'text', text: '(Pictures returned by the tools above.)' }, ...images.map((b) => ({ type: 'image_url', image_url: { url: dataUrl(b) } }))] });
+      if (own.length) out.push({ role: 'user', content: [...(text ? [{ type: 'text', text }] : []), ...own.map((b) => ({ type: 'image_url', image_url: { url: dataUrl(b) } }))] });
+      else if (text) out.push({ role: 'user', content: text });
     }
   }
   return out;

@@ -1,3 +1,4 @@
+import { projectLanguages, languageName } from '@vne/core';
 import type { GameRuntime } from './game';
 
 type Screen = 'save' | 'load' | 'log' | 'settings' | 'menu' | 'confirm';
@@ -44,7 +45,12 @@ export class SystemUI {
       b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
       this.quick.append(b);
     };
-    if (rt.opts.mode === 'game') { add(this.t('rt.save'), () => this.open('save')); add(this.t('rt.load'), () => this.open('load')); }
+    if (rt.opts.mode === 'game') {
+      add(this.t('rt.save'), () => this.open('save'));
+      add(this.t('rt.load'), () => this.open('load'));
+      add(this.t('rt.qsave'), () => rt.quickSave());
+      add(this.t('rt.qload'), () => rt.quickLoad());
+    }
     add(this.t('rt.log'), () => this.open('log'));
     add(this.t('rt.auto'), () => { rt.autoMode = !rt.autoMode; if (rt.autoMode) rt.scene?.advance(); this.refreshQuick(); }, rt.autoMode);
     add(this.t('rt.skip'), () => { rt.skipMode = !rt.skipMode; if (rt.skipMode) rt.scene?.advance(); this.refreshQuick(); }, rt.skipMode);
@@ -95,7 +101,7 @@ export class SystemUI {
       const s = this.makeScreen(this.t(which === 'save' ? 'rt.save' : 'rt.load'));
       const grid = document.createElement('div');
       grid.className = 'vne-slots';
-      const slots = which === 'load' ? ['auto', '1', '2', '3', '4', '5', '6', '7', '8'] : ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+      const slots = which === 'load' ? ['auto', 'quick', '1', '2', '3', '4', '5', '6', '7'] : ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
       for (const slot of slots) {
         const data = rt.readSave(slot);
         const b = document.createElement('button');
@@ -104,7 +110,7 @@ export class SystemUI {
         else { const e = document.createElement('div'); e.className = 'empty'; e.textContent = this.t('rt.empty'); b.append(e); }
         const label = document.createElement('div');
         label.style.fontWeight = '700';
-        label.textContent = slot === 'auto' ? this.t('rt.autosave') : this.t('rt.slot', { n: slot });
+        label.textContent = slot === 'auto' ? this.t('rt.autosave') : slot === 'quick' ? this.t('rt.quicksave') : this.t('rt.slot', { n: slot });
         const meta = document.createElement('div');
         meta.style.opacity = '0.7';
         meta.style.fontSize = '13px';
@@ -129,6 +135,14 @@ export class SystemUI {
         row.className = 'entry';
         if (e.kind === 'choice') { row.classList.add('pick'); row.textContent = `→ ${e.text}`; }
         else {
+          if (e.voice) {
+            const v = document.createElement('button');
+            v.className = 'vne-voice';
+            v.title = this.t('rt.replayVoice');
+            v.textContent = '▶';
+            v.addEventListener('click', (ev) => { ev.stopPropagation(); rt.playVoice(e.voice!); });
+            row.append(v);
+          }
           if (e.name) { const w = document.createElement('span'); w.className = 'who'; w.textContent = e.name; row.append(w); }
           row.append(document.createTextNode(stripTags(e.text)));
         }
@@ -165,12 +179,27 @@ export class SystemUI {
       range(this.t('rt.bgm'), ps.volumes.bgm, 0, 1, 0.05, (v) => rt.updateSettings({ volumes: { ...rt.playerSettings.volumes, bgm: v } }), pct);
       range(this.t('rt.sfx'), ps.volumes.sfx, 0, 1, 0.05, (v) => rt.updateSettings({ volumes: { ...rt.playerSettings.volumes, sfx: v } }), pct);
       range(this.t('rt.voice'), ps.volumes.voice, 0, 1, 0.05, (v) => rt.updateSettings({ volumes: { ...rt.playerSettings.volumes, voice: v } }), pct);
+      const check = (label: string, value: boolean, set: (v: boolean) => void) => {
+        const l = document.createElement('label');
+        l.textContent = label;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = value;
+        cb.addEventListener('change', () => set(cb.checked));
+        grid.append(l, cb);
+      };
+      check(this.t('rt.skipUnread'), !!ps.skipUnread, (v) => rt.updateSettings({ skipUnread: v }));
+      check(this.t('rt.autoWaitVoice'), ps.autoWaitVoice !== false, (v) => rt.updateSettings({ autoWaitVoice: v }));
       const ll = document.createElement('label');
       ll.textContent = this.t('rt.language');
       const sel = document.createElement('select');
-      for (const [v, label] of [['en', 'English'], ['zh-CN', '简体中文']]) { const o = document.createElement('option'); o.value = v; o.textContent = label; if (ps.locale === v) o.selected = true; sel.append(o); }
+      // Multi-language games list their story languages; others choose the menu language.
+      const story = projectLanguages(rt.sourceProject);
+      const opts: [string, string][] = story.length ? story.map((c) => [c, languageName(c)]) : [['en', 'English'], ['zh-CN', '简体中文']];
+      const current = story.length ? ps.storyLocale || story[0] : ps.locale;
+      for (const [v, label] of opts) { const o = document.createElement('option'); o.value = v; o.textContent = label; if (current === v) o.selected = true; sel.append(o); }
       sel.style.fontSize = '18px';
-      sel.addEventListener('change', () => rt.updateSettings({ locale: sel.value }));
+      sel.addEventListener('change', () => rt.updateSettings(story.length ? { storyLocale: sel.value } : { locale: sel.value }));
       grid.append(ll, sel);
       if (rt.project.settings.window.allowFullscreenToggle && document.fullscreenEnabled) {
         const fl = document.createElement('label');
