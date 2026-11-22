@@ -3,9 +3,9 @@ import { PROJECT_FORMAT, PROJECT_FORMAT_VERSION } from './types';
 import { newId } from './util';
 import type { Engine } from './registry';
 
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '1.1.0';
 /** Public extension API major version. Modules declare `"api": "1"`. */
-export const API_VERSION = '1.3.0';
+export const API_VERSION = '1.4.0';
 
 export function defaultSettings(name: string): ProjectSettings {
   return {

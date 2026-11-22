@@ -105,6 +105,7 @@ export function AssetLibrary({ session }: { session: ProjectSession }) {
       <div className="side-search">
         <Icon name="search" size={14} />
         <input placeholder={t('assets.search')} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.stopPropagation()} aria-label={t('assets.search')} />
+        <IconButton icon="imagePlus" title={t('imggen.title')} onClick={() => store.open({ kind: 'generateImage' })} />
         <IconButton icon="upload" title={t('assets.importButton')} onClick={pick} />
       </div>
       <div className="chips">
@@ -112,7 +113,7 @@ export function AssetLibrary({ session }: { session: ProjectSession }) {
       </div>
       {missingCount > 0 && <div className="issue error slim"><Icon name="error" size={14} />{t('assets.missingCount', { n: missingCount })}</div>}
       {!project.assets.length ? (
-        <Empty icon="image" title={t('assets.emptyTitle')} action={<Button kind="primary" icon="upload" onClick={pick}>{t('assets.importButton')}</Button>}>{t('assets.emptyText')}</Empty>
+        <Empty icon="image" title={t('assets.emptyTitle')} action={<div className="row-gap"><Button kind="primary" icon="upload" onClick={pick}>{t('assets.importButton')}</Button><Button icon="imagePlus" onClick={() => store.open({ kind: 'generateImage' })}>{t('imggen.generateShort')}</Button></div>}>{t('assets.emptyText')}</Empty>
       ) : (
         <div className="asset-grid">
           {list.map((a) => {

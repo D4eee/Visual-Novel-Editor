@@ -1,7 +1,8 @@
 // Everything the tests need from the source tree, bundled by scripts/build.mjs into dist/test/vne.mjs.
 export * from '@vne/core';
-export { createEngine, ModuleHost, ScriptContext, CancelToken, runBlocks, reportBlock, regionContains, VarStore, ScenePlayer, GlobalPage, Items, stepSprite, inventorySlots, ScriptEngine, resolveFontFamily, fontFamilyName, sampleClip, clipEnd, linkMatrixWith, apply as applyMatrix } from '@vne/runtime';
+export { createEngine, ModuleHost, ScriptContext, CancelToken, runBlocks, reportBlock, regionContains, VarStore, ScenePlayer, GlobalPage, Items, stepSprite, inventorySlots, ScriptEngine, resolveFontFamily, fontFamilyName, sampleClip, clipEnd, compileExpr, evalExpr, compositionTime, trackExprValue, linkMatrixWith, apply as applyMatrix } from '@vne/runtime';
 export { AiService, toOpenAiMessages, fromOpenAiMessage, originOf } from '../packages/host/src/ai';
+export { ImageService, aspectRatio, openaiSize } from '../packages/host/src/images';
 export { ElementPresetStore } from '../packages/host/src/elementPresets';
 export * as zip from '../packages/host/src/zip';
 export * as projects from '../packages/host/src/projects';

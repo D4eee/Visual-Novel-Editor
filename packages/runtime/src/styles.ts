@@ -58,6 +58,8 @@ const CSS = `
 .vne-log { width: 100%; max-width: 980px; flex: 1; overflow: auto; font-size: 22px; line-height: 1.55; padding-right: 12px; }
 .vne-log .entry { margin-bottom: 18px; }
 .vne-log .who { font-weight: 700; color: var(--vne-name); margin-right: .5em; }
+.vne-log .vne-voice { margin-right: .5em; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: inherit; cursor: pointer; font-size: 12px; vertical-align: middle; }
+.vne-log .vne-voice:hover { background: rgba(255,255,255,.2); }
 .vne-log .pick { color: #9ab4ff; font-style: italic; }
 .vne-settings { display: grid; grid-template-columns: 220px 360px; gap: 18px 28px; align-items: center; font-size: 20px; }
 .vne-settings input[type=range] { width: 100%; }

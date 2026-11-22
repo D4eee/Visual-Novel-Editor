@@ -1,6 +1,6 @@
 # API reference
 
-Module API version **1.3.0** · engine 1.0.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.4.0** · engine 1.1.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 
@@ -96,6 +96,11 @@ export interface PropDef {
   group?: string;
   description?: string;
   hidden?: boolean;
+  /**
+   * Players read this value as text: it goes into the project's translation table (API 1.4).
+   * Long `text` properties and `string` properties named `text` are translatable without it.
+   */
+  translatable?: boolean;
 }
 ```
 
@@ -366,6 +371,8 @@ export interface BlockArgDef {
   paramOf?: string;
   /** May be left empty (passed as null) (API 1.2). */
   optional?: boolean;
+  /** `string` / `message` arguments players read: listed in the translation table (API 1.4). */
+  translatable?: boolean;
 }
 
 /**

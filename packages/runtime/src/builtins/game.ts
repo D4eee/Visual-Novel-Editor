@@ -147,7 +147,7 @@ export function registerGameBlocks(engine: Engine): void {
     report: (ctx: ScriptContext, a) => listOf(ctx, a.variable).some((x) => String(x).toLowerCase() === asText(a.value).toLowerCase()) });
 
   /* Labels: text and numbers shown at a position ---------------------------- */
-  B({ id: 'core.showLabel', category: 'game', shape: 'statement', label: 'block.showLabel', args: [{ id: 'value', type: 'expr', default: lit('Hello') }, { id: 'x', type: 'expr', default: lit(40) }, { id: 'y', type: 'expr', default: lit(40) }, { id: 'name', type: 'string', default: 'label' }, { id: 'size', type: 'number', default: 36 }],
+  B({ id: 'core.showLabel', category: 'game', shape: 'statement', label: 'block.showLabel', args: [{ id: 'value', type: 'expr', default: lit('Hello'), translatable: true }, { id: 'x', type: 'expr', default: lit(40) }, { id: 'y', type: 'expr', default: lit(40) }, { id: 'name', type: 'string', default: 'label' }, { id: 'size', type: 'number', default: 36 }],
     run(ctx: ScriptContext, a, block) {
       const s = scene(ctx);
       const raw = block.args.value;
@@ -201,7 +201,7 @@ export function registerGameBlocks(engine: Engine): void {
 
   /* Free dialogue ------------------------------------------------------------- */
   const FD = { id: 'layer', type: 'layer' as const, layerTypes: ['core.freeDialogue'] };
-  B({ id: 'core.freeSay', category: 'looks', shape: 'statement', layerTypes: ['core.freeDialogue'], label: 'block.freeSay', args: [FD, { id: 'text', type: 'expr', default: lit('Hello!') }, { id: 'speaker', type: 'string', default: '', optional: true }, { id: 'wait', type: 'boolean', default: true }],
+  B({ id: 'core.freeSay', category: 'looks', shape: 'statement', layerTypes: ['core.freeDialogue'], label: 'block.freeSay', args: [FD, { id: 'text', type: 'expr', default: lit('Hello!'), translatable: true }, { id: 'speaker', type: 'string', default: '', optional: true, translatable: true }, { id: 'wait', type: 'boolean', default: true }],
     async run(ctx: ScriptContext, a) {
       const s = scene(ctx);
       if (a.speaker) s.setProp(a.layer, 'speaker', String(a.speaker));

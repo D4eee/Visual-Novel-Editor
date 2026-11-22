@@ -1,7 +1,7 @@
 {
   "format": "vne.project",
-  "formatVersion": 4,
-  "engineVersion": "1.0.0",
+  "formatVersion": 5,
+  "engineVersion": "1.1.0",
   "id": "prj_like_human",
   "name": "Like Human",
   "created": "2026-11-19T00:00:00.000Z",

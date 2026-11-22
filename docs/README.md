@@ -29,6 +29,6 @@ Chinese translations are available for [Getting started](user-guide/getting-star
 
 - [Architecture](architecture/README.md): package boundaries, data flow, and design decisions.
 - [Build and release](architecture/build-and-release.md): development setup, packaging, and distribution.
-- [Version 1.0.0 release notes](release-notes/v1.0.0.md): changes, downloads, and installation ([0.3.1](release-notes/v0.3.1.md)).
+- [Version 1.1.0 release notes](release-notes/v1.1.0.md): changes, downloads, and installation ([1.0.0](release-notes/v1.0.0.md), [0.3.1](release-notes/v0.3.1.md)).
 
 Documentation on `main` follows the current source. For a published build, consult its release notes and assets.

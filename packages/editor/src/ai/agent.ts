@@ -11,15 +11,19 @@ import type { ProjectSession } from '../state/session';
 import { store } from '../state/store';
 import { getPrefs } from '../state/prefs';
 import { mcpTools, runTool } from './tools';
+import type { ToolResult } from './tools';
 
-type Block = { type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: any } | { type: 'tool_result'; tool_use_id: string; content: string; is_error?: boolean };
+type Image = { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+type Block = { type: 'text'; text: string } | Image | { type: 'tool_use'; id: string; name: string; input: any } | { type: 'tool_result'; tool_use_id: string; content: string | ({ type: 'text'; text: string } | Image)[]; is_error?: boolean };
 interface Message { role: 'user' | 'assistant'; content: string | Block[] }
 
 export interface ChatItem {
   id: string;
   kind: 'user' | 'assistant' | 'tool' | 'error' | 'turnEnd';
   text?: string;
-  tool?: { name: string; input: any; result?: string; isError?: boolean };
+  tool?: { name: string; input: any; result?: string; isError?: boolean; images?: string[] };
+  /** Pictures sent with a user message (data URLs). */
+  images?: string[];
   /** turnEnd: the project before / after the reply (for "undo this reply"). */
   turn?: { before: Project; after: Project; changes: number; undone?: boolean };
   errorCode?: string;
@@ -87,14 +91,16 @@ export class AiChat {
     if (this.requestId) call('ai.cancel', { requestId: this.requestId }).catch(() => {});
   }
 
-  async send(text: string): Promise<void> {
+  /** Send a message, optionally with pictures (e.g. the scene canvas) for vision models. */
+  async send(text: string, images: { mediaType: string; data: string }[] = []): Promise<void> {
     text = text.trim();
     if (!text || this.busy) return;
     const session = this.session;
     const readOnly = getPrefs().aiMode === 'read';
     const t = store.t;
-    this.push({ kind: 'user', text });
-    this.messages.push({ role: 'user', content: text });
+    this.push({ kind: 'user', text, images: images.map((i) => `data:${i.mediaType};base64,${i.data}`) });
+    const userMsg: Message = { role: 'user', content: images.length ? [{ type: 'text', text }, ...images.map((i): Image => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } }))] : text };
+    this.messages.push(userMsg);
     this.busy = true;
     this.cancelled = false;
     this.bump();
@@ -121,12 +127,14 @@ export class AiChat {
         for (const c of calls) {
           const item = this.push({ kind: 'tool', tool: { name: c.name, input: c.input } });
           const v0 = session?.project;
-          const r = session ? runTool(session, c.name, c.input, prefix, readOnly) : { text: 'No project is open.', isError: true };
+          const r: ToolResult = session ? await runTool(session, c.name, c.input, prefix, readOnly) : { text: 'No project is open.', isError: true };
           if (session && session.project !== v0) changes++;
           item.tool = { ...item.tool!, result: r.text, isError: r.isError };
           this.items = [...this.items];
           this.bump();
-          results.push({ type: 'tool_result', tool_use_id: c.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });
+          if (r.images?.length) item.tool!.images = r.images.map((i) => `data:${i.mediaType};base64,${i.data}`);
+          const content = r.images?.length ? [{ type: 'text' as const, text: r.text }, ...r.images.map((i): Image => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } }))] : r.text;
+          results.push({ type: 'tool_result', tool_use_id: c.id, content, ...(r.isError ? { is_error: true } : {}) });
         }
         this.messages.push({ role: 'user', content: results });
         if (round === MAX_ROUNDS - 1) this.push({ kind: 'error', text: t('ai.tooManySteps') });
@@ -138,7 +146,7 @@ export class AiChat {
       this.push({ kind: 'error', errorCode: code, text: code === 'NO_KEY' ? t('ai.noKey') : code === 'NO_MODEL' ? t('ai.noModel') : code === 'CANCELLED' ? t('ai.stopped') : t('ai.failed', { error: msg.replace(/^Error:\s*/, '') }) });
       // A failed request leaves the conversation as it was before it (the model never saw it).
       const last = this.messages[this.messages.length - 1];
-      if (last?.role === 'user' && typeof last.content === 'string' && last.content === text) this.messages.pop();
+      if (last === userMsg) this.messages.pop();
       else if (last?.role === 'user') this.messages.push({ role: 'assistant', content: [{ type: 'text', text: '(stopped)' }] });
     } finally {
       this.busy = false;

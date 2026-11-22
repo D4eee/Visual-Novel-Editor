@@ -88,7 +88,7 @@ export function toggleKey(session: ProjectSession, nodeId: string, layerId: stri
     const existing = track?.keyframes.find((k) => Math.abs(k.t - time) < 1e-3);
     if (track && existing) {
       track.keyframes = track.keyframes.filter((k) => k !== existing);
-      if (!track.keyframes.length) clip.tracks = clip.tracks.filter((x) => x !== track);
+      if (!track.keyframes.length && !track.expr) clip.tracks = clip.tracks.filter((x) => x !== track);
       return;
     }
     const current = animatedProps(session.engine, s, layer, clipId, time)[prop] ?? layer.props[prop];
@@ -158,7 +158,9 @@ export async function deleteLayers(session: ProjectSession, nodeId: string, ids:
     const ok = await store.confirm(t('layer.deleteUsedTitle'), t('layer.deleteUsedText', { names, n: usage.scripts, hats: usage.hatScripts.size }), t('common.delete'), true);
     if (!ok) return;
   }
+  const ui = session.sceneUI(nodeId);
   updateScene(session, nodeId, t('layer.delete'), (s) => {
+    unlinkDeleted(session, s, all, ui.clipId, ui.time);
     s.layers = s.layers.filter((l) => !all.has(l.id));
     for (const a of s.animations) { a.tracks = a.tracks.filter((tr) => !all.has(tr.layerId)); a.media = a.media.filter((m) => !all.has(m.layerId)); }
     s.scripts = s.scripts.filter((st) => !usage.hatScripts.has(st.id));
@@ -259,43 +261,130 @@ export function setParent(session: ProjectSession, nodeId: string, layerId: stri
       // no loops: the new parent may not (indirectly) follow this element
       for (let c: string | null | undefined = p.link, i = 0; c && i < 64; i++) { if (c === layerId) return; c = s.layers.find((l) => l.id === c)?.link; }
     }
-    const propsAt = (time: number) => (l: Layer) => animatedProps(session.engine, s, l, ui.clipId, time);
-    const before = (time: number) => linkMatrixWith(s.layers, layer, propsAt(time));
-    const after = (time: number) => linkMatrixWith(s.layers, { ...layer, link: parent }, propsAt(time));
-    const angle = (m: number[]) => (Math.atan2(m[1], m[0]) * 180) / Math.PI;
-    const scales = (m: number[]) => [Math.hypot(m[0], m[1]) || 1, Math.hypot(m[2], m[3]) || 1];
-    const convert = (time: number, x: number, y: number, rot: number, sx: number, sy: number) => {
-      const a = before(time), b = after(time);
-      const inv = invert(b);
-      const w = apply(a, x, y);
-      const q = inv ? apply(inv, w.x, w.y) : { x, y };
-      const [ax, ay] = scales(a), [bx, by] = scales(b);
-      return { x: q.x, y: q.y, rotation: rot + angle(a) - angle(b), scaleX: (sx * ax) / bx, scaleY: (sy * ay) / by };
-    };
-    const r = (v: number, d = 1000) => Math.round(v * d) / d;
-    const base = convert(ui.time, Number(layer.props.x ?? 0), Number(layer.props.y ?? 0), Number(layer.props.rotation ?? 0), Number(layer.props.scaleX ?? 1), Number(layer.props.scaleY ?? 1));
-    // Keyframes of the transform, in every clip. All new values are worked out from the
-    // original tracks first (x keys need y at the same moment and the other way round).
-    const writes: [any, number][] = [];
-    for (const clip of s.animations) {
-      const tr = (prop: string) => clip.tracks.find((x) => x.layerId === layerId && x.prop === prop);
-      const sample = (prop: string, time: number, fallback: number) => { const k = tr(prop); return k && k.keyframes.length ? Number(sampleTrack(session.engine, k, time, 'number')) : fallback; };
-      for (const prop of ['x', 'y', 'rotation', 'scaleX', 'scaleY']) {
-        const track = tr(prop);
-        if (!track) continue;
-        for (const k of track.keyframes) {
-          const v = convert(k.t,
-            prop === 'x' ? Number(k.v) : sample('x', k.t, Number(layer.props.x ?? 0)),
-            prop === 'y' ? Number(k.v) : sample('y', k.t, Number(layer.props.y ?? 0)),
-            prop === 'rotation' ? Number(k.v) : 0, prop === 'scaleX' ? Number(k.v) : 1, prop === 'scaleY' ? Number(k.v) : 1);
-          writes.push([k, r((v as any)[prop], prop === 'x' || prop === 'y' ? 10 : prop === 'rotation' ? 100 : 1000)]);
-        }
+    relinkInDraft(session, s, layer, parent, ui.clipId, ui.time);
+  });
+}
+
+/**
+ * Change an element's parent link inside a scene draft, converting its position, rotation and
+ * scale (base values and keyframes in every clip) so it stays where it is on screen.
+ */
+export function relinkInDraft(session: ProjectSession, s: SceneData, layer: Layer, parent: string | null, clipId: string | null, time: number): void {
+  const layerId = layer.id;
+  const ui = { clipId, time };
+  const propsAt = (time: number) => (l: Layer) => animatedProps(session.engine, s, l, ui.clipId, time);
+  const before = (time: number) => linkMatrixWith(s.layers, layer, propsAt(time));
+  const after = (time: number) => linkMatrixWith(s.layers, { ...layer, link: parent }, propsAt(time));
+  const angle = (m: number[]) => (Math.atan2(m[1], m[0]) * 180) / Math.PI;
+  const scales = (m: number[]) => [Math.hypot(m[0], m[1]) || 1, Math.hypot(m[2], m[3]) || 1];
+  const convert = (time: number, x: number, y: number, rot: number, sx: number, sy: number) => {
+    const a = before(time), b = after(time);
+    const inv = invert(b);
+    const w = apply(a, x, y);
+    const q = inv ? apply(inv, w.x, w.y) : { x, y };
+    const [ax, ay] = scales(a), [bx, by] = scales(b);
+    return { x: q.x, y: q.y, rotation: rot + angle(a) - angle(b), scaleX: (sx * ax) / bx, scaleY: (sy * ay) / by };
+  };
+  const r = (v: number, d = 1000) => Math.round(v * d) / d;
+  const base = convert(ui.time, Number(layer.props.x ?? 0), Number(layer.props.y ?? 0), Number(layer.props.rotation ?? 0), Number(layer.props.scaleX ?? 1), Number(layer.props.scaleY ?? 1));
+  // Keyframes of the transform, in every clip. All new values are worked out from the
+  // original tracks first (x keys need y at the same moment and the other way round).
+  const writes: [any, number][] = [];
+  for (const clip of s.animations) {
+    const tr = (prop: string) => clip.tracks.find((x) => x.layerId === layerId && x.prop === prop);
+    const sample = (prop: string, time: number, fallback: number) => { const k = tr(prop); return k && k.keyframes.length ? Number(sampleTrack(session.engine, k, time, 'number')) : fallback; };
+    for (const prop of ['x', 'y', 'rotation', 'scaleX', 'scaleY']) {
+      const track = tr(prop);
+      if (!track) continue;
+      for (const k of track.keyframes) {
+        const v = convert(k.t,
+          prop === 'x' ? Number(k.v) : sample('x', k.t, Number(layer.props.x ?? 0)),
+          prop === 'y' ? Number(k.v) : sample('y', k.t, Number(layer.props.y ?? 0)),
+          prop === 'rotation' ? Number(k.v) : 0, prop === 'scaleX' ? Number(k.v) : 1, prop === 'scaleY' ? Number(k.v) : 1);
+        writes.push([k, r((v as any)[prop], prop === 'x' || prop === 'y' ? 10 : prop === 'rotation' ? 100 : 1000)]);
       }
     }
-    for (const [k, v] of writes) k.v = v;
-    layer.props.x = r(base.x, 10); layer.props.y = r(base.y, 10); layer.props.rotation = r(base.rotation, 100);
-    if (layer.props.scaleX !== undefined || Math.abs(base.scaleX - 1) > 1e-6) layer.props.scaleX = r(base.scaleX);
-    if (layer.props.scaleY !== undefined || Math.abs(base.scaleY - 1) > 1e-6) layer.props.scaleY = r(base.scaleY);
-    layer.link = parent;
+  }
+  for (const [k, v] of writes) k.v = v;
+  layer.props.x = r(base.x, 10); layer.props.y = r(base.y, 10); layer.props.rotation = r(base.rotation, 100);
+  if (layer.props.scaleX !== undefined || Math.abs(base.scaleX - 1) > 1e-6) layer.props.scaleX = r(base.scaleX);
+  if (layer.props.scaleY !== undefined || Math.abs(base.scaleY - 1) > 1e-6) layer.props.scaleY = r(base.scaleY);
+  layer.link = parent;
+}
+
+/** Before elements are deleted: their linked children move up to the deleted parent's own parent, staying in place. */
+export function unlinkDeleted(session: ProjectSession, s: SceneData, deleted: Set<string>, clipId: string | null, time: number): void {
+  for (const l of s.layers) {
+    if (deleted.has(l.id) || !l.link || !deleted.has(l.link)) continue;
+    let up: string | null | undefined = l.link;
+    const seen = new Set<string>();
+    while (up && deleted.has(up) && !seen.has(up)) { seen.add(up); up = s.layers.find((x) => x.id === up)?.link; }
+    relinkInDraft(session, s, l, up && !deleted.has(up) ? up : null, clipId, time);
+  }
+}
+
+
+/**
+ * Precompose (After Effects-style): move elements and their animation in the current clip into
+ * a new reusable composition, and put one composition element in their place. The segment
+ * starts at its first key, and the new element starts playing it at that moment.
+ */
+export function precompose(session: ProjectSession, nodeId: string, ids: string[], name?: string): string | null {
+  const scene = sceneOf(session, nodeId);
+  if (!scene || !ids.length) return null;
+  const t = session.i18n.t;
+  const ui = session.sceneUI(nodeId);
+  // Choices, buttons and other things players click stay in the scene (compositions only draw).
+  const stays = (l: Layer) => { const def = session.engine.layerTypes.get(l.type); return !def || def.visual === false || def.interactive || l.type === CHOICE_LAYER || l.type === 'core.button' || l.type === 'core.hotspot'; };
+  const skipped = scene.layers.filter((l) => ids.includes(l.id) && stays(l));
+  if (skipped.length) store.toast(t('layer.precomposeSkipped', { names: skipped.map((l) => l.name).join(', ') }), 'info');
+  // The elements, everything inside them, and their link children.
+  const inside = new Set(ids.filter((id) => scene.layers.some((l) => l.id === id && !stays(l))));
+  let grew = true;
+  while (grew) { grew = false; for (const l of scene.layers) if (!inside.has(l.id) && !stays(l) && ((l.parentId && inside.has(l.parentId)) || (l.link && inside.has(l.link)))) { inside.add(l.id); grew = true; } }
+  const picked = scene.layers.filter((l) => inside.has(l.id));
+  const usage = elementUsage(session.engine, scene.scripts, inside);
+  if (usage.scripts) store.toast(t('layer.precomposeScripts', { n: usage.scripts }), 'info');
+  if (!picked.length) return null;
+  const clip = clipOf(scene, ui.clipId) || scene.animations[0] || null;
+  const tracks = clip ? clip.tracks.filter((tr) => inside.has(tr.layerId) && (tr.keyframes.length || tr.expr)) : [];
+  const spans = clip?.spans ? Object.entries(clip.spans).filter(([id]) => inside.has(id)) : [];
+  const times = [...tracks.flatMap((tr) => tr.keyframes.map((k) => k.t)), ...spans.map(([, sp]) => sp.in || 0)];
+  const start = times.length ? Math.max(0, Math.min(...times)) : 0;
+  const end = Math.max(start + 0.1, ...tracks.flatMap((tr) => tr.keyframes.map((k) => k.t)), ...spans.map(([, sp]) => sp.out ?? sp.in ?? 0));
+  const compId = newId('cmp');
+  const instId = newId('lyr');
+  const { width, height } = session.project.settings.resolution;
+  const title = name || (picked.length === 1 ? picked[0].name : t('layer.precomposeName', { n: picked.length }));
+  session.update(t('layer.precompose'), (d) => {
+    const s = d.nodes[nodeId].data as SceneData;
+    const layers: Layer[] = JSON.parse(JSON.stringify(s.layers.filter((l) => inside.has(l.id)))).map((l: Layer) => ({
+      ...l,
+      parentId: l.parentId && inside.has(l.parentId) ? l.parentId : null,
+      ...(l.link && !inside.has(l.link) ? { link: null } : {}),
+    }));
+    const anim: AnimationClip | null = tracks.length || spans.length ? {
+      ...createAnimation(title, Math.round((end - start) * 1000) / 1000),
+      tracks: tracks.map((tr) => ({ ...JSON.parse(JSON.stringify(tr)), keyframes: tr.keyframes.map((k) => ({ ...JSON.parse(JSON.stringify(k)), t: Math.round((k.t - start) * 1000) / 1000 })) })),
+      ...(spans.length ? { spans: Object.fromEntries(spans.map(([id, sp]) => [id, { in: Math.max(0, (sp.in || 0) - start), out: sp.out == null ? null : sp.out - start }])) } : {}),
+    } : null;
+    d.compositions.push({ id: compId, name: title, width, height, layers, animation: anim });
+    // Replace the elements by one composition element where the topmost of them was.
+    const at = s.layers.findIndex((l) => inside.has(l.id));
+    const parent = s.layers[at].parentId && !inside.has(s.layers[at].parentId!) ? s.layers[at].parentId : null;
+    const inst = createLayer(session.engine, d, 'core.composition', title, { compositionId: compId, x: width / 2, y: height / 2, startAt: Math.round(start * 1000) / 1000 });
+    inst.id = instId;
+    inst.parentId = parent;
+    s.layers = s.layers.filter((l) => !inside.has(l.id));
+    s.layers.splice(Math.min(at, s.layers.length), 0, inst);
+    for (const c of s.animations) {
+      c.tracks = c.tracks.filter((tr) => !inside.has(tr.layerId));
+      c.media = c.media.filter((m) => !inside.has(m.layerId));
+      if (c.spans) for (const id of Object.keys(c.spans)) if (inside.has(id)) delete c.spans[id];
+    }
+    // Links from elements that stay now follow the composition element.
+    for (const l of s.layers) if (l.link && inside.has(l.link)) l.link = instId;
   });
+  session.setSceneUI(nodeId, { selectedLayers: [instId] });
+  return compId;
 }

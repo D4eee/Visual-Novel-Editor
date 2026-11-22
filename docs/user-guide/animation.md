@@ -83,7 +83,29 @@ In the inspector's **Presets** tab, ready-made animations (entrance, emphasis, e
 
 ## Audio and video on the timeline
 
-Select an audio or video element and choose **Sync with timeline** (or *+ → Sync with timeline* on its row). Its clip appears in the timeline: drag it to set the start, drag its edges to trim. While you scrub, video frames follow the playhead; in the game the media starts and stops with the animation.
+Select an audio or video element and choose **Sync with timeline** (or *+ → Sync with timeline* on its row). Its clip appears in the timeline: drag it to set the start, drag its edges to trim. Audio clips show their **waveform**, so you can line keys up with beats and words (turn it off in *Settings → Editing*). While you scrub, video frames follow the playhead; in the game the media starts and stops with the animation.
+
+## Expressions
+
+Click **=** on a property row to give the property an **expression**: a small formula that computes its value while the animation plays. The expression row shows errors as you type; **⋯** has examples.
+
+| Expression | Result |
+| --- | --- |
+| `follow("Mika", 0.2)` | The same property of the element *Mika*, 0.2 s later — a trailing follower |
+| `follow("Mika", "y", 0.2) + 40` | Another property of Mika, offset |
+| `value + wiggle(2, 10)` | The keyed value with a smooth random wobble (2 per second, ±10) |
+| `loop()` | The property's keys, repeated |
+| `value + sin(time * 3) * 20` | A swing around the keyed value |
+
+Names you can use: `time` (seconds in the animation), `value` (the keyed value, or the property's value when it has no keys), `pi`. Functions: `follow`, `wiggle`, `loop`, `noise`, `sin`, `cos`, `abs`, `min`, `max`, `clamp(v, lo, hi)`, `lerp(a, b, t)`, `step(edge, v)`, `round`, `floor`, `ceil`, `sqrt`; operators `+ - * / % ^`, comparisons and `cond ? a : b`. Elements are found by name or id. A property can have an expression with no keys. Expressions are formulas, not code: nothing else runs.
+
+## Precompose: reusable animated pieces
+
+Select elements and choose **Precompose** (right-click them in the Layers panel or on their timeline rows). They move into a new **composition** together with their keys and in/out points, and one composition element takes their place — the scene looks and moves the same. The composition starts its animation at its first key.
+
+A composition element has **Starts at** (scene seconds; right-click its row → *Start the composition here* uses the playhead), **Speed** and **Playback** (*Once*, *Loop*, *Back and forth*). Add the same composition to other scenes from **Add layer → Compositions**: it starts at the playhead. **Unpack composition** turns an instance back into editable elements and keys; **Update composition** writes your changes back, and every instance updates.
+
+Choices, buttons and hotspots stay in the scene when you precompose (players click them), and scripts can no longer reach elements inside a composition.
 
 ## Playing animations
 

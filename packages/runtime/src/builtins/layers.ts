@@ -7,6 +7,7 @@ import { drawLayerList, measureCtx } from '../render';
 import type { AudioCategory } from '../assets';
 import { resolveFontFamily } from '../assets';
 import { registerFreeDialogue } from './freeDialogue';
+import { sampleClip, clipEnd } from '../animation';
 
 export const TRANSFORM_PROPS: PropDef[] = [
   { key: 'x', type: 'number', label: 'prop.x', default: 0, step: 1, unit: 'px', animatable: true, group: 'transform' },
@@ -20,6 +21,17 @@ export const TRANSFORM_PROPS: PropDef[] = [
 ];
 
 const visual = (props: PropDef[]): PropDef[] => [...TRANSFORM_PROPS, ...props];
+
+/** Time inside a composition's animation for a scene time (start, speed and playback of the instance). */
+export function compositionTime(c: Composition, sceneTime: number, p: Record<string, any>): number {
+  const clip = c.animation;
+  if (!clip) return sceneTime;
+  const dur = Math.max(0.001, clipEnd(clip));
+  const t = Math.max(0, (sceneTime - num(p.startAt, 0)) * (p.speed === undefined ? 1 : num(p.speed, 1)));
+  if (p.playback === 'loop') return t % dur;
+  if (p.playback === 'pingpong') { const k = t % (dur * 2); return k > dur ? dur * 2 - k : k; }
+  return Math.min(dur, t);
+}
 
 function imgOf(rc: { assets: any }, id: any): HTMLImageElement | null {
   return rc.assets.image(id);
@@ -448,7 +460,13 @@ export function registerBuiltinLayers(engine: Engine): void {
 
   reg({
     id: 'core.composition', label: 'layer.composition', icon: 'layers', category: 'structure', visual: true,
-    props: visual([{ key: 'compositionId', type: 'json', label: 'prop.composition', default: null }]),
+    props: visual([
+      { key: 'compositionId', type: 'json', label: 'prop.composition', default: null },
+      // A composition with its own animation plays it like a clip on the scene's clock.
+      { key: 'startAt', type: 'number', label: 'prop.compStart', default: 0, step: 0.05, unit: 's', description: 'prop.compStart.desc' },
+      { key: 'speed', type: 'number', label: 'prop.compSpeed', default: 1, min: 0, max: 8, step: 0.05, animatable: true },
+      { key: 'playback', type: 'select', label: 'prop.compPlayback', default: 'once', options: [{ value: 'once', label: 'comp.once' }, { value: 'loop', label: 'comp.loop' }, { value: 'pingpong', label: 'comp.pingpong' }] },
+    ]),
     size(_l, p, rc) {
       const c: Composition | undefined = rc.project.compositions.find((x: Composition) => x.id === p.compositionId);
       return c ? { width: c.width, height: c.height } : { width: 200, height: 200 };
@@ -456,7 +474,15 @@ export function registerBuiltinLayers(engine: Engine): void {
     draw(rc, _l, p) {
       const c: Composition | undefined = rc.project.compositions.find((x: Composition) => x.id === p.compositionId);
       if (!c) { drawPlaceholder(rc.ctx, 200, 200, 'Missing composition', true); return; }
-      const nested: SceneView = { ...rc.view, layers: c.layers, props: (l) => l.props, visible: (l) => l.visible, instance: () => undefined };
+      const t = compositionTime(c, rc.time, p);
+      const sampled = c.animation && (c.animation.tracks.length || c.animation.spans) ? sampleClip(rc.engine, c.animation, t, (id, key) => {
+        const l = c.layers.find((x) => x.id === id);
+        return l ? rc.engine.layerTypes.get(l.type)?.props.find((d) => d.key === key) : undefined;
+      }, new Map(), (k) => { const l = c.layers.find((x) => x.id === k) || c.layers.find((x) => x.name.toLowerCase() === k.toLowerCase()); return l ? { id: l.id, props: l.props } : undefined; }) : null;
+      const nested: SceneView = {
+        ...rc.view, layers: c.layers, time: t, instance: () => undefined, visible: (l) => l.visible,
+        props: sampled ? (l) => { const v = sampled.get(l.id); return v ? { ...l.props, ...v } : l.props; } : (l) => l.props,
+      };
       drawLayerList(rc.ctx, nested, null, c.layers);
     },
   });
