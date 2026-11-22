@@ -1,6 +1,6 @@
 /**
  * Settings window: editor preferences (this computer) and the open project's settings.
- * Sections: General, Appearance, Editing, AI assistant (model API + editor tools), Project.
+ * Sections: General, Appearance, Editing, AI assistant (model API + editor tools), Image generation, Project.
  */
 import { useEffect, useState } from 'react';
 import type { ProjectSession } from '../state/session';
@@ -14,8 +14,9 @@ import { call } from '../host';
 import { loadAiConfig } from '../ai/ChatPanel';
 import type { AiPublicConfig } from '../ai/agent';
 import { TOOL_NAMES } from '../ai/tools';
+import { ImagePrefs } from '../assets/ImageGen';
 
-type Tab = 'general' | 'appearance' | 'editing' | 'ai' | 'project';
+type Tab = 'general' | 'appearance' | 'editing' | 'ai' | 'images' | 'project';
 
 const EASES = ['linear', 'easeIn', 'easeOut', 'easeInOut', 'backOut', 'bounce', 'elastic', 'step'];
 const EASE_LABEL: Record<string, string> = { easeIn: 'ease.in', easeOut: 'ease.out', easeInOut: 'ease.inOut' };
@@ -42,6 +43,7 @@ export function SettingsWindow({ session, tab: initial, onClose }: { session: Pr
     { id: 'appearance', icon: 'palette', label: t('prefs.tab.appearance') },
     { id: 'editing', icon: 'sliders', label: t('prefs.tab.editing') },
     { id: 'ai', icon: 'bot', label: t('prefs.tab.ai') },
+    { id: 'images', icon: 'imagePlus', label: t('prefs.tab.images') },
   ];
   return (
     <Modal title={t('prefs.title')} onClose={onClose} width={920} icon={<Icon name="settings" size={18} />} className="settings-modal" footer={<Button kind="primary" onClick={onClose}>{t('common.done')}</Button>}>
@@ -61,6 +63,7 @@ export function SettingsWindow({ session, tab: initial, onClose }: { session: Pr
           {tab === 'appearance' && <AppearancePrefs />}
           {tab === 'editing' && <EditingPrefs />}
           {tab === 'ai' && <AiPrefs />}
+          {tab === 'images' && <ImagePrefs />}
         </div>
       </div>
     </Modal>
@@ -167,6 +170,7 @@ function EditingPrefs() {
       </Section>
       <Section id="prefs.canvasEdit" title={t('prefs.canvasEditing')}>
         <Toggle value={p.snap} onChange={(v) => setPrefs({ snap: v })} label={t('prefs.snapDefault')} />
+        <Toggle value={p.timelineWaveforms} onChange={(v) => setPrefs({ timelineWaveforms: v })} label={t('prefs.waveforms')} />
       </Section>
     </>
   );
@@ -271,7 +275,7 @@ function AiPrefs() {
   );
 }
 
-function ModelInput({ value, models, onChange }: { value: string; models: string[]; onChange: (v: string) => void }) {
+export function ModelInput({ value, models, onChange }: { value: string; models: string[]; onChange: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   const id = 'ai-models';
@@ -283,7 +287,7 @@ function ModelInput({ value, models, onChange }: { value: string; models: string
   );
 }
 
-function UrlInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function UrlInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   return <input className="input" value={draft} spellCheck={false} onChange={(e) => setDraft(e.target.value)} onBlur={() => draft !== value && onChange(draft.trim())} onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />;

@@ -15,3 +15,5 @@ export * from './elements';
 export * from './effectPresets';
 export * from './inherit';
 export * from './items';
+export * from './localize';
+export * from './scriptImport';

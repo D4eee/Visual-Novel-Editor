@@ -22,6 +22,7 @@ Your key is stored on this computer only — encrypted with the system keychain 
 - Each action it takes shows as a line (✓ done, ⚠ error — it then corrects itself). Click a line to see the details.
 - After a reply that changed the project, **Undo this reply** puts the project back as it was before the reply (itself undoable). Each single change is also in the normal undo history, labelled *AI · …*.
 - **+** starts a new conversation. Each open project has its own conversation.
+- **📷** next to the message box attaches a picture of the open scene's canvas, so a model that understands images can see the layout ("why does this look crowded?"). The assistant can also look by itself with its *view scene* tool, for example to check its own changes. Use a model with image input (Claude, GPT-4o and similar).
 
 The badge in the panel header switches between **Can edit** and **Read-only**: read-only, the assistant reads your project and answers, but does not change it.
 
@@ -31,14 +32,15 @@ The assistant works through the editor's tools, described in the Model Context P
 
 | Area | Tools |
 | --- | --- |
-| Reading | project overview, one scene in detail, element types and their properties, interaction blocks |
-| Story | create / edit / delete scenes and other nodes, connect nodes, chapters |
+| Reading | project overview, one scene in detail, a picture of a scene, element types and their properties, interaction blocks |
+| Story | create / edit / delete scenes and other nodes, connect nodes, chapters, [import a whole script](script-import.md) |
 | Characters & variables | add characters, create or change variables |
 | Scene content | dialogue lines (add, edit, delete), choices (and where they lead), elements (add, change, delete), parent links |
 | Animation | keyframes on any animatable property, animation presets |
 | Looks | built-in looks for text, shapes, buttons and free dialogue; picture effects |
 | Interactions | scripts made of blocks (trigger + actions) |
 | Project | title, resolution, text speed, text box style |
+| Images | generate a background or character sketch with the service from *Settings → Image generation* (only when you ask: images cost money) |
 | Navigation | open a scene or select an element for you to see |
 
 It asks before deleting things unless you clearly asked for it.

@@ -20,7 +20,7 @@ export function freeDialogueProps(transform: PropDef[]): PropDef[] {
   return [
     ...transform,
     // Content
-    { key: 'speaker', type: 'string', label: 'prop.speaker', default: 'Mika', group: 'dialogue' },
+    { key: 'speaker', type: 'string', label: 'prop.speaker', default: 'Mika', group: 'dialogue', translatable: true },
     { key: 'text', type: 'text', label: 'prop.text', default: 'Say something here…', group: 'dialogue' },
     { key: 'reveal', type: 'number', label: 'prop.reveal', default: 1, min: 0, max: 1, step: 0.01, animatable: true, group: 'dialogue', description: 'prop.reveal.desc' },
     { key: 'typeSpeed', type: 'number', label: 'prop.typeSpeed', default: 0, min: 0, step: 5, unit: '/s', group: 'dialogue', description: 'prop.typeSpeed.desc' },

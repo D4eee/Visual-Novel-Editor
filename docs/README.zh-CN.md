@@ -25,6 +25,6 @@
 
 - [架构说明（英文）](architecture/README.md)：各软件包的职责、数据流与设计决策。
 - [构建与发布（英文）](architecture/build-and-release.md)：开发环境、打包与分发。
-- [1.0.0 更新说明](release-notes/v1.0.0.md#简体中文)（[0.3.1](release-notes/v0.3.1.md#简体中文)）：版本变化、下载与安装。
+- [1.1.0 更新说明](release-notes/v1.1.0.md#简体中文)（[1.0.0](release-notes/v1.0.0.md#简体中文)、[0.3.1](release-notes/v0.3.1.md#简体中文)）：版本变化、下载与安装。
 
 `main` 分支上的文档以当前源码为准。使用已发布的安装包时，请同时参考对应版本的更新说明与附件。

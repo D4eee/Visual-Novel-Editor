@@ -216,7 +216,20 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     }
     const mode = handle?.dataset.mode || 'move';
     if (mode === 'point') { dragRegionPoint(e, Number(handle!.dataset.index)); return; }
-    const layers = ids.map((id) => scene.layers.find((l) => l.id === id)!).filter((l) => l && !l.locked);
+    const picked = ids.map((id) => scene.layers.find((l) => l.id === id)!).filter((l) => l && !l.locked);
+    // An element whose parent (link) or group is also being dragged already moves with it:
+    // transforming it as well would move it twice.
+    const pickedIds = new Set(picked.map((l) => l.id));
+    const followsPicked = (l: Layer) => {
+      const seen = new Set<string>();
+      for (let cur: Layer | undefined = l; cur && !seen.has(cur.id); ) {
+        seen.add(cur.id);
+        for (const up of [cur.link, cur.parentId]) if (up && pickedIds.has(up)) return true;
+        cur = scene.layers.find((x) => x.id === (cur!.link || cur!.parentId));
+      }
+      return false;
+    };
+    const layers = picked.filter((l) => !followsPicked(l));
     if (!layers.length) return;
     const starts = layers.map((l) => ({ l, props: { ...view.props(l) } }));
     const primary = starts[0];
@@ -631,7 +644,7 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
   }
   if (session.project.compositions.length) {
     items.push({ header: true, label: t('layer.compositions') });
-    for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => add('core.composition', { compositionId: c.id, ...pos }, c.name, hidden) });
+    for (const c of session.project.compositions) items.push({ label: c.name, icon: 'layers', onClick: () => add('core.composition', { compositionId: c.id, ...pos, ...(c.animation ? { startAt: Math.round(session.sceneUI(nodeId).time * 1000) / 1000 } : {}) }, c.name, hidden) });
   }
   return items;
 }

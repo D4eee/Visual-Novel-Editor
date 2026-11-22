@@ -20,6 +20,8 @@ export function createEngine(): Engine {
 
 export * from './math';
 export * from './animation';
+export { compileExpr, evalExpr, EXPR_FUNCTIONS } from './trackExpr';
+export { compositionTime } from './builtins/layers';
 export * from './assets';
 export * from './effects';
 export * from './render';

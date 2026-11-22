@@ -1,5 +1,5 @@
 import type { Engine, Project, StoryNode, SceneData, EndingData, Block, Expr, VarValue } from '@vne/core';
-import { Emitter, evaluate, evaluateBool, builtinFunctions, I18n, ExprFunction, isExpr } from '@vne/core';
+import { Emitter, evaluate, evaluateBool, builtinFunctions, I18n, ExprFunction, isExpr, localizeProject, pickLanguage, projectLanguages } from '@vne/core';
 import { AssetLoader, AudioManager, AssetUrlResolver } from './assets';
 import { Stage } from './stage';
 import { NarrativeUI } from './narrative';
@@ -24,6 +24,8 @@ export interface GameOptions {
   /** Namespace for saves/settings in localStorage. Defaults to the project id. */
   storageKey?: string;
   locale?: string;
+  /** Story language to start in (editor preview); players' choice is used otherwise. */
+  storyLocale?: string;
   onQuit?: () => void;
   /** Called for every runtime diagnostic. */
   onError?: (e: RuntimeError) => void;
@@ -65,9 +67,22 @@ export interface PlayerSettings {
   volumes: { master: number; bgm: number; sfx: number; voice: number; ambient: number };
   fullscreen: boolean;
   locale: string;
+  /** Language of the story (multi-language games); null = the project's own. */
+  storyLocale?: string | null;
+  /** Skip also runs through lines the player has not read yet. */
+  skipUnread?: boolean;
+  /** In auto mode, wait for a line's voice to finish before going on. */
+  autoWaitVoice?: boolean;
 }
 
 interface Timer { at: number; resolve: () => void; token?: CancelToken }
+
+/** System menus come in English and Chinese: other story languages use English menus. */
+function uiLocaleFor(story: string, current: string): string {
+  if (story.startsWith('zh')) return 'zh-CN';
+  if (story === 'en') return 'en';
+  return current === 'zh-CN' ? 'en' : current;
+}
 
 /**
  * The game runtime. The editor preview and exported games both run this class,
@@ -76,7 +91,10 @@ interface Timer { at: number; resolve: () => void; token?: CancelToken }
  */
 export class GameRuntime {
   readonly engine: Engine;
-  readonly project: Project;
+  /** The project in the language being played (see `storyLocale`). */
+  project: Project;
+  /** The project as written. */
+  readonly sourceProject: Project;
   readonly assets: AssetLoader;
   readonly audio: AudioManager;
   readonly vars: VarStore;
@@ -100,7 +118,7 @@ export class GameRuntime {
   currentNodeId: string | null = null;
   path: string[] = [];
   visited = new Set<string>();
-  backlog: { kind: 'line' | 'choice'; name: string; text: string; nodeId: string }[] = [];
+  backlog: { kind: 'line' | 'choice'; name: string; text: string; nodeId: string; voice?: string | null }[] = [];
   autoMode = false;
   skipMode = false;
   paused = false;
@@ -131,6 +149,7 @@ export class GameRuntime {
   constructor(readonly opts: GameOptions) {
     this.engine = opts.engine;
     this.project = opts.project;
+    this.sourceProject = opts.project;
     this.storageKey = `vne:${opts.storageKey || opts.project.id}`;
     this.functions = this.engine.functionTable(builtinFunctions);
     this.globals = new GlobalPage(this);
@@ -154,6 +173,9 @@ export class GameRuntime {
     this.flashEl.className = 'vne-flash';
     this.stage.overlay.append(this.flashEl, this.hud);
     this.playerSettings = this.loadSettings();
+    // Multi-language games: play in the chosen (or best matching) language.
+    const story = opts.storyLocale || pickLanguage(this.sourceProject, this.playerSettings.storyLocale, typeof navigator !== 'undefined' ? navigator.languages || [navigator.language] : []);
+    if (story) { this.project = localizeProject(this.engine, this.sourceProject, story); this.playerSettings.storyLocale = story; if (!opts.locale) this.playerSettings.locale = uiLocaleFor(story, this.playerSettings.locale); }
     this.i18n.setLocale(this.playerSettings.locale);
     this.settings = { textSpeed: this.playerSettings.textSpeed, autoDelay: this.playerSettings.autoDelay };
     this.audio.setVolumes(this.playerSettings.volumes);
@@ -610,6 +632,15 @@ export class GameRuntime {
     return true;
   }
 
+  quickSave(): void {
+    if (this.saveGame('quick')) this.ui.toast(this.i18n.t('rt.quickSaved'));
+  }
+
+  quickLoad(): void {
+    if (!this.readSave('quick')) { this.ui.toast(this.i18n.t('rt.noQuickSave')); return; }
+    this.loadGame('quick');
+  }
+
   private autosave(node: StoryNode): void {
     if (this.opts.mode !== 'game') return;
     this.currentNodeId = node.id;
@@ -642,6 +673,12 @@ export class GameRuntime {
     this.settings.autoDelay = this.playerSettings.autoDelay;
     this.audio.setVolumes(this.playerSettings.volumes);
     if (patch.locale) this.i18n.setLocale(patch.locale);
+    if (patch.storyLocale && projectLanguages(this.sourceProject).includes(patch.storyLocale)) {
+      // The new language shows from the next line on (the current scene keeps its loaded texts).
+      this.project = localizeProject(this.engine, this.sourceProject, patch.storyLocale);
+      if (!patch.locale) { this.playerSettings.locale = uiLocaleFor(patch.storyLocale, this.playerSettings.locale); this.i18n.setLocale(this.playerSettings.locale); }
+      if (this.scene) this.scene.relocalize?.(this.project);
+    }
     if (this.opts.mode === 'game') try { localStorage.setItem(`${this.storageKey}:settings`, JSON.stringify(this.playerSettings)); } catch { /* ignore */ }
   }
 
@@ -680,7 +717,9 @@ export class GameRuntime {
     if (!e.repeat) this.input.keys.add(e.code);
     if (e.key === 'Escape') { if (this.ui.isOpen) this.ui.closeAll(); else if (this.opts.mode === 'game' && !this.ui.titleVisible) this.ui.open('menu'); e.preventDefault(); return; }
     if (this.ui.isOpen || !this.scene) return;
-    if (e.key === 'Control') { this.skipMode = true; this.scene.advance(); return; }
+    if (this.opts.mode === 'game' && (e.key === 'F5' || e.key === 'F9')) { e.preventDefault(); if (e.key === 'F5') this.quickSave(); else this.quickLoad(); return; }
+    // Holding Ctrl skips; it stops at unread text like the skip button (key repeats don't restart it).
+    if (e.key === 'Control') { if (!e.repeat) { this.skipMode = true; this.scene.advance(); } return; }
     if (this.scene.key(e.code)) return;
     if (this.scene.choicesOpen && /^[1-9]$/.test(e.key)) { this.scene.pickChoiceByIndex(Number(e.key) - 1); e.preventDefault(); return; }
     if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); this.scene.advance(); }
@@ -711,13 +750,50 @@ export class GameRuntime {
     console.log('[vne:log]', message);
   }
 
-  backlogPush(entry: { kind: 'line' | 'choice'; name: string; text: string; nodeId: string }): void {
+  backlogPush(entry: { kind: 'line' | 'choice'; name: string; text: string; nodeId: string; voice?: string | null }): void {
     this.backlog.push(entry);
     if (this.backlog.length > 300) this.backlog.shift();
   }
 
-  playVoice(assetId: string): void {
-    this.audio.playSound(assetId, 1, 'voice');
+  /** The voice line playing now (a new line's voice stops the previous one). */
+  private voiceEl: HTMLAudioElement | null = null;
+
+  playVoice(assetId: string): HTMLAudioElement | null {
+    this.stopVoice();
+    this.voiceEl = this.audio.playSound(assetId, 1, 'voice');
+    return this.voiceEl;
+  }
+
+  stopVoice(): void {
+    if (this.voiceEl) { this.voiceEl.pause(); this.voiceEl = null; }
+  }
+
+  /** Resolves when the current voice line has finished (or at once when none plays). */
+  voiceDone(): Promise<void> {
+    const el = this.voiceEl;
+    if (!el || el.ended || el.paused) return Promise.resolve();
+    return new Promise((r) => { el.addEventListener('ended', () => r(), { once: true }); el.addEventListener('pause', () => r(), { once: true }); });
+  }
+
+  /* Read lines: skip only runs through lines the player has seen before (kept across plays). */
+  private read: Set<string> | null = null;
+  private readSet(): Set<string> {
+    if (this.read) return this.read;
+    this.read = new Set();
+    if (this.opts.mode === 'game') try { for (const id of JSON.parse(localStorage.getItem(`${this.storageKey}:read`) || '[]')) this.read.add(id); } catch { /* ignore */ }
+    return this.read;
+  }
+  isRead(lineId: string): boolean { return this.readSet().has(lineId); }
+  markRead(lineId: string): void {
+    const set = this.readSet();
+    if (set.has(lineId)) return;
+    set.add(lineId);
+    if (this.opts.mode === 'game') try { localStorage.setItem(`${this.storageKey}:read`, JSON.stringify([...set])); } catch { /* ignore */ }
+  }
+  /** Skip mode stops at a line the player has not read (unless they chose to skip everything). */
+  stopSkip(): void {
+    this.skipMode = false;
+    this.ui.refreshQuick();
   }
 
   /** Evaluate an expression or literal against the current state. */

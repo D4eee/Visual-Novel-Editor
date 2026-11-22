@@ -1,3 +1,4 @@
+import { compileExpr, evalExpr, hashSeed } from './trackExpr';
 import type { AnimationClip, Engine, Keyframe, PropDef, Track } from '@vne/core';
 import { lerp, lerpColor } from './math';
 
@@ -45,10 +46,23 @@ export function interpolate(engine: Engine, a: Keyframe, b: Keyframe, u: number,
 }
 
 /** Sample every track of a clip. Returns layerId → { prop: value }. */
-export function sampleClip(engine: Engine, clip: AnimationClip, t: number, propDef: (layerId: string, prop: string) => PropDef | undefined, out: Map<string, Record<string, any>> = new Map()): Map<string, Record<string, any>> {
+/** Finds an element by id or name (for expressions): its id and its current properties. */
+export type LayerLookup = (nameOrId: string) => { id: string; props: Record<string, any> } | undefined;
+
+export function sampleClip(engine: Engine, clip: AnimationClip, t: number, propDef: (layerId: string, prop: string) => PropDef | undefined, out: Map<string, Record<string, any>> = new Map(), lookup?: LayerLookup): Map<string, Record<string, any>> {
+  let withExpr: Track[] | null = null;
   for (const track of clip.tracks) {
+    if (track.expr) (withExpr ||= []).push(track);
     const def = propDef(track.layerId, track.prop);
     const v = sampleTrack(engine, track, t, propKind(def, track.keyframes[0]?.v));
+    if (v === undefined) continue;
+    let rec = out.get(track.layerId);
+    if (!rec) out.set(track.layerId, (rec = {}));
+    rec[track.prop] = v;
+  }
+  // Expressions run after the keys, so they can use the keyed value (and other elements' tracks).
+  if (withExpr) for (const track of withExpr) {
+    const v = trackExprValue(engine, clip, track, t, propDef, lookup, 0);
     if (v === undefined) continue;
     let rec = out.get(track.layerId);
     if (!rec) out.set(track.layerId, (rec = {}));
@@ -62,6 +76,32 @@ export function sampleClip(engine: Engine, clip: AnimationClip, t: number, propD
     rec.__span = t >= (sp.in || 0) - 1e-6 && (sp.out == null || t < sp.out - 1e-6);
   }
   return out;
+}
+
+/** The value of an expression track at time t (undefined when the expression does not compile). */
+export function trackExprValue(engine: Engine, clip: AnimationClip, track: Track, t: number, propDef: (layerId: string, prop: string) => PropDef | undefined, lookup: LayerLookup | undefined, depth: number): any {
+  const c = compileExpr(track.expr || '');
+  if (!c.ast) return undefined;
+  const kind = propKind(propDef(track.layerId, track.prop), track.keyframes[0]?.v);
+  const keyed = (time: number) => (track.keyframes.length ? sampleTrack(engine, track, Math.max(0, time), kind) : lookup?.(track.layerId)?.props[track.prop]);
+  const value = keyed(t);
+  let r: any;
+  try {
+    r = evalExpr(c.ast, {
+      time: t, value, prop: track.prop, seed: hashSeed(track.layerId + track.prop), valueAt: keyed,
+      keyEnd: track.keyframes.length ? track.keyframes[track.keyframes.length - 1].t : 0,
+      follow: (target, prop, at) => {
+        const l = lookup?.(target);
+        if (!l) return value;
+        const other = clip.tracks.find((x) => x.layerId === l.id && x.prop === prop);
+        if (other?.expr && depth < 4 && other !== track) { const v = trackExprValue(engine, clip, other, Math.max(0, at), propDef, lookup, depth + 1); if (v !== undefined) return v; }
+        if (other && other.keyframes.length) return sampleTrack(engine, other, Math.max(0, at), propKind(propDef(l.id, prop), other.keyframes[0]?.v));
+        return l.props[prop];
+      },
+    });
+  } catch { return value; }
+  if (kind === 'number') { const x = Number(r); return Number.isFinite(x) ? x : value; }
+  return r === undefined ? value : r;
 }
 
 /** Sort keyframes and keep at most one keyframe per time (later wins). Mutates the draft track. */
@@ -108,6 +148,7 @@ export class AnimationPlayer {
     private write: (layerId: string, prop: string, value: any) => void,
     private onFinished: (clipId: string) => void,
     private media: { play(layerId: string, offset: number): void; stop(layerId: string): void },
+    private lookup?: LayerLookup,
   ) {}
 
   play(clipId: string, opts: { restart?: boolean; loop?: boolean; speed?: number } = {}): Promise<void> {
@@ -185,7 +226,7 @@ export class AnimationPlayer {
   }
 
   private apply(p: PlayingClip): void {
-    const values = sampleClip(this.engine, p.clip, p.time, this.propDef);
+    const values = sampleClip(this.engine, p.clip, p.time, this.propDef, new Map(), this.lookup);
     for (const [layerId, rec] of values) for (const [k, v] of Object.entries(rec)) this.write(layerId, k, v);
     for (const m of p.clip.media) {
       if (!p.mediaStarted.has(m.id) && p.time >= m.start) {

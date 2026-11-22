@@ -31,6 +31,8 @@ export interface EditorPrefs {
   timeDisplay: 'seconds' | 'frames';
   fps: number;
   snap: boolean;
+  /** Draw audio waveforms in timeline media bars. */
+  timelineWaveforms: boolean;
   /** What the AI assistant may do: change the project, or only read it and answer. */
   aiMode: 'edit' | 'read';
 }
@@ -39,7 +41,7 @@ export const DEFAULT_PREFS: EditorPrefs = {
   theme: 'dark', background: null, accent: '#7d8bff', fontScale: 1, zoom: 1, uiFont: '',
   canvasBackdrop: 'checker', canvasColor: '#2a2d39', reduceMotion: false,
   autoSave: false, autoSaveSeconds: 60, undoLimit: 300, defaultEase: 'easeInOut', timeDisplay: 'seconds', fps: 30, snap: true,
-  aiMode: 'edit',
+  timelineWaveforms: true, aiMode: 'edit',
 };
 
 export const THEMES: Record<ThemeName, { bg: string; label: string }> = {

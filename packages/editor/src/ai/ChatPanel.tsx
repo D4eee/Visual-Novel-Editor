@@ -5,6 +5,9 @@ import { setPrefs, usePrefs } from '../state/prefs';
 import { call } from '../host';
 import { Icon } from '../ui/Icon';
 import { IconButton, cx, useResizable } from '../ui/controls';
+import { sceneImage } from './snapshot';
+import type { SceneImage } from './snapshot';
+import { hasSceneData } from '@vne/core';
 import { AiChat, AiPublicConfig, ChatItem, chatFor, setChatOpen, useChat, useChatOpen } from './agent';
 
 let configCache: AiPublicConfig | null = null;
@@ -21,6 +24,7 @@ export function ChatPanel() {
   const prefs = usePrefs();
   const chat = useChat(chatFor(st.session));
   const [text, setText] = useState('');
+  const [shots, setShots] = useState<SceneImage[]>([]);
   const [cfg, setCfg] = useState<AiPublicConfig | null>(configCache);
   const [w, startW] = useResizable('ai.panel', 380, 300, 720);
   const listRef = useRef<HTMLDivElement>(null);
@@ -32,7 +36,14 @@ export function ChatPanel() {
 
   const provider = cfg ? cfg[cfg.provider] : null;
   const ready = !!provider && (provider.hasKey || (cfg?.provider === 'openai' && /localhost|127\.0\.0\.1/.test(provider.baseUrl)));
-  const send = (v = text) => { if (!v.trim() || chat.busy) return; chat.send(v); setText(''); };
+  const send = (v = text) => { if (!v.trim() || chat.busy) return; chat.send(v, shots); setText(''); setShots([]); };
+  const sess = st.session;
+  const sceneOpen = !!sess?.currentNodeId && hasSceneData(sess.project.nodes[sess.currentNodeId]);
+  const attach = async () => {
+    if (!sess || !sceneOpen) return;
+    try { const img = await sceneImage(sess, sess.currentNodeId!, { time: sess.sceneUI(sess.currentNodeId!).time }); setShots((x) => [...x, img].slice(-4)); inputRef.current?.focus(); }
+    catch (e: any) { store.toast(String(e?.message || e), 'error'); }
+  };
   const suggestions = st.session ? ['ai.suggest.scene', 'ai.suggest.animate', 'ai.suggest.review', 'ai.suggest.branch'] : ['ai.suggest.howTo', 'ai.suggest.idea'];
 
   return (
@@ -67,7 +78,16 @@ export function ChatPanel() {
         {chat.items.map((it) => <ChatRow key={it.id} item={it} chat={chat} />)}
         {chat.busy && <div className="ai-thinking"><span /><span /><span /></div>}
       </div>
+      {shots.length > 0 && (
+        <div className="ai-shots">
+          {shots.map((im, i) => (
+            <span key={i} className="ai-shot"><img src={`data:${im.mediaType};base64,${im.data}`} alt="" /><button type="button" title={t('common.remove')} onClick={() => setShots(shots.filter((_, k) => k !== i))}><Icon name="close" size={10} /></button></span>
+          ))}
+          <span className="muted small">{t('ai.visionHint')}</span>
+        </div>
+      )}
       <div className="ai-input">
+        <button type="button" className="ai-attach" onClick={attach} disabled={!sceneOpen} title={sceneOpen ? t('ai.attachCanvas') : t('ai.attachCanvasNoScene')}><Icon name="camera" size={15} /></button>
         <textarea ref={inputRef} value={text} rows={Math.min(6, Math.max(2, text.split('\n').length))} placeholder={st.session ? t('ai.placeholder') : t('ai.placeholderNoProject')}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
@@ -82,7 +102,12 @@ export function ChatPanel() {
 function ChatRow({ item, chat }: { item: ChatItem; chat: AiChat }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  if (item.kind === 'user') return <div className="ai-msg user">{item.text}</div>;
+  if (item.kind === 'user') return (
+    <div className="ai-msg user">
+      {!!item.images?.length && <div className="ai-msg-imgs">{item.images.map((src, i) => <img key={i} src={src} alt={t('ai.canvasPicture')} />)}</div>}
+      {item.text}
+    </div>
+  );
   if (item.kind === 'assistant') return <div className="ai-msg assistant">{renderMarkdown(item.text || '')}</div>;
   if (item.kind === 'error') return (
     <div className="ai-msg error"><Icon name="warning" size={14} /><span>{item.text}</span>
@@ -106,6 +131,7 @@ function ChatRow({ item, chat }: { item: ChatItem; chat: AiChat }) {
         {summary && <span className="ai-tool-sum">{summary}</span>}
         <Icon name={open ? 'chevronDown' : 'chevronRight'} size={11} />
       </button>
+      {!!tool.images?.length && <div className="ai-tool-imgs">{tool.images.map((src, i) => <img key={i} src={src} alt={t('ai.canvasPicture')} />)}</div>}
       {open && <pre className="ai-tool-body">{JSON.stringify(tool.input, null, 2)}{tool.result !== undefined ? `\n→ ${tool.result.length > 2000 ? `${tool.result.slice(0, 2000)}…` : tool.result}` : ''}</pre>}
     </div>
   );

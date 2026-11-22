@@ -304,7 +304,7 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
         onPointerWorld={(p) => { pointer.current = p; }}
         portsCompatible={portsCompatible}
         ariaLabel={t('graph.aria')}
-        emptyHint={<div className="graph-empty-card"><Icon name="workflow" size={28} /><div className="empty-title">{t('graph.emptyTitle')}</div><div>{t('graph.emptyText')}</div><Button kind="primary" icon="plus" onClick={() => addNode('core.scene', center())}>{t('graph.addScene')}</Button></div>}
+        emptyHint={<div className="graph-empty-card"><Icon name="workflow" size={28} /><div className="empty-title">{t('graph.emptyTitle')}</div><div>{t('graph.emptyText')}</div><div className="row-gap"><Button kind="primary" icon="plus" onClick={() => addNode('core.scene', center())}>{t('graph.addScene')}</Button><Button icon="fileText" onClick={() => store.open({ kind: 'importScript' })}>{t('import.fromScript')}</Button></div></div>}
       />
       <div className="graph-toolbar">
         <div className="graph-title">
@@ -321,6 +321,8 @@ export function StoryGraph({ session }: { session: ProjectSession }) {
             );
           })}
           <IconButton icon="more" title={t('graph.moreNodes')} onClick={(e) => openMenu(e, nodeCreationItems(session, t, (type) => addNode(type, center())), { search: true })} />
+          <span className="sep" />
+          <IconButton icon="fileText" title={t('import.title')} onClick={() => store.open({ kind: 'importScript' })} />
         </div>
       </div>
       <div className="graph-zoom">

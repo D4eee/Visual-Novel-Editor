@@ -44,6 +44,8 @@ export interface SessionUI {
   inspectorOpen: boolean;
   problemsOpen: boolean;
   preview: { scope: 'scene' | 'chapter' | 'game'; nodeId: string | null; key: number; /** Shown in place of the scene canvas (Interactions test runs). */ docked?: boolean } | null;
+  /** Story language for previews of a multi-language project (null: the source language). */
+  previewLocale?: string | null;
   graphFocus: { nodeId: string; key: number } | null;
   /** Pan/zoom per chapter (kept out of the undo history; written to the project on save). */
   views: Record<string, { x: number; y: number; zoom: number }>;

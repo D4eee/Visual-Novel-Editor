@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { SceneData, Layer } from '@vne/core';
-import { newId, createLayer, remapIds } from '@vne/core';
+import type { SceneData, Layer, Track } from '@vne/core';
+import { newId, createLayer, remapIds, createAnimation } from '@vne/core';
+import { clipEnd } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
 import { layerTree, deleteLayers, duplicateLayers, updateScene, sceneOf } from './sceneOps';
-import { elementUsage } from './sceneOps';
+import { elementUsage, precompose } from './sceneOps';
 import { addLayerMenu, reorder } from './CompositionCanvas';
 import { IconButton, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
@@ -128,6 +129,7 @@ export function LayersPanel({ session, nodeId }: { session: ProjectSession; node
                 ...(nodeId === GLOBAL_NODE_ID
                   ? [{ label: t('global.behind'), icon: 'arrowDown', checked: l.zone === 'back', hint: t('global.behindHint'), onClick: () => updateScene(session, nodeId, t('global.behind'), (s) => { for (const x of s.layers) if (ids.includes(x.id)) x.zone = l.zone === 'back' ? 'front' : 'back'; }) }]
                   : [{ label: t('global.makeGlobal'), icon: 'globe', hint: t('global.makeGlobalHint'), onClick: () => moveElements(session, nodeId, GLOBAL_NODE_ID, ids) }]),
+                { label: t('layer.precompose'), icon: 'package', hint: t('layer.precomposeHint'), onClick: () => precompose(session, nodeId, ids) },
                 { label: t('layer.saveComposition'), icon: 'layers', onClick: () => saveAsComposition(session, nodeId, ids) },
                 ...(l.type === 'core.composition' && l.props.compositionId ? [{ label: t('layer.unpackComposition'), icon: 'folderOpen', onClick: () => unpackComposition(session, nodeId, l.id) }] : []),
                 ...(l.type === 'core.group' && l.sourceCompositionId && session.project.compositions.some((c) => c.id === l.sourceCompositionId)
@@ -231,12 +233,28 @@ function unpackComposition(session: ProjectSession, nodeId: string, layerId: str
   const comp = session.project.compositions.find((c) => c.id === inst?.props.compositionId);
   if (!inst || !comp) return;
   const groupId = newId('lyr');
-  const copies = remapIds(JSON.parse(JSON.stringify(comp.layers)) as Layer[]).value.map((l) => ({ ...l, parentId: l.parentId || groupId }));
+  const remapped = remapIds(JSON.parse(JSON.stringify({ layers: comp.layers, tracks: comp.animation?.tracks || [] })) as { layers: Layer[]; tracks: Track[] });
+  const copies = remapped.value.layers.map((l) => ({ ...l, parentId: l.parentId || groupId }));
+  // The composition's own animation comes along into the scene's animation, at the instance's start.
+  const start = Number(inst.props.startAt) || 0;
+  const ui = session.sceneUI(nodeId);
   updateScene(session, nodeId, t('layer.unpackComposition'), (s) => {
     const i = s.layers.findIndex((l) => l.id === layerId);
     const group: Layer = { id: groupId, type: 'core.group', name: comp.name, parentId: inst.parentId, visible: inst.visible, locked: false, props: { ...inst.props }, sourceCompositionId: comp.id };
     delete group.props.compositionId;
+    delete group.props.speed;
+    delete group.props.playback;
     s.layers.splice(i, 1, group, ...copies);
+    if (comp.animation && (remapped.value.tracks.length || comp.animation.spans)) {
+      let clip = s.animations.find((c) => c.id === ui.clipId) || s.animations[0];
+      if (!clip) { clip = createAnimation(comp.name, 3); s.animations.push(clip); }
+      for (const tr of remapped.value.tracks) clip.tracks.push({ ...tr, keyframes: tr.keyframes.map((k) => ({ ...k, t: Math.round((k.t + start) * 1000) / 1000 })) });
+      for (const [id, sp] of Object.entries(comp.animation.spans || {})) {
+        const nid = remapped.map.get(id);
+        if (nid && sp) clip.spans = { ...(clip.spans || {}), [nid]: { in: (sp.in || 0) + start, out: sp.out == null ? null : sp.out + start } };
+      }
+      clip.duration = Math.max(clip.duration, start + clipEnd(comp.animation));
+    }
   });
   session.setSceneUI(nodeId, { selectedLayers: [groupId] });
 }
@@ -252,9 +270,24 @@ function updateComposition(session: ProjectSession, nodeId: string, groupId: str
   while (grew) { grew = false; for (const l of scene.layers) if (l.parentId && inside.has(l.parentId) && !inside.has(l.id)) { inside.add(l.id); grew = true; } }
   const layers = scene.layers.filter((l) => l.id !== groupId && inside.has(l.id)).map((l) => ({ ...JSON.parse(JSON.stringify(l)), parentId: l.parentId === groupId ? null : l.parentId }));
   const name = session.project.compositions.find((c) => c.id === group.sourceCompositionId)?.name || '';
+  // Keys of these elements in the scene's animation become the composition's animation again.
+  const start = Number(group.props.startAt) || 0;
+  const ui = session.sceneUI(nodeId);
+  const clip = scene.animations.find((c) => c.id === ui.clipId) || scene.animations[0];
+  const tracks = (clip?.tracks || []).filter((tr) => inside.has(tr.layerId) && tr.layerId !== groupId);
+  const spans = Object.entries(clip?.spans || {}).filter(([id]) => inside.has(id) && id !== groupId);
   session.update(t('layer.updateComposition', { name }), (d) => {
     const c = d.compositions.find((x) => x.id === group.sourceCompositionId);
-    if (c) c.layers = remapIds(layers).value;
+    if (!c) return;
+    const r = remapIds(JSON.parse(JSON.stringify({ layers, tracks })) as { layers: Layer[]; tracks: Track[] });
+    c.layers = r.value.layers;
+    if (tracks.length || spans.length) {
+      const sh = (v: number) => Math.round((v - start) * 1000) / 1000;
+      const anim = { ...(c.animation || createAnimation(name, 1)), tracks: r.value.tracks.map((tr) => ({ ...tr, keyframes: tr.keyframes.map((k) => ({ ...k, t: Math.max(0, sh(k.t)) })) })) };
+      anim.spans = spans.length ? Object.fromEntries(spans.map(([id, sp]) => [r.map.get(id) || id, { in: Math.max(0, sh(sp.in || 0)), out: sp.out == null ? null : sh(sp.out) }])) : undefined;
+      anim.duration = Math.max(0.1, clipEnd(anim));
+      c.animation = anim;
+    } else if (c.animation) c.animation = null;
   });
   (globalThis as any).__vneStore?.toast(t('layer.compositionUpdated', { name }), 'success');
 }

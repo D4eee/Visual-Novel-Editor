@@ -26,6 +26,8 @@ The **Checks** section runs validation first. Errors (for example a missing asse
 | Windows | `<Title>-win-x64/<Title>.exe` with its files, plus `<Title>-win-x64.zip` to share |
 | Web | `<Title>-web/` — upload to any static web host (itch.io, GitHub Pages…) |
 
+Games include the usual player features: **save / load** (9 slots with thumbnails, plus an autosave), **quick save / quick load** (Q.Save / Q.Load, F5 / F9), the **log** of past lines (▶ replays a line's voice), **auto** mode (waits for voice lines to finish), **skip** (Ctrl held or the Skip button; it stops at text the player has not read yet unless they choose *Skip unread text too* in Settings), and settings for text speed, volumes (music, sound, voice) and, in [multi-language games](translations.md), the language.
+
 Only assets that are used are included, together with the runtime part of the modules in use. Editor data (graph layout, notes, editor-only modules) is stripped. Players' saves and settings are kept separately for each game.
 
 Games are built on Electron. The editor ships with the Electron runtimes it needs; if your build of the editor does not include them, the first export for a platform downloads the official Electron release once and verifies its SHA-256 checksum. Exporting a different platform than the one you are on works (for example, a Windows game from a Mac).

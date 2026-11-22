@@ -1,3 +1,4 @@
+import { ImageService } from './images';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -53,6 +54,7 @@ export function createHost(cfg: HostConfig) {
   const effectPresets = new EffectPresetStore(path.join(cfg.userDataDir, 'effect-presets'));
   const elementPresets = new ElementPresetStore(path.join(cfg.userDataDir, 'element-presets'));
   const ai = new AiService(path.join(cfg.userDataDir, 'ai.json'), cfg.secrets);
+  const images = new ImageService(path.join(cfg.userDataDir, 'images.json'), cfg.secrets);
   const templates = new TemplateStore(path.join(cfg.userDataDir, 'runtime-templates'), cfg.templateDirs || []);
   const fileUrl = (root: string, rel = '') => `${cfg.urlBase}${allowRoot(root)}/${rel.split('/').map(encodeURIComponent).join('/')}`;
   allowRoot(path.join(cfg.examplesDir));
@@ -193,6 +195,9 @@ export function createHost(cfg: HostConfig) {
     async 'ai.configure'({ patch }) { return ai.update(patch); },
     async 'ai.chat'(args) { return ai.chat({ requestId: args?.requestId, system: args?.system, messages: args?.messages || [], tools: args?.tools || [], maxTokens: args?.maxTokens }); },
     async 'ai.cancel'({ requestId }) { return ai.cancel(String(requestId)); },
+    async 'images.config'() { return images.getPublic(); },
+    async 'images.configure'({ patch }) { return images.update(patch); },
+    async 'images.generate'(args) { return images.generate(args || {}); },
     async 'effectPresets.list'() { return effectPresets.list(); },
     async 'effectPresets.save'({ preset }) { return effectPresets.save(preset); },
     async 'effectPresets.delete'({ id }) { await effectPresets.remove(String(id)); return true; },
