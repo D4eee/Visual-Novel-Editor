@@ -25,6 +25,13 @@ Chinese translations are available for [Getting started](user-guide/getting-star
 | [Module quick start](modding/getting-started.md) | Create your first module |
 | [API reference](api/README.md) | SDK types and extension interfaces |
 
+## For AI agents
+
+| Guide | Contents |
+| --- | --- |
+| [Developing (for AI agents)](ai/DEVELOPING.md) | Repository map, data model, edits and undo, host API, recipes for extending the program, conventions, build and tests |
+| [Using (for AI agents)](ai/USING.md) | Making a game with the editor: graph, scenes, script format, dialogue, sound, animation, interactions, translations, export, assistant tools |
+
 ## Develop and release
 
 - [Architecture](architecture/README.md): package boundaries, data flow, and design decisions.
