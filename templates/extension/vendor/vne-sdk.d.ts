@@ -64,7 +64,7 @@ export interface Issue { severity: 'error' | 'warning' | 'info'; code: string; m
 /* ------------------------------------------------------------------ */
 
 export type PropType = 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select' | 'asset' | 'character' | 'portrait'
-  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item';
+  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition';
 
 export interface PropDef {
   key: string;

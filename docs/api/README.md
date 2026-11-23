@@ -1,6 +1,6 @@
 # API reference
 
-Module API version **1.4.0** · engine 1.1.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.5.0** · engine 1.1.1. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 
@@ -80,7 +80,7 @@ export interface Issue { severity: 'error' | 'warning' | 'info'; code: string; m
 
 ```ts
 export type PropType = 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select' | 'asset' | 'character' | 'portrait'
-  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item';
+  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition';
 
 export interface PropDef {
   key: string;

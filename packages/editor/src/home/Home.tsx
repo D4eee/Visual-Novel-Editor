@@ -145,6 +145,7 @@ export function Home() {
               <h2>{t('home.learn')}</h2>
               <a href="https://github.com/D4eee/Visual-Novel-Editor/blob/main/docs/user-guide/README.md" target="_blank" rel="noreferrer"><Icon name="book" size={14} /> {t('home.userGuide')}</a>
               <a href="https://github.com/D4eee/Visual-Novel-Editor/blob/main/docs/modding/README.md" target="_blank" rel="noreferrer"><Icon name="module" size={14} /> {t('home.modding')}</a>
+              <button type="button" className="link" onClick={() => { try { localStorage.removeItem('vne.tour.v1'); } catch { /* ignore */ } store.toast(t('tour.willShow'), 'info'); }}><Icon name="help" size={14} /> {t('tour.replay')}</button>
             </div>
           </section>
         </div>
