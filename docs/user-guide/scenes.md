@@ -1,6 +1,10 @@
 # Scenes and layers
 
-Open a scene node to get its **Composition** workspace: the canvas in the middle, the **Layers** list on the left, the inspector on the right and the dock below with the **Timeline** and **Interactions**. Everything in a scene is an element (a layer): pictures, characters, text, media, the dialogue and each choice. Every element has properties, keyframes on the timeline and its own effects. The **Modules** tab next to *Composition* holds module settings attached to this scene.
+Open a scene node to get its **Composition** workspace: the canvas in the middle, the **Layers** list on the left, the inspector on the right and the dock below with the **Timeline** and **Interactions**. Everything in a scene is an element (a layer): pictures, characters, text, media, the dialogue and each choice. Every element has properties, keyframes on the timeline and its own effects. The **Script** tab shows the scene's dialogue and choices as text (see [Script view](#script-view)); the **Modules** tab holds module settings attached to this scene.
+
+An empty scene shows **first steps** on the canvas: add a background (from your images, a new file or the image generator), a character, the dialogue, a text box, or switch to the Script view.
+
+**More room for the canvas:** the buttons at the right of the scene header hide the Layers list and the dock (timeline and interactions); **Ctrl/⌘+\\** hides or shows both at once. A hidden dock keeps its tab row: click a tab to open it again. A canvas that was fitted to its area (**Ctrl/⌘+0**) stays fitted when panels open or close.
 
 ## Layers
 
@@ -12,6 +16,7 @@ Open a scene node to get its **Composition** workspace: the canvas in the middle
 | Image | Any picture |
 | Character | A character with switchable portraits (expressions); follows the portrait chosen on each dialogue line |
 | Text | Rich text with a typing reveal (animatable) |
+| Text box | A box (size, padding, color, border, rounded corners) whose text wraps to fit it; aligned left, center or right and top, middle or bottom. When the text does not fit it can be cut off, shrink to fit, or run past the box. Dragging its handles resizes the box and the text re-wraps (hold **Alt** to scale instead) |
 | Shape | Rectangles, ellipses, lines; fills, gradients, strokes, rounded corners |
 | Button | A clickable button with text and styles |
 | Hotspot | An invisible clickable area |
@@ -26,6 +31,8 @@ Open a scene node to get its **Composition** workspace: the canvas in the middle
 | Module layers | Added by modules, e.g. *Speech bubble* from the example modules |
 
 **Add layer** groups the elements: *Media* (image, video, audio — pick a file from the library or import a new one), *Shapes* (rectangle, ellipse, triangle, line), *Text* (text, dialogue), *Interactive* (choice, button, detection area), then effects, structure and module elements. Elements can also be created from **Interactions** (*New element*). Copy, cut and paste elements with **Ctrl/⌘+C / X / V** — across scenes and projects too.
+
+**Double-click** a text or text box on the canvas to type in it directly; click outside or press **Ctrl/⌘+Enter** to finish, **Esc** to cancel.
 
 On the canvas: the mouse wheel zooms, dragging empty space pans, dragging a layer moves it, corner handles to scale, the round handle to rotate. **Shift** keeps proportions while scaling, locks movement to one axis and rotates in 15° steps; **Alt** temporarily disables snapping; arrow keys nudge (Shift ×10). Snapping to edges and centers can be switched off below the canvas. **Ctrl/⌘+G** groups layers. Lock and hide layers in the Layers list; drag to reorder or re-parent.
 
@@ -53,6 +60,20 @@ Add a **Dialogue** layer (**Add layer → Dialogue**) and select it: the inspect
 - Lines can have a voice clip and per-line settings.
 
 Add each choice with **Add layer → Choice**. Choices appear on the canvas, where they were placed, after the last line. Each choice adds an output to the scene node, labelled with its id (C1, C2 …); hover the output for a second to see the choice's text, condition and effects. See [Story flow](story-flow.md#choices-and-their-outputs).
+
+### Script view
+
+The **Script** tab next to *Composition* shows the scene's lines and choices as text, in the same format as [Importing a script](script-import.md):
+
+```text
+Mia: Good morning!
+Mia (smile): The rain stopped.
+The street is quiet.
+* Go outside -> Street
+* Stay in -> Room
+```
+
+Edits apply as you type (each pause is one undo step), and edits made in the dialogue list or the graph show up here. Lines and choices keep their identity by position, so translations, voices and choice styles stay attached. New speaker names become characters; `* Choice -> Scene` connects the choice to that scene of the same chapter, `-> Scene` (or `-> END`) sets where a scene without choices continues, and a choice or scene without `->` leads nowhere. Line breaks inside a line are written `\n`. The side panel inserts speakers, narration and choices, and lists anything it cannot connect.
 
 ### Free dialogue
 

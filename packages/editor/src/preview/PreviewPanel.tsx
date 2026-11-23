@@ -5,7 +5,7 @@ import { chapterEntry, startNode, newId } from '@vne/core';
 import { GameRuntime, RuntimeError, ModuleHost, createEngine } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
 import { useSession, useT } from '../state/store';
-import { Button, Tabs, Select, cx, TextInput } from '../ui/controls';
+import { Button, IconButton, Tabs, Select, cx, TextInput } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 
 type Scope = 'scene' | 'chapter' | 'game';
@@ -24,6 +24,9 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
   const rtRef = useRef<GameRuntime | null>(null);
   const [scope, setScope] = useState<Scope>(p.scope);
   const [run, setRun] = useState(0);
+  // The debug panel folds away so the game gets the whole width (remembered).
+  const [debugOpen, setDebugOpen] = useState(() => { try { return localStorage.getItem('vne.preview.debug') !== '0'; } catch { return true; } });
+  const toggleDebug = () => { const v = !debugOpen; setDebugOpen(v); try { localStorage.setItem('vne.preview.debug', v ? '1' : '0'); } catch { /* ignore */ } };
   const [tab, setTab] = useState<'state' | 'path' | 'events' | 'errors'>('state');
   const [current, setCurrent] = useState<{ id: string; name: string; type: string } | null>(null);
   const [vars, setVars] = useState<{ id: string; name: string; value: VarValue; scope: string }[]>([]);
@@ -119,12 +122,14 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
         <Button small icon="refresh" onClick={() => setRun((x) => x + 1)} title={t('preview.restartHint')}>{t('preview.restart')}</Button>
         {current && <button type="button" className="current-node" onClick={() => { session.focusNode(current.id); }} title={t('graph.reveal')}><span className={cx('live-dot', running && 'on')} />{current.name}</button>}
         <div className="grow" />
-        <span className="muted small">{t('preview.sameRuntime')}</span>
+        <span className="muted small preview-note">{t('preview.sameRuntime')}</span>
+        {!p.docked && <IconButton icon={debugOpen ? 'panel' : 'panelLeft'} size={15} active={debugOpen} title={debugOpen ? t('preview.hideDebug') : t('preview.showDebug')} onClick={toggleDebug} />}
+        {!p.docked && errorCount > 0 && !debugOpen && <button type="button" className="preview-err-chip" onClick={() => { setDebugOpen(true); setTab('errors' as any); }}>{t('preview.errorsN', { n: errorCount })}</button>}
 
       </div>
       <div className="preview-main">
         <div className="preview-stage" ref={hostRef} tabIndex={0} data-preview-focus="true" />
-        <aside className="preview-debug">
+        {debugOpen && <aside className="preview-debug">
           <Tabs value={tab} onChange={setTab} tabs={[
             { id: 'state', label: t('preview.variables'), icon: 'variable' },
             { id: 'path', label: t('preview.path'), icon: 'workflow' },
@@ -171,7 +176,7 @@ export function PreviewPanel({ session }: { session: ProjectSession }) {
               </div>
             )}
           </div>
-        </aside>
+        </aside>}
       </div>
     </div>
   );

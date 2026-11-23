@@ -124,6 +124,40 @@ function textLayout(rc: any, p: Record<string, any>) {
   return { style, full, shown, boxWidth: width > 0 ? width : full.width };
 }
 
+/** Text box layout: wrap to the inner width; "shrink" lowers the font size until the text fits. */
+export function textboxLayout(rc: any, p: Record<string, any>) {
+  const ctx: CanvasRenderingContext2D = measureCtx();
+  const w = num(p.width, 560), h = num(p.height, 220);
+  const pad = Math.max(0, Math.min(num(p.padding, 0), w / 2 - 1, h / 2 - 1));
+  const inner = Math.max(1, w - pad * 2), innerH = Math.max(1, h - pad * 2);
+  let style = textStyle(rc, p);
+  const raw = interpolateVars(String(p.text ?? ''), varLookup(rc.view || rc));
+  const tokens = parseRich(raw);
+  let full = layoutRich(ctx, tokens, style, inner);
+  if (p.overflow === 'shrink') {
+    for (let i = 0; i < 24 && full.height > innerH && style.fontSize > 6; i++) {
+      style = { ...style, fontSize: Math.max(6, style.fontSize * 0.92) };
+      full = layoutRich(ctx, tokens, style, inner);
+    }
+  }
+  const total = tokens.reduce((n, t) => n + (t.kind === 'run' ? [...t.run.text].length : 0), 0);
+  const reveal = p.reveal === undefined ? 1 : Math.max(0, Math.min(1, num(p.reveal, 1)));
+  const shown = reveal >= 1 ? full : layoutRich(ctx, tokens, style, inner, Math.floor(total * reveal));
+  const free = innerH - full.height;
+  const y = pad + (p.verticalAlign === 'middle' ? Math.max(0, free / 2) : p.verticalAlign === 'bottom' ? Math.max(0, free) : 0);
+  return { style, full, shown, pad, inner, y };
+}
+
+function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 /* ------------------------------------------------------------------ */
 
 export function registerBuiltinLayers(engine: Engine): void {
@@ -248,6 +282,52 @@ export function registerBuiltinLayers(engine: Engine): void {
       ctx.save();
       if (num(p.shadowBlur) > 0) { ctx.shadowColor = p.shadowColor; ctx.shadowBlur = num(p.shadowBlur); ctx.shadowOffsetY = num(p.shadowBlur) / 4; }
       drawRich(ctx, shown, style, boxWidth, rc.time, { stroke: p.strokeColor, strokeWidth: num(p.strokeWidth) });
+      ctx.restore();
+    },
+  });
+
+  // A text box: a box of a given size whose text wraps to fit it (and can shrink to fit).
+  reg({
+    id: 'core.textbox', label: 'layer.textbox', icon: 'textbox', category: 'text', visual: true,
+    props: visual([
+      { key: 'text', type: 'text', label: 'prop.text', default: 'Type here. The text wraps to the size of the box.', translatable: true },
+      { key: 'width', type: 'number', label: 'prop.width', default: 560, min: 10, unit: 'px', animatable: true, group: 'size' },
+      { key: 'height', type: 'number', label: 'prop.height', default: 220, min: 10, unit: 'px', animatable: true, group: 'size' },
+      { key: 'padding', type: 'number', label: 'prop.padding', default: 20, min: 0, unit: 'px', animatable: true, group: 'size' },
+      { key: 'overflow', type: 'select', label: 'prop.overflow', default: 'clip', options: [{ value: 'clip', label: 'overflow.clip' }, { value: 'shrink', label: 'overflow.shrink' }, { value: 'visible', label: 'overflow.visible' }], group: 'size', description: 'prop.overflow.desc' },
+      { key: 'fontFamily', type: 'font', label: 'prop.font', default: 'system-ui, "PingFang SC", "Microsoft YaHei", sans-serif', group: 'text' },
+      { key: 'fontSize', type: 'number', label: 'prop.fontSize', default: 30, min: 4, unit: 'px', animatable: true, group: 'text' },
+      { key: 'fontWeight', type: 'select', label: 'prop.fontWeight', default: 'normal', options: [{ value: 'normal', label: 'weight.normal' }, { value: '600', label: 'weight.semibold' }, { value: 'bold', label: 'weight.bold' }], group: 'text' },
+      { key: 'italic', type: 'boolean', label: 'prop.italic', default: false, group: 'text' },
+      { key: 'color', type: 'color', label: 'prop.color', default: '#ffffff', animatable: true, group: 'text' },
+      { key: 'align', type: 'select', label: 'prop.align', default: 'left', options: [{ value: 'left', label: 'align.left' }, { value: 'center', label: 'align.center' }, { value: 'right', label: 'align.right' }], group: 'text' },
+      { key: 'verticalAlign', type: 'select', label: 'prop.verticalAlign', default: 'top', options: [{ value: 'top', label: 'valign.top' }, { value: 'middle', label: 'valign.middle' }, { value: 'bottom', label: 'valign.bottom' }], group: 'text' },
+      { key: 'lineHeight', type: 'number', label: 'prop.lineHeight', default: 1.45, step: 0.05, group: 'text' },
+      { key: 'letterSpacing', type: 'number', label: 'prop.letterSpacing', default: 0, step: 0.5, animatable: true, group: 'text' },
+      { key: 'reveal', type: 'number', label: 'prop.reveal', default: 1, min: 0, max: 1, step: 0.01, animatable: true, group: 'text', description: 'prop.reveal.desc' },
+      { key: 'fill', type: 'color', label: 'prop.boxFill', default: 'rgba(16,18,30,0.78)', animatable: true, group: 'style' },
+      { key: 'stroke', type: 'color', label: 'prop.stroke', default: 'rgba(255,255,255,0.25)', animatable: true, group: 'style' },
+      { key: 'strokeWidth', type: 'number', label: 'prop.strokeWidth', default: 1, min: 0, animatable: true, group: 'style' },
+      { key: 'radius', type: 'number', label: 'prop.radius', default: 14, min: 0, animatable: true, group: 'style' },
+      { key: 'textStrokeColor', type: 'color', label: 'prop.strokeColor', default: '#000000', animatable: true, group: 'style' },
+      { key: 'textStrokeWidth', type: 'number', label: 'prop.textStrokeWidth', default: 0, min: 0, animatable: true, group: 'style' },
+      { key: 'shadowColor', type: 'color', label: 'prop.shadowColor', default: 'rgba(0,0,0,0.6)', animatable: true, group: 'style' },
+      { key: 'shadowBlur', type: 'number', label: 'prop.shadowBlur', default: 0, min: 0, animatable: true, group: 'style' },
+    ]),
+    size: (_l, p) => ({ width: num(p.width, 560), height: num(p.height, 220) }),
+    draw(rc, _l, p) {
+      const ctx = rc.ctx;
+      const w = num(p.width, 560), h = num(p.height, 220);
+      const L = textboxLayout(rc, p);
+      ctx.save();
+      const r = Math.max(0, Math.min(num(p.radius, 0), w / 2, h / 2));
+      roundRectPath(ctx, 0, 0, w, h, r);
+      if (p.fill) { ctx.fillStyle = p.fill; ctx.fill(); }
+      if (num(p.strokeWidth) > 0 && p.stroke) { ctx.strokeStyle = p.stroke; ctx.lineWidth = num(p.strokeWidth); ctx.stroke(); }
+      if (p.overflow !== 'visible') { roundRectPath(ctx, 0, 0, w, h, r); ctx.clip(); }
+      ctx.translate(L.pad, L.y);
+      if (num(p.shadowBlur) > 0) { ctx.shadowColor = p.shadowColor; ctx.shadowBlur = num(p.shadowBlur); ctx.shadowOffsetY = num(p.shadowBlur) / 4; }
+      drawRich(ctx, L.shown, L.style, L.inner, rc.time, { stroke: p.textStrokeColor, strokeWidth: num(p.textStrokeWidth) });
       ctx.restore();
     },
   });
@@ -461,7 +541,7 @@ export function registerBuiltinLayers(engine: Engine): void {
   reg({
     id: 'core.composition', label: 'layer.composition', icon: 'layers', category: 'structure', visual: true,
     props: visual([
-      { key: 'compositionId', type: 'json', label: 'prop.composition', default: null },
+      { key: 'compositionId', type: 'composition', label: 'prop.composition', default: null },
       // A composition with its own animation plays it like a clip on the scene's clock.
       { key: 'startAt', type: 'number', label: 'prop.compStart', default: 0, step: 0.05, unit: 's', description: 'prop.compStart.desc' },
       { key: 'speed', type: 'number', label: 'prop.compSpeed', default: 1, min: 0, max: 8, step: 0.05, animatable: true },

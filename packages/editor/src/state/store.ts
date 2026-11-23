@@ -16,6 +16,7 @@ export type Dialog =
   | { kind: 'modules' }
   | { kind: 'quickOpen' }
   | { kind: 'shortcuts' }
+  | { kind: 'history' }
   | { kind: 'confirm'; title: string; message: string; confirm: string; cancel?: string; danger?: boolean; resolve: (ok: boolean) => void }
   | { kind: 'prompt'; title: string; label: string; value: string; resolve: (v: string | null) => void }
   | { kind: 'pickPath'; title: string; mode: 'folder' | 'files' | 'project'; start?: string; resolve: (p: string[] | null) => void };
@@ -148,17 +149,23 @@ export class EditorStore {
   async createProject(dir: string, name: string, template?: string): Promise<ProjectSession | null> {
     try {
       const p = createProject(name);
+      p.chapters[0].name = this.t('defaults.firstChapter');
       if (!template) {
-        // A minimal but runnable starting point: Start → first scene.
-        const { createNode, connect } = await import('@vne/core');
+        // A minimal but runnable starting point: Start → first scene → ending (no open ends).
+        const { createNode, connect, nodePorts } = await import('@vne/core');
         const { createEngine } = await import('@vne/runtime');
         const engine = createEngine();
         const ch = p.chapters[0].id;
-        const start = createNode(engine, p, 'core.start', ch, 80, 200, 'Start');
+        const start = createNode(engine, p, 'core.start', ch, 80, 200, this.t('defaults.start'));
         p.nodes[start.id] = start;
         const scene = createNode(engine, p, 'core.scene', ch, 360, 160, this.t('defaults.firstScene'));
         p.nodes[scene.id] = scene;
         connect(engine, p, { node: start.id, port: 'out' }, { node: scene.id, port: 'in' });
+        const end = createNode(engine, p, 'core.ending', ch, 680, 200, this.t('defaults.ending'));
+        p.nodes[end.id] = end;
+        const out = nodePorts(engine, p, scene).outputs[0];
+        const inp = nodePorts(engine, p, end).inputs[0];
+        if (out && inp) connect(engine, p, { node: scene.id, port: out.id }, { node: end.id, port: inp.id });
       }
       await call('project.create', { dir, json: serializeProject(p), template });
       return this.openProject(dir);

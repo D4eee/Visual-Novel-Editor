@@ -200,3 +200,47 @@ test('compositions: own animation time with start, speed, loop and back-and-fort
   assert.equal(V.compositionTime(comp, 4, { startAt: 1, playback: 'pingpong' }), 1);
   assert.equal(V.compositionTime(comp, 2, { speed: 0.5 }), 1);
 });
+
+test('1.1.1: scene script view round trip', () => {
+  let p = V.createProject('S');
+  const ch = p.chapters[0].id;
+  const a = V.createNode(engine, p, 'core.scene', ch, 0, 0, 'A');
+  const b = V.createNode(engine, p, 'core.scene', ch, 300, 0, 'B');
+  const dl = V.createLayer(engine, p, V.DIALOGUE_LAYER, 'Dialogue');
+  dl.props.lines = [V.createDialogueLine('Hello\nthere', 'chr_m'), V.createDialogueLine('Time: late', null), V.createDialogueLine('Rain.', null)];
+  a.data.layers.push(dl);
+  const c1 = V.createLayer(engine, p, V.CHOICE_LAYER, 'Go', { y: 100, text: 'Go' });
+  a.data.layers.push(c1);
+  p = V.produce(p, (d) => {
+    d.nodes[a.id] = a; d.nodes[b.id] = b;
+    d.characters.push({ id: 'chr_m', name: 'Mia', color: '#fff', portraits: [{ id: 'pt1', name: 'smile', assetId: null }] });
+    d.edges.push({ id: 'e1', from: { node: a.id, port: `c:${c1.id}` }, to: { node: b.id, port: 'in' } });
+  });
+  const text = V.sceneToScript(p, a.id);
+  assert.equal(text, 'Mia: Hello\\nthere\n> Time: late\nRain.\n\n* Go -> B');
+  const back = V.parseScript(text).chapters[0].scenes[0];
+  assert.deepEqual(back.lines.map((l) => [l.speaker, l.text]), [['Mia', 'Hello\\nthere'], [null, 'Time: late'], [null, 'Rain.']]);
+  assert.deepEqual(back.choices.map((c) => [c.text, c.target]), [['Go', 'B']]);
+  // A scene without choices writes where it continues.
+  const p2 = V.produce(p, (d) => { d.nodes[a.id].data.layers = d.nodes[a.id].data.layers.filter((l) => l.type !== V.CHOICE_LAYER); d.edges = [{ id: 'e2', from: { node: a.id, port: 'next' }, to: { node: b.id, port: 'in' } }]; });
+  assert.match(V.sceneToScript(p2, a.id), /\n-> B$/);
+});
+
+test('1.1.1: history steps and jumping several steps', () => {
+  const h = new V.History({ n: 0 });
+  for (let i = 1; i <= 4; i++) h.update(`step ${i}`, (d) => { d.n = i; });
+  h.go(-3);
+  assert.equal(h.state.n, 1);
+  const st = h.steps();
+  assert.deepEqual(st.past.map((e) => e.label), ['step 1']);
+  assert.deepEqual(st.future.map((e) => e.label), ['step 2', 'step 3', 'step 4']);
+  h.go(2);
+  assert.equal(h.state.n, 3);
+});
+
+test('1.1.1: text box element is registered with wrapping props', () => {
+  const def = engine.layerTypes.get('core.textbox');
+  assert.ok(def);
+  for (const k of ['text', 'width', 'height', 'padding', 'overflow', 'verticalAlign', 'fontSize', 'fill']) assert.ok(def.props.some((p) => p.key === k), k);
+  assert.ok(V.isTranslatableProp ? V.isTranslatableProp(def.props.find((p) => p.key === 'text')) : true);
+});

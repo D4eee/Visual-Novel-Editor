@@ -123,6 +123,9 @@ export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; 
     case 'font':
       control = <FontPicker project={ctx.project} value={value} onChange={onChange} t={t} />;
       break;
+    case 'composition':
+      control = <Select value={value || ''} placeholder={t('common.choose')} options={ctx.project.compositions.map((c) => ({ value: c.id, label: c.animation ? `${c.name} · ${t('comp.animated')}` : c.name }))} onChange={(v) => onChange(v || null)} />;
+      break;
     case 'json':
       control = <code className="json-view">{JSON.stringify(value)}</code>;
       break;
