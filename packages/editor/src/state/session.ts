@@ -14,9 +14,9 @@ export interface SceneUI {
   playing: boolean;
   bottomTab: string;
   selectedLine: string | null;
-  view: { zoom: number; x: number; y: number } | null;
+  view: { zoom: number; x: number; y: number; fit?: boolean } | null;
   record: boolean;
-  subTab: 'composition' | 'modules';
+  subTab: 'composition' | 'script' | 'modules';
   selectedKeys: string[];
   showTextbox: boolean;
   snap: boolean;

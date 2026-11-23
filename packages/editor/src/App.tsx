@@ -1,6 +1,6 @@
 import { hasSceneData, GLOBAL_NODE_ID } from '@vne/core';
 import { PresetManagerHost } from './effects/userPresets';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore, useSession, useT, store } from './state/store';
 import type { ProjectSession } from './state/session';
 import { Home } from './home/Home';
@@ -16,6 +16,7 @@ import { DataPanel } from './sidebar/DataPanel';
 import { PreviewPanel } from './preview/PreviewPanel';
 import { ExportDialog } from './export/ExportDialog';
 import { SettingsWindow } from './settings/SettingsWindow';
+import { TourHost } from './ui/Tour';
 import { TranslationsDialog } from './l10n/TranslationsDialog';
 import { ImportScriptDialog } from './story/ImportScript';
 import { GenerateImageDialog } from './assets/ImageGen';
@@ -46,6 +47,7 @@ export function App() {
       if (mod && k === 'k') { e.preventDefault(); if (store.session) store.open({ kind: 'quickOpen' }); return; }
       if (mod && k === 'p') { e.preventDefault(); const ss = store.session; if (ss) ss.setUI({ preview: ss.ui.preview ? null : { scope: 'scene', nodeId: ss.currentNodeId, key: Date.now() } }); return; }
       if (mod && k === 'e') { e.preventDefault(); if (store.session) store.open({ kind: 'export' }); return; }
+      if (mod && e.shiftKey && k === 'h') { e.preventDefault(); if (store.session) store.open({ kind: 'history' }); return; }
       if (mod && k === 'j') { e.preventDefault(); setChatOpen(!document.querySelector('.ai-panel')); return; }
       if (mod && k === ',') { e.preventDefault(); store.open({ kind: 'settings' }); return; }
       if (mod && k === 'n' && !e.shiftKey) { e.preventDefault(); store.open({ kind: 'newProject' }); return; }
@@ -101,6 +103,7 @@ export function App() {
       </div>
       <PresetManagerHost session={s || null} />
       <DialogHost />
+      <TourHost />
       {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'translations' && s && <TranslationsDialog session={s} onClose={() => st.open(null)} />}
       {st.dialog?.kind === 'importScript' && s && <ImportScriptDialog session={s} onClose={() => st.open(null)} />}
@@ -173,6 +176,7 @@ function SessionActions({ session }: { session: ProjectSession }) {
     <div className="session-actions">
       <IconButton icon="undo" title={h.undoLabel ? `${t('history.undo')}: ${h.undoLabel} (${shortcut('Mod+Z')})` : t('history.nothingUndo')} disabled={!h.canUndo} onClick={() => h.undo()} />
       <IconButton icon="redo" title={h.redoLabel ? `${t('history.redo')}: ${h.redoLabel} (${shortcut('Mod+Shift+Z')})` : t('history.nothingRedo')} disabled={!h.canRedo} onClick={() => h.redo()} />
+      <IconButton icon="clock" title={`${t('history.panel')} (${shortcut('Mod+Shift+H')})`} disabled={!h.canUndo && !h.canRedo} onClick={() => store.open({ kind: 'history' })} />
       <span className="sep" />
       {session.ext.toolbar.map((tb) => <Button key={tb.id} small kind="ghost" icon={tb.icon || 'module'} onClick={() => { try { tb.run(makeMountContext(session, tb.moduleId)); } catch (err) { session.moduleError(tb.moduleId, err, 'toolbar'); } }}>{t(tb.label)}</Button>)}
       {session.ui.preview ? (
@@ -185,7 +189,7 @@ function SessionActions({ session }: { session: ProjectSession }) {
         </div>
       )}
       <IconButton icon="languages" title={t('l10n.title')} active={!!session.project.localization} onClick={() => store.open({ kind: 'translations' })} />
-      <Button icon="export" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
+      <Button icon="export" className="export-btn" onClick={() => store.open({ kind: 'export' })} title={shortcut('Mod+E')}>{t('export.button')}</Button>
       <IconButton icon="module" title={t('modules.manage')} onClick={() => store.open({ kind: 'modules' })} />
       <IconButton icon="settings" title={`${t('prefs.title')} (${shortcut('Mod+,')})`} onClick={() => store.open({ kind: 'settings' })} />
     </div>
@@ -209,11 +213,54 @@ function SessionView({ session }: { session: ProjectSession }) {
   const node = tab.kind === 'node' ? session.project.nodes[tab.nodeId] : null;
   const custom = tab.kind === 'custom' ? tab.id : null;
 
+  // Narrow windows (or an open AI panel): the work area keeps a usable width by tucking the
+  // sidebar, then the inspector, away; their buttons then open them over the work area.
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(() => window.innerWidth);
+  const [overlay, setOverlay] = useState<'side' | 'insp' | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const need = hasSceneData(node) ? 600 : 440;
+  const centerW = (side: boolean, insp: boolean) => width - 46 - (side ? sideW + 4 : 0) - (insp ? inspW + 4 : 0);
+  const hideSide = !!ui.sidebar && centerW(true, ui.inspectorOpen) < need;
+  // A running preview (not the one docked in the canvas) also gets the inspector's room.
+  const previewing = !!ui.preview && !(ui.preview.docked && hasSceneData(node) && ui.preview.nodeId === node.id);
+  const hideInsp = ui.inspectorOpen && (previewing || centerW(!!ui.sidebar && !hideSide, true) < need);
+  const showSide = !!ui.sidebar && (!hideSide || overlay === 'side');
+  const showInsp = ui.inspectorOpen && (!hideInsp || overlay === 'insp');
+  useEffect(() => { if ((overlay === 'side' && !hideSide) || (overlay === 'insp' && !hideInsp)) setOverlay(null); }, [hideSide, hideInsp, overlay]);
+  useEffect(() => {
+    if (!overlay) return;
+    const close = (e: KeyboardEvent) => { if (e.key === 'Escape') setOverlay(null); };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, [overlay]);
+  const pickActivity = (id: string) => {
+    if (hideSide || (!ui.sidebar && centerW(true, ui.inspectorOpen) < need)) {
+      if (ui.sidebar === id && overlay === 'side') { setOverlay(null); return; }
+      session.setUI({ sidebar: id });
+      setOverlay('side');
+      return;
+    }
+    session.setUI({ sidebar: ui.sidebar === id ? '' : id });
+  };
+  const toggleInspector = () => {
+    if (hideInsp) { setOverlay(overlay === 'insp' ? null : 'insp'); return; }
+    if (!ui.inspectorOpen && centerW(!!ui.sidebar && !hideSide, true) < need) { session.setUI({ inspectorOpen: true }); setOverlay('insp'); return; }
+    session.setUI({ inspectorOpen: !ui.inspectorOpen });
+  };
+
   return (
-    <div className="session">
+    <div className={cx('session', hideSide && 'side-tucked', hideInsp && 'insp-tucked')} ref={ref}>
+      {overlay && <div className="panel-scrim" onPointerDown={() => setOverlay(null)} />}
       <nav className="activity" aria-label={t('side.aria')}>
         {activities.map((a) => (
-          <button key={a.id} type="button" className={cx('act', ui.sidebar === a.id && 'active')} onClick={() => session.setUI({ sidebar: ui.sidebar === a.id ? '' : a.id })} title={a.label} aria-label={a.label}>
+          <button key={a.id} type="button" className={cx('act', ui.sidebar === a.id && (!hideSide || overlay === 'side') && 'active', ui.sidebar === a.id && hideSide && 'tucked')} onClick={() => pickActivity(a.id)} title={hideSide && ui.sidebar === a.id ? `${a.label} · ${t('layout.tucked')}` : a.label} aria-label={a.label}>
             <Icon name={a.icon} size={19} />
             {a.badge ? <span className="act-badge">{a.badge}</span> : null}
           </button>
@@ -224,9 +271,9 @@ function SessionView({ session }: { session: ProjectSession }) {
           {session.issues.filter((i) => i.severity === 'error').length > 0 && <span className="act-badge err">{session.issues.filter((i) => i.severity === 'error').length}</span>}
         </button>
       </nav>
-      {ui.sidebar && (
+      {showSide && (
         <>
-          <aside className="sidebar" style={{ width: sideW }}>
+          <aside className={cx('sidebar', hideSide && 'floating')} style={{ width: sideW }}>
             <div className="sidebar-title">{activities.find((a) => a.id === ui.sidebar)?.label}</div>
             <div className="sidebar-body">
               {ui.sidebar === 'story' && <StoryOutline session={session} />}
@@ -258,7 +305,7 @@ function SessionView({ session }: { session: ProjectSession }) {
           })}
           <div className="grow" />
           {session.ext.workspaces.length > 0 && <IconButton icon="module" size={14} title={t('modules.workspaces')} onClick={(e) => openMenu(e, session.ext.workspaces.map((w) => ({ label: t(w.title), icon: w.icon || 'module', onClick: () => session.openCustom(w.id) })))} />}
-          <IconButton icon={ui.inspectorOpen ? 'panel' : 'panelLeft'} size={15} title={t('inspector.toggle')} onClick={() => session.setUI({ inspectorOpen: !ui.inspectorOpen })} />
+          <IconButton icon={showInsp ? 'panel' : 'panelLeft'} size={15} active={hideInsp && overlay === 'insp'} title={hideInsp ? `${t('inspector.toggle')} · ${t('layout.tucked')}` : t('inspector.toggle')} onClick={toggleInspector} />
         </div>
         <div className="ws-body">
           {tab.kind === 'graph' && <StoryGraph session={session} />}
@@ -270,10 +317,10 @@ function SessionView({ session }: { session: ProjectSession }) {
           {ui.preview && !(ui.preview.docked && hasSceneData(node) && ui.preview.nodeId === node.id) && <PreviewPanel key={ui.preview.key} session={session} />}
         </div>
       </main>
-      {ui.inspectorOpen && (
+      {showInsp && (
         <>
           <div className="resizer-x" onPointerDown={(e) => startInsp(e, -1)} role="separator" aria-orientation="vertical" />
-          <aside className="inspector" style={{ width: inspW }} aria-label={t('inspector.title')}>
+          <aside className={cx('inspector', hideInsp && 'floating')} style={{ width: inspW }} aria-label={t('inspector.title')}>
             {hasSceneData(node) ? <SceneInspector session={session} nodeId={node.id} /> : <StoryInspector session={session} />}
           </aside>
         </>

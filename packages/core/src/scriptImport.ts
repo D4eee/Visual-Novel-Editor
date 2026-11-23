@@ -117,3 +117,46 @@ export function scriptStats(p: ParsedScript) {
   for (const c of p.chapters) for (const sc of c.scenes) { scenes++; lines += sc.lines.length; choices += sc.choices.length; }
   return { chapters: p.chapters.filter((c) => c.name).length, scenes, lines, choices, speakers: p.speakers.length };
 }
+
+/* ------------------------------------------------------------------ */
+/* One scene as text (the scene's "Script" view)                       */
+/* ------------------------------------------------------------------ */
+
+import type { Project, SceneData } from './types';
+import { sceneLines, sceneChoices } from './elements';
+import { choicePort, SCENE_DEFAULT_PORT } from './graph';
+
+/** Write a scene's dialogue and choices in the script format (no "##" heading). */
+export function sceneToScript(project: Project, nodeId: string): string {
+  const node = project.nodes[nodeId];
+  if (!node) return '';
+  const d = node.data as SceneData;
+  const out: string[] = [];
+  const nameOf = (id: string | null | undefined) => (id ? project.nodes[id]?.name : undefined);
+  for (const l of sceneLines(d)) {
+    if (l.voiceAssetId) { const a = project.assets.find((x) => x.id === l.voiceAssetId); if (a) out.push(`[voice: ${a.name.replace(/\.[a-z0-9]+$/i, '')}]`); }
+    const ch = l.speakerId ? project.characters.find((c) => c.id === l.speakerId) : null;
+    const text = l.text.replace(/\r?\n/g, '\\n'); // line breaks as \n
+    if (ch) {
+      const pt = l.portraitId ? ch.portraits.find((p) => p.id === l.portraitId) : null;
+      out.push(`${ch.name}${pt ? ` (${pt.name})` : ''}: ${text}`);
+    } else {
+      // Narration that looks like "Name: …", or starts with a marker, gets ">".
+      out.push(/^\s*([>#*\/[【]|->|→)/.test(text) || /^[^:：]{1,24}[:：]/.test(text) ? `> ${text}` : text);
+    }
+  }
+  const edges = project.edges.filter((e) => e.from.node === nodeId);
+  const choices = sceneChoices(d);
+  if (choices.length) {
+    if (out.length) out.push('');
+    for (const c of choices) {
+      const to = nameOf(edges.find((e) => e.from.port === choicePort(c.id))?.to.node);
+      out.push(`* ${c.text.replace(/\r?\n/g, '\\n')}${to ? ` -> ${to}` : ''}`);
+    }
+  } else {
+    const e = edges.find((x) => x.from.port === SCENE_DEFAULT_PORT);
+    const to = e && project.nodes[e.to.node];
+    if (to) { if (out.length) out.push(''); out.push(`-> ${to.type === 'core.ending' ? 'END' : to.name}`); }
+  }
+  return out.join('\n');
+}

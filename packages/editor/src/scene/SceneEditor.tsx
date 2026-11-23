@@ -17,7 +17,9 @@ import { GLOBAL_NODE_ID } from '@vne/core';
 import { GamePanel, GameModal } from '../script/GameEditors';
 import type { GameOpen } from '../script/GameEditors';
 import { pageElements } from './pageContext';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ScriptView } from './ScriptView';
+import { IconButton, cx, shortcut } from '../ui/controls';
 
 export function SceneEditor({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
   useSession(session);
@@ -27,6 +29,20 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
   const ui = session.sceneUI(nodeId);
   const [layersW, startLayers] = useResizable('scene.layers', 236, 180, 420);
   const [dockH, startDock] = useResizable('scene.dock', 300, 160, 640);
+  const [layersHidden, setLayersHidden] = useStoredFlag('vne.scene.layersHidden');
+  const [dockHidden, setDockHidden] = useStoredFlag('vne.scene.dockHidden');
+  // Mod+\ gives the canvas all the room (and brings the panels back).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== '\\') return;
+      e.preventDefault();
+      const focus = !(layersHidden && dockHidden);
+      setLayersHidden(focus);
+      setDockHidden(focus);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [layersHidden, dockHidden]);
   if (!node || !scene) return null;
   const chapter = session.project.chapters.find((c) => c.id === node.chapterId);
   const isGlobal = nodeId === GLOBAL_NODE_ID;
@@ -47,47 +63,68 @@ export function SceneEditor({ session, nodeId }: { session: ProjectSession; node
           </div>
         ) : (
           <div className="crumbs">
-            <button type="button" className="crumb" onClick={() => session.setUI({ chapterId: node.chapterId, active: 0 })}><Icon name="book" size={13} />{chapter?.name}</button>
+            <button type="button" className="crumb" onClick={() => session.setUI({ chapterId: node.chapterId, active: 0 })}><Icon name="book" size={13} /><span className="crumb-text">{chapter?.name}</span></button>
             <Icon name="chevronRight" size={12} />
-            <span className="crumb current"><Icon name="scene" size={13} />#{scene.number} {node.name}</span>
+            <span className="crumb current"><Icon name="scene" size={13} /><span className="crumb-text">#{scene.number} {node.name}</span></span>
           </div>
         )}
         <Tabs value={ui.subTab} onChange={(v) => session.setSceneUI(nodeId, { subTab: v })} tabs={[
           { id: 'composition', label: t('workspace.composition'), icon: 'layers' },
+          ...(isGlobal ? [] : [{ id: 'script' as const, label: t('workspace.script'), icon: 'fileText' }]),
           { id: 'modules', label: t('workspace.modules'), icon: 'module', badge: node.modules.length || null },
         ]} />
         <div className="grow" />
-        {!isGlobal && <Button small icon="play" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now() } })} title={t('preview.thisScene')}>{t('preview.thisScene')}</Button>}
+        {ui.subTab === 'composition' && (
+          <span className="panel-toggles">
+            <IconButton icon="layers" size={15} active={!layersHidden} title={layersHidden ? t('scene.showLayers') : t('scene.hideLayers')} onClick={() => setLayersHidden(!layersHidden)} />
+            <IconButton icon="timeline" size={15} active={!dockHidden} title={dockHidden ? t('scene.showDock') : t('scene.hideDock')} onClick={() => setDockHidden(!dockHidden)} />
+            <IconButton icon="maximize" size={15} active={layersHidden && dockHidden} title={`${t('scene.focusCanvas')} (${shortcut('Mod+\\')})`} onClick={() => { const f = !(layersHidden && dockHidden); setLayersHidden(f); setDockHidden(f); }} />
+          </span>
+        )}
+        {!isGlobal && <Button small icon="play" className="head-preview" onClick={() => session.setUI({ preview: { scope: 'scene', nodeId, key: Date.now() } })} title={t('preview.thisScene')}><span>{t('preview.thisScene')}</span></Button>}
       </div>
       {ui.effectsOpen && ui.selectedLayers[0] && (
         <Modal title={t('effects.editFor', { layer: scene.layers.find((l) => l.id === ui.selectedLayers[0])?.name || '' })} icon={<Icon name="sparkles" size={16} />} width={1100} onClose={() => session.setSceneUI(nodeId, { effectsOpen: false })}>
           <div className="effects-modal"><EffectsPanel session={session} nodeId={nodeId} /></div>
         </Modal>
       )}
-      {ui.subTab === 'modules' ? <ModuleWorkspace session={session} nodeId={nodeId} /> : (
+      {ui.subTab === 'script' && !isGlobal ? <ScriptView session={session} nodeId={nodeId} /> : ui.subTab === 'modules' ? <ModuleWorkspace session={session} nodeId={nodeId} /> : (
         <div className="scene-body">
           <div className="scene-top">
-            <div className="scene-layers" style={{ width: layersW }}>
-              <LayersPanel session={session} nodeId={nodeId} />
-            </div>
-            <div className="resizer-x" onPointerDown={(e) => startLayers(e, 1)} role="separator" aria-orientation="vertical" />
+            {layersHidden ? (
+              <button type="button" className="layers-strip" onClick={() => setLayersHidden(false)} title={t('scene.showLayers')}><Icon name="layers" size={15} /><span>{t('scene.layersShort')}</span></button>
+            ) : (
+              <>
+                <div className="scene-layers" style={{ width: layersW }}>
+                  <LayersPanel session={session} nodeId={nodeId} />
+                </div>
+                <div className="resizer-x" onPointerDown={(e) => startLayers(e, 1)} role="separator" aria-orientation="vertical" />
+              </>
+            )}
             <div className="scene-canvas"><CompositionCanvas session={session} nodeId={nodeId} />
               {session.ui.preview?.docked && session.ui.preview.nodeId === nodeId && <PreviewPanel key={session.ui.preview.key} session={session} />}
             </div>
           </div>
-          <div className="resizer-y" onPointerDown={(e) => startDock(e, -1, 'y')} role="separator" aria-orientation="horizontal" />
-          <div className="scene-dock" style={{ height: dockH }}>
-            <Tabs value={ui.bottomTab} onChange={(v) => session.setSceneUI(nodeId, { bottomTab: v })} tabs={tabs} className="dock-tabs" />
-            <div className="dock-body">
+          {!dockHidden && <div className="resizer-y" onPointerDown={(e) => startDock(e, -1, 'y')} role="separator" aria-orientation="horizontal" />}
+          <div className={cx('scene-dock', dockHidden && 'collapsed')} style={dockHidden ? undefined : { height: dockH }}>
+            <Tabs value={ui.bottomTab} onChange={(v) => { session.setSceneUI(nodeId, { bottomTab: v }); if (dockHidden) setDockHidden(false); }} tabs={tabs} className="dock-tabs"
+              right={<IconButton icon={dockHidden ? 'chevronUp' : 'chevronDown'} size={14} title={dockHidden ? t('scene.showDock') : t('scene.hideDock')} onClick={() => setDockHidden(!dockHidden)} />} />
+            {!dockHidden && <div className="dock-body">
               {(ui.bottomTab === 'timeline' || !tabs.some((x) => x.id === ui.bottomTab)) && <Timeline session={session} nodeId={nodeId} />}
               {ui.bottomTab === 'behaviors' && <SceneScripts session={session} nodeId={nodeId} scene={scene} />}
               {bottomPanels.filter((p) => p.id === ui.bottomTab).map((p) => <ModulePanelHost key={p.id} session={session} panel={p} nodeId={nodeId} />)}
-            </div>
+            </div>}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+/** A remembered on/off switch (per computer). */
+function useStoredFlag(key: string): [boolean, (v: boolean) => void] {
+  const [v, setV] = useState(() => { try { return localStorage.getItem(key) === '1'; } catch { return false; } });
+  return [v, (x: boolean) => { setV(x); try { localStorage.setItem(key, x ? '1' : '0'); } catch { /* ignore */ } }];
 }
 
 function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nodeId: string; scene: SceneData }) {
@@ -135,7 +172,7 @@ function SceneScripts({ session, nodeId, scene }: { session: ProjectSession; nod
   );
 }
 
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { makeMountContext, safeMount, PanelDef } from '../modules/editorApi';
 
 export function ModulePanelHost({ session, panel, nodeId }: { session: ProjectSession; panel: PanelDef; nodeId?: string }) {

@@ -40,10 +40,12 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     stageRef.current = stage;
     narrRef.current = new NarrativeUI(stage.overlay);
     stage.overlay.style.pointerEvents = 'none';
-    stage.onResize = () => force((x) => x + 1);
+    // A fitted view stays fitted when panels open or close; zooming or panning ends that.
+    const refit = () => { const f = stage.fitScale(); stage.setView(f.scale * 0.92, f.offsetX + (stage.width * f.scale * 0.04), f.offsetY + (stage.height * f.scale * 0.04)); };
+    stage.onResize = () => { if (fittedRef.current) refit(); force((x) => x + 1); };
     const v = session.sceneUI(nodeId).view;
-    if (v) stage.setView(v.zoom, v.x, v.y);
-    else { const f = stage.fitScale(); stage.setView(f.scale * 0.92, f.offsetX + (stage.width * f.scale * 0.04), f.offsetY + (stage.height * f.scale * 0.04)); }
+    if (v && !v.fit) { stage.setView(v.zoom, v.x, v.y); fittedRef.current = false; }
+    else { refit(); fittedRef.current = true; }
     session.assets.onLoad = () => force((x) => x + 1);
     return () => {
       for (const { inst } of instancesRef.current.values()) inst.dispose?.();
@@ -130,9 +132,12 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   /* View: pan / zoom                                                 */
   /* --------------------------------------------------------------- */
 
-  const setView = (zoom: number, x: number, y: number) => {
+  const fittedRef = useRef(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const setView = (zoom: number, x: number, y: number, fitted = false) => {
+    fittedRef.current = fitted;
     stageRef.current?.setView(zoom, x, y);
-    session.setSceneUI(nodeId, { view: { zoom, x, y } });
+    session.setSceneUI(nodeId, { view: { zoom, x, y, ...(fitted ? { fit: true } : {}) } });
   };
 
   useEffect(() => {
@@ -163,7 +168,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     const st = stageRef.current;
     if (!st) return;
     const f = st.fitScale();
-    setView(f.scale * 0.92, f.offsetX + st.width * f.scale * 0.04, f.offsetY + st.height * f.scale * 0.04);
+    setView(f.scale * 0.92, f.offsetX + st.width * f.scale * 0.04, f.offsetY + st.height * f.scale * 0.04, true);
   };
 
   /* --------------------------------------------------------------- */
@@ -177,7 +182,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
     const st = stageRef.current!;
     const sx = e.clientX, sy = e.clientY, ox = st.offsetX, oy = st.offsetY;
     document.body.classList.add('panning');
-    const move = (ev: PointerEvent) => { st.setView(st.scale, ox + ev.clientX - sx, oy + ev.clientY - sy); force((x) => x + 1); };
+    const move = (ev: PointerEvent) => { fittedRef.current = false; st.setView(st.scale, ox + ev.clientX - sx, oy + ev.clientY - sy); force((x) => x + 1); };
     const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); document.body.classList.remove('panning'); session.setSceneUI(nodeId, { view: { zoom: st.scale, x: st.offsetX, y: st.offsetY } }); };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
@@ -292,6 +297,13 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
         if (mode === 'scale-x') sy = primary.props.scaleY ?? 1;
         if (mode === 'scale-y') sx = primary.props.scaleX ?? 1;
         if (ev.shiftKey && mode === 'scale') { const f = Math.abs(fx) > Math.abs(fy) ? fx : fy; sx = (primary.props.scaleX ?? 1) * f; sy = (primary.props.scaleY ?? 1) * f; }
+        if (primary.l.type === 'core.textbox' && !ev.altKey) {
+          // Text boxes resize their box (the text re-wraps) instead of stretching; Alt scales.
+          const w0 = Number(primary.props.width) || 560, h0 = Number(primary.props.height) || 220;
+          const kx = mode === 'scale-y' ? 1 : Math.abs(fx), ky = mode === 'scale-x' ? 1 : Math.abs(fy);
+          setLayerProps(session, nodeId, primary.l.id, { width: Math.max(20, Math.round(w0 * kx)), height: Math.max(20, Math.round(h0 * ky)) }, { mergeKey, label: t('layer.resize') });
+          return;
+        }
         setLayerProps(session, nodeId, primary.l.id, { scaleX: Math.round(sx * 1000) / 1000, scaleY: Math.round(sy * 1000) / 1000 }, { mergeKey, label: t('layer.scale') });
       }
     };
@@ -420,6 +432,7 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   // Gizmos (screen space)
   const st = stageRef.current;
   const view = st ? buildView() : null;
+  const editingLayer = editing ? scene.layers.find((l) => l.id === editing) || null : null;
   const toScreen = (q: { x: number; y: number }) => ({ x: (st?.offsetX || 0) + q.x * (st?.scale || 1), y: (st?.offsetY || 0) + q.y * (st?.scale || 1) });
   const gizmos = view ? selected.map((id) => {
     const l = scene.layers.find((x) => x.id === id);
@@ -497,6 +510,15 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
   return (
     <div className="comp-wrap">
       <div ref={hostRef} className={cx('comp-canvas', spaceDown && 'pan-ready')} tabIndex={0} onPointerDown={onPointerDown} onKeyDown={onKeyDown} onCopy={(e) => onCopy(e)} onCut={(e) => onCopy(e, true)} onPaste={onPaste}
+        onDoubleClick={(e) => {
+          // Double-click a text or text box to type in it on the canvas.
+          const stg = stageRef.current;
+          if (!stg || (e.target as HTMLElement).closest('.text-edit')) return;
+          const vv = buildView();
+          const p = stg.toStage(e.clientX, e.clientY);
+          const hit = hitTest(vv, p.x, p.y, selectable);
+          if (hit && (hit.type === 'core.textbox' || hit.type === 'core.text')) { session.setSceneUI(nodeId, { selectedLayers: [hit.id] }); setEditing(hit.id); }
+        }}
         onContextMenu={(e) => {
           e.preventDefault();
           const stg = stageRef.current;
@@ -554,6 +576,10 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
             </g>
           ))}
         </svg>
+        {!scene.layers.length && nodeId !== GLOBAL_NODE_ID && <EmptySceneStart session={session} nodeId={nodeId} />}
+        {editingLayer && view && <TextEditOverlay key={editingLayer.id} layer={editingLayer} props={view.props(editingLayer)} corners={layerCorners(view, editingLayer).map(toScreen)} scale={st?.scale || 1}
+          onCommit={(text) => { if (text !== String(editingLayer.props.text ?? '')) setLayerProps(session, nodeId, editingLayer.id, { text }, { label: t('layer.editText') }); setEditing(null); }}
+          onCancel={() => setEditing(null)} />}
       </div>
       <div className="comp-toolbar">
         <button type="button" className="btn btn-sm" onClick={(e) => openMenu(e, addLayerMenu(session, nodeId, t, { x: W / 2, y: H / 2 }))}><Icon name="plus" size={14} /><span>{t('layer.add')}</span></button>
@@ -568,6 +594,73 @@ export function CompositionCanvas({ session, nodeId }: { session: ProjectSession
         <IconButton icon="fit" size={15} title={`${t('scene.fit')} (${'Mod+0'.replace('Mod', navigator.platform.includes('Mac') ? '⌘' : 'Ctrl')})`} onClick={fit} />
         <span className="res-label">{W}×{H}</span>
       </div>
+    </div>
+  );
+}
+
+/** Typing on the canvas: a text area over the element, in its font at the canvas zoom. */
+function TextEditOverlay({ layer, props, corners, scale, onCommit, onCancel }: { layer: Layer; props: Record<string, any>; corners: { x: number; y: number }[]; scale: number; onCommit: (text: string) => void; onCancel: () => void }) {
+  const t = useT();
+  const [text, setText] = useState(String(layer.props.text ?? ''));
+  const xs = corners.map((c) => c.x), ys = corners.map((c) => c.y);
+  const left = Math.min(...xs), top = Math.min(...ys);
+  const k = scale * Math.abs(Number(props.scaleX ?? 1));
+  const box = layer.type === 'core.textbox';
+  const pad = box ? (Number(props.padding) || 0) * k : 4;
+  const width = Math.max(box ? 40 : 160, Math.max(...xs) - left);
+  const height = Math.max(32, Math.max(...ys) - top);
+  return (
+    <textarea className="text-edit" autoFocus value={text} spellCheck={false}
+      style={{ left, top, width, minHeight: height, padding: pad, fontSize: Math.max(8, (Number(props.fontSize) || 30) * k), lineHeight: props.lineHeight || 1.4,
+        fontFamily: typeof props.fontFamily === 'string' && !props.fontFamily.startsWith('fnt_') ? props.fontFamily : undefined, fontWeight: props.fontWeight || 'normal', fontStyle: props.italic ? 'italic' : 'normal',
+        textAlign: props.align || 'left', color: props.color || '#fff', borderRadius: box ? (Number(props.radius) || 0) * k : 4 }}
+      title={t('layer.editTextHint')}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => onCommit(text)}
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') onCancel(); if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onCommit(text); }} />
+  );
+}
+
+/** First steps for a scene with nothing in it. */
+function EmptySceneStart({ session, nodeId }: { session: ProjectSession; nodeId: string }) {
+  const t = useT();
+  const { width: W, height: H } = session.project.settings.resolution;
+  const pos = { x: Math.round(W / 2), y: Math.round(H / 2) };
+  const select = (id: string | null) => { if (id) session.setSceneUI(nodeId, { selectedLayers: [id] }); };
+  const images = session.project.assets.filter((a) => a.kind === 'image');
+  const bgMenu = (e: React.MouseEvent) => openMenu(e, [
+    ...images.slice(0, 20).map((a) => ({ label: a.name.replace(/\.[^.]+$/, ''), icon: 'image', onClick: () => select(addLayer(session, nodeId, 'core.background', { assetId: a.id }, a.name.replace(/\.[^.]+$/, ''))) })),
+    ...(images.length ? [{ separator: true }] : []),
+    { label: t('empty.bgImport'), icon: 'upload', onClick: () => importAndAdd(session, 'image', (a: any) => select(addLayer(session, nodeId, 'core.background', { assetId: a.id }, a.name.replace(/\.[^.]+$/, '')))) },
+    { label: t('empty.bgGenerate'), icon: 'imagePlus', onClick: () => store.open({ kind: 'generateImage', imageKind: 'background' }) },
+    { label: t('empty.bgEmpty'), icon: 'square', onClick: () => select(addLayer(session, nodeId, 'core.background', {})) },
+  ]);
+  const charMenu = (e: React.MouseEvent) => openMenu(e, [
+    ...session.project.characters.map((c) => ({ label: c.name, icon: 'user', onClick: () => select(addLayer(session, nodeId, 'core.character', { ...pos, characterId: c.id }, c.name)) })),
+    ...(session.project.characters.length ? [{ separator: true }] : []),
+    { label: t('empty.charNew'), icon: 'plus', onClick: () => select(addLayer(session, nodeId, 'core.character', pos)) },
+  ]);
+  const cards: { icon: string; title: string; text: string; run: (e: React.MouseEvent) => void }[] = [
+    { icon: 'image', title: t('empty.bg'), text: t('empty.bgText'), run: bgMenu },
+    { icon: 'user', title: t('empty.char'), text: t('empty.charText'), run: charMenu },
+    { icon: 'message', title: t('empty.dialogue'), text: t('empty.dialogueText'), run: () => select(addLayer(session, nodeId, 'core.dialogue', {})) },
+    { icon: 'type', title: t('empty.textbox'), text: t('empty.textboxText'), run: () => select(addLayer(session, nodeId, 'core.textbox', { ...pos, text: t('layer.textbox.sample') })) },
+    { icon: 'fileText', title: t('empty.script'), text: t('empty.scriptText'), run: () => session.setSceneUI(nodeId, { subTab: 'script' }) },
+  ];
+  return (
+    <div className="empty-start" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="empty-start-title">{t('empty.title')}</div>
+      <div className="empty-start-cards">
+        {cards.map((c) => (
+          <button key={c.title} type="button" className="empty-card" onClick={c.run}>
+            <Icon name={c.icon} size={18} />
+            <b>{c.title}</b>
+            <span>{c.text}</span>
+          </button>
+        ))}
+      </div>
+      <div className="muted small">{t('empty.hint')}</div>
     </div>
   );
 }
@@ -619,6 +712,7 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     ...shapeOpts.map((o) => ({ label: t(o.label), icon: 'square', onClick: () => add('core.shape', { ...pos, shape: o.value }, t(o.label), hidden) })),
     { header: true, label: t('element.group.text') },
     { label: t('layer.text'), icon: 'type', onClick: () => add('core.text', pos, undefined, hidden) },
+    ...(has('core.textbox') ? [{ label: t('layer.textbox'), icon: 'textbox', hint: t('layer.textbox.hint'), onClick: () => add('core.textbox', { ...pos, text: t('layer.textbox.sample') }, undefined, hidden) }] : []),
     ...(has('core.freeDialogue') ? [{ label: t('layer.freeDialogue'), icon: 'quote', hint: t('layer.freeDialogue.hint'), onClick: () => add('core.freeDialogue', { ...pos, speaker: session.project.characters[0]?.name || t('layer.freeDialogue.speaker'), text: t('layer.freeDialogue.sample') }, undefined, hidden) }] : []),
     ...(has('core.dialogue') && !isGlobal ? [{ label: t('layer.dialogue'), icon: 'message', onClick: () => add('core.dialogue', {}) }] : []),
     { header: true, label: t('element.group.interactive') },
@@ -633,7 +727,7 @@ export function addLayerMenu(session: ProjectSession, nodeId: string, t: (k: str
     // Global elements are on every page (music, HUD, inventory, health bar…).
     items.push({ header: true, label: t('element.group.global') }, { label: t('element.addGlobal'), icon: 'globe', hint: t('element.addGlobalHint'), submenu: addLayerMenu(session, GLOBAL_NODE_ID, t, at, { ...opts, nested: true }) });
   }
-  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition', 'core.sprite', 'core.inventory', 'core.freeDialogue']);
+  const shown = new Set(['core.image', 'core.video', 'core.audio', 'core.character', 'core.background', 'core.shape', 'core.text', 'core.textbox', 'core.dialogue', 'core.choice', 'core.button', 'core.hotspot', 'core.composition', 'core.sprite', 'core.inventory', 'core.freeDialogue']);
   const rest = defs.filter((d) => !shown.has(d.id));
   const cats = ['effect', 'structure', 'module'];
   for (const c of cats) {

@@ -25,7 +25,7 @@ const MAP: Record<string, IconType> = {
   bot: L.LuBot, send: L.LuSend, stopwatch: L.LuTimer, graph: L.LuChartSpline, marker: L.LuMapPin, path: L.LuRoute, parent: L.LuLink2,
   stepForward: L.LuStepForward, stepBack: L.LuStepBack, sparkle: L.LuSparkle, chat: L.LuMessagesSquare, key: L.LuKeyRound, sun: L.LuSun, moon: L.LuMoon,
   boxSelect: L.LuSquareDashedMousePointer, pointer: L.LuMousePointer2, plug: L.LuPlug, textSize: L.LuALargeSmall, brush: L.LuPaintbrush,
-  workArea: L.LuChevronsLeftRight, languages: L.LuLanguages, fileText: L.LuFileText, imagePlus: L.LuImagePlus, camera: L.LuCamera, wave: L.LuAudioWaveform, sigma: L.LuSigma, package: L.LuPackage, toIn: L.LuArrowLeftToLine, toOut: L.LuArrowRightToLine, brain: L.LuBrain,
+  workArea: L.LuChevronsLeftRight, languages: L.LuLanguages, textbox: L.LuTextCursorInput, help: L.LuCircleHelp, fileText: L.LuFileText, imagePlus: L.LuImagePlus, camera: L.LuCamera, wave: L.LuAudioWaveform, sigma: L.LuSigma, package: L.LuPackage, toIn: L.LuArrowLeftToLine, toOut: L.LuArrowRightToLine, brain: L.LuBrain,
 };
 
 export function Icon({ name, size = 16, className, title }: { name: string; size?: number; className?: string; title?: string }) {

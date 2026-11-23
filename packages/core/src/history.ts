@@ -106,6 +106,19 @@ export class History<T> {
     return entry.label;
   }
 
+  /** The steps, oldest first: what can be undone, and what can be redone (next first). */
+  steps(): { past: { label: string; time: number }[]; future: { label: string; time: number }[] } {
+    return {
+      past: this.past.map((e) => ({ label: e.label, time: e.time })),
+      future: [...this.future].reverse().map((e) => ({ label: e.label, time: e.time })),
+    };
+  }
+
+  /** Undo (n < 0) or redo (n > 0) several steps at once. */
+  go(n: number): void {
+    for (let i = 0; i < Math.abs(n); i++) if (!(n < 0 ? this.undo() : this.redo())) break;
+  }
+
   /** Reset without history, e.g. after loading a file. */
   reset(state: T): void {
     this.past = [];

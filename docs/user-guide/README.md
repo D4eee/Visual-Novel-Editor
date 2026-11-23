@@ -40,6 +40,10 @@ Start with the [getting-started tutorial](getting-started.md), then explore the 
 
 Hover a control or field label briefly to see its help text. On canvases, use the mouse wheel to zoom and drag empty space to pan.
 
-Use **Ctrl/⌘+Z** to undo and **Ctrl/⌘+Shift+Z** to redo.
+Use **Ctrl/⌘+Z** to undo and **Ctrl/⌘+Shift+Z** to redo. The 🕘 button next to them (**Ctrl/⌘+Shift+H**) lists every step, including the AI assistant's, and jumps back or forward to any of them.
+
+**Ctrl/⌘+K** opens the command palette: type to jump to a scene, chapter, element, character or asset, or to run a command (new scene, preview, export, translations, settings…). Start with **>** to list only commands. **F1** lists the keyboard shortcuts.
+
+In a narrow window (or with the AI assistant open) the left panel and then the inspector tuck away so the work area keeps its room; their buttons then open them over the work area (**Esc** closes). While a preview runs, the inspector makes room for the game, and the preview's debug panel can be folded away.
 
 Chinese translations are available for [Getting started](getting-started.zh-CN.md) and [Game module](game-module.zh-CN.md). See the [Chinese index](README.zh-CN.md) for the current translation coverage.
