@@ -1,4 +1,4 @@
-import type { Engine, Layer, LayerTypeDef, PropDef, Composition } from '@vne/core';
+import type { Engine, Layer, LayerTypeDef, PropDef, Composition, Character } from '@vne/core';
 import { CHOICE_STYLE } from '@vne/core';
 import { num, parseColor, colorToString } from '../math';
 import { parseRich, layoutRich, drawRich, interpolateVars, TextStyle } from '../text';
@@ -8,6 +8,7 @@ import type { AudioCategory } from '../assets';
 import { resolveFontFamily } from '../assets';
 import { registerFreeDialogue } from './freeDialogue';
 import { sampleClip, clipEnd } from '../animation';
+import { characterFrame, drawRig } from '../rig';
 
 export const TRANSFORM_PROPS: PropDef[] = [
   { key: 'x', type: 'number', label: 'prop.x', default: 0, step: 1, unit: 'px', animatable: true, group: 'transform' },
@@ -219,37 +220,67 @@ export function registerBuiltinLayers(engine: Engine): void {
     props: visual([
       { key: 'characterId', type: 'character', label: 'prop.character', default: null },
       { key: 'portraitId', type: 'portrait', label: 'prop.portrait', default: null },
+      // Characters with a rig or image-sequence motions: what plays (keyable on the timeline).
+      { key: 'motion', type: 'motion', label: 'prop.motion', default: null, animatable: true, clock: true, group: 'motion', description: 'prop.motion.desc' },
+      { key: 'expression', type: 'expression', label: 'prop.expression', default: null, animatable: true, group: 'motion' },
+      { key: 'motionSpeed', type: 'number', label: 'prop.motionSpeed', default: 1, min: 0, max: 8, step: 0.05, animatable: true, group: 'motion' },
+      { key: 'display', type: 'select', label: 'prop.characterDisplay', default: 'auto', options: [{ value: 'auto', label: 'charDisplay.auto' }, { value: 'portrait', label: 'charDisplay.portrait' }], group: 'motion' },
       { key: 'height', type: 'number', label: 'prop.displayHeight', default: 0, min: 0, unit: 'px', animatable: true, group: 'size' },
       { key: 'flip', type: 'boolean', label: 'prop.flip', default: false },
       { key: 'dim', type: 'number', label: 'prop.dim', default: 0, min: 0, max: 1, step: 0.05, animatable: true },
     ]),
     defaults: ({ height }) => ({ y: height, anchorY: 1 }),
     size(_l, p, rc) {
-      const assetId = portraitAsset(rc.project, p.characterId, p.portraitId);
-      const n = naturalSize(rc, assetId);
+      const ch = rc.project.characters.find((c: Character) => c.id === p.characterId) as Character | undefined;
       const h = num(p.height);
+      if (ch?.rig && ch.rig.parts.length && p.display !== 'portrait') {
+        const { width, height } = ch.rig;
+        return h ? { width: (h * width) / height, height: h } : { width, height };
+      }
+      const frame = ch && p.display !== 'portrait' ? characterFrame(ch, p.motion, p.expression, 0) : null;
+      const assetId = frame?.kind === 'frame' ? frame.assetId : portraitAsset(rc.project, p.characterId, frame?.kind === 'portrait' && frame.portraitId ? frame.portraitId : p.portraitId);
+      const n = naturalSize(rc, assetId);
       if (n) return h ? { width: (h * n.width) / n.height, height: h } : n;
       return { width: h ? h * 0.5 : 300, height: h || 600 };
     },
+    createInstance: () => ({ motion: undefined as any, start: 0, restart() { this.motion = Symbol('restart'); } }),
     draw(rc, l, p) {
       const s = engine.layerTypes.get('core.character')!.size!(l, p, rc);
-      const assetId = portraitAsset(rc.project, p.characterId, p.portraitId);
-      const img = imgOf(rc, assetId);
-      if (!img) {
-        const ch = rc.project.characters.find((c) => c.id === p.characterId);
-        drawPlaceholder(rc.ctx, s.width, s.height, ch ? ch.name : 'Character', !!assetId && rc.assets.imageFailed(assetId));
+      const ch = rc.project.characters.find((c: Character) => c.id === p.characterId) as Character | undefined;
+      const ctx = rc.ctx;
+      // Motion time: from the timeline key, else since the motion was set (scripts), else the scene clock.
+      let t = rc.time;
+      if (typeof p.motionSince === 'number') t = p.motionSince;
+      else {
+        const inst = rc.view?.instance?.(l.id);
+        if (inst && 'start' in inst) { if (inst.motion !== p.motion) { inst.motion = p.motion; inst.start = rc.time; } t = rc.time - inst.start; }
+      }
+      t *= p.motionSpeed === undefined ? 1 : num(p.motionSpeed, 1);
+      const frame = ch && p.display !== 'portrait' ? characterFrame(ch, p.motion, p.expression, t) : null;
+      ctx.save();
+      if (p.flip) { ctx.translate(s.width, 0); ctx.scale(-1, 1); }
+      if (frame?.kind === 'rig' && ch?.rig) {
+        ctx.scale(s.width / ch.rig.width, s.height / ch.rig.height);
+        drawRig(ctx, ch.rig, frame.pose, (id) => imgOf(rc, id));
+        ctx.restore();
+        if (num(p.dim) > 0) { ctx.save(); ctx.globalCompositeOperation = 'source-atop'; ctx.fillStyle = `rgba(0,0,0,${num(p.dim) * 0.6})`; ctx.fillRect(0, 0, s.width, s.height); ctx.restore(); }
         return;
       }
-      rc.ctx.save();
-      if (p.flip) { rc.ctx.translate(s.width, 0); rc.ctx.scale(-1, 1); }
-      rc.ctx.drawImage(img, 0, 0, s.width, s.height);
+      const assetId = frame?.kind === 'frame' ? frame.assetId : portraitAsset(rc.project, p.characterId, frame?.kind === 'portrait' && frame.portraitId ? frame.portraitId : p.portraitId);
+      const img = imgOf(rc, assetId);
+      if (!img) {
+        ctx.restore();
+        drawPlaceholder(ctx, s.width, s.height, ch ? ch.name : 'Character', !!assetId && rc.assets.imageFailed(assetId));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, s.width, s.height);
       const dim = num(p.dim);
       if (dim > 0) {
-        rc.ctx.globalCompositeOperation = 'source-atop';
-        rc.ctx.fillStyle = `rgba(0,0,0,${dim * 0.6})`;
-        rc.ctx.fillRect(0, 0, s.width, s.height);
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = `rgba(0,0,0,${dim * 0.6})`;
+        ctx.fillRect(0, 0, s.width, s.height);
       }
-      rc.ctx.restore();
+      ctx.restore();
     },
   });
 

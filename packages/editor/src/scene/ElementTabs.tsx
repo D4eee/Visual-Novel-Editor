@@ -18,6 +18,7 @@ import { EFFECT_PRESETS } from '../effects/presets';
 import { applyEffectPreset, saveEffectAsPreset, useEffectPresets, openPresetManager } from '../effects/userPresets';
 import { Button, ColorInput, Empty, Field, IconButton, NumberInput, Section, Select, Toggle, cx } from '../ui/controls';
 import { Icon } from '../ui/Icon';
+import { CharacterPresetsSection, ScenePresetsSection } from '../library/LibraryPanels';
 
 export type InspectorTab = 'options' | 'effects' | 'presets';
 
@@ -220,7 +221,7 @@ export function applyStyle(session: ProjectSession, nodeId: string, layerId: str
 /* Presets tab                                                          */
 /* ------------------------------------------------------------------ */
 
-export function PresetsTab({ session, nodeId, layer }: { session: ProjectSession; nodeId: string; scene: SceneData; layer: Layer }) {
+export function PresetsTab({ session, nodeId, scene, layer }: { session: ProjectSession; nodeId: string; scene: SceneData; layer: Layer }) {
   const t = useT();
   const def = session.engine.layerTypes.get(layer.type);
   const [dur, setDur] = useState(() => Number(localStorage.getItem('vne.anim.presetDuration')) || 0.6);
@@ -295,6 +296,9 @@ export function PresetsTab({ session, nodeId, layer }: { session: ProjectSession
               </div>
             ))}</div>}
       </Section>
+      {layer.type === 'core.character' && <CharacterPresetsSection session={session} nodeId={nodeId} layer={layer} />}
+      <ScenePresetsSection session={session} nodeId={nodeId} scene={scene} selected={ui.selectedLayers} />
+      {layer.type !== 'core.character' && <CharacterPresetsSection session={session} nodeId={nodeId} layer={null} />}
     </>
   );
 }

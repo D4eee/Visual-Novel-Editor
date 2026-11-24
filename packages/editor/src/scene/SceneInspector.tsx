@@ -4,11 +4,12 @@ import { DialogueLines } from './DialoguePanel';
 import { ChoiceEffects } from './choices';
 import { animatedProps } from '@vne/runtime';
 import type { ProjectSession } from '../state/session';
-import { useSession, useT } from '../state/store';
+import { store, useSession, useT } from '../state/store';
 import { sceneOf, setLayerProps, updateScene, setParent, toggleKey, keyStateFor } from './sceneOps';
 import { PropEditor, PropContext } from '../inspect/PropEditor';
 import { Field, TextInput, ColorInput, Select, NumberInput, Toggle, Section, Button, IconButton, Tabs } from '../ui/controls';
 import { EffectsTab, PresetsTab, InspectorTab } from './ElementTabs';
+import { CharacterPresetsSection, ScenePresetsSection } from '../library/LibraryPanels';
 import { Icon } from '../ui/Icon';
 import { useEffect, useRef } from 'react';
 import { makeMountContext, safeMount } from '../modules/editorApi';
@@ -102,13 +103,18 @@ function LayerInspector({ session, nodeId, scene, layer }: { session: ProjectSes
       <PropEditor defs={defs} values={values} idPrefix={`layer.${layer.type}`} ctx={ctx}
         onChange={(k, v, tr) => {
           const patch: Record<string, any> = { [k]: v };
-          if (k === 'characterId') patch.portraitId = null;
+          if (k === 'characterId') { patch.portraitId = null; if (layer.type === 'core.character') { patch.motion = null; patch.expression = null; } }
           setLayerProps(session, nodeId, layer.id, patch, tr ? { mergeKey: `p-${layer.id}-${k}` } : {});
           // A choice keeps its layer name in step with its text until renamed by hand.
           if (layer.type === CHOICE_LAYER && k === 'text' && layer.name === String(layer.props.text ?? '')) {
             updateScene(session, nodeId, t('choice.edit'), (sd) => { const l = sd.layers.find((x) => x.id === layer.id); if (l) l.name = String(v).slice(0, 40) || l.name; }, `p-${layer.id}-name`);
           }
         }} />
+      {layer.type === 'core.character' && layer.props.characterId && (
+        <div className="row-inline insp-char-studio">
+          <Button small icon="bone" onClick={() => store.openStudio({ characterId: layer.props.characterId, tab: 'motions' })}>{t('studio.openFor')}</Button>
+        </div>
+      )}
       {layer.type === 'core.sprite' && (
         <Section id="insp.sprite.frames" title={t('sprite.frames')} tip={t('sprite.framesHint')}>
           <SpriteFramesEditor session={session} nodeId={nodeId} layer={layer} settings={false} />
@@ -167,9 +173,19 @@ function SceneProps({ session, nodeId, scene }: { session: ProjectSession; nodeI
   const upd = (label: string, fn: (s: SceneData) => void, mk?: string) => updateScene(session, nodeId, label, fn, mk);
   const tr = scene.transition;
   const trDef = session.engine.transitions.get(tr?.type || '');
+  const ui = session.sceneUI(nodeId);
+  const tab = ui.inspectorTab === 'presets' ? 'presets' : 'options';
   return (
     <div className="inspector-body">
       <div className="insp-title"><Icon name="scene" size={16} /> {t('scene.properties')}</div>
+      <Tabs<InspectorTab> className="insp-tabs" value={tab} onChange={(v) => session.setSceneUI(nodeId, { inspectorTab: v })} tabs={[
+        { id: 'options', label: t('insp.tab.options'), icon: 'sliders' },
+        { id: 'presets', label: t('insp.tab.presets'), icon: 'bookmark' },
+      ]} />
+      {tab === 'presets' ? <>
+        <ScenePresetsSection session={session} nodeId={nodeId} scene={scene} selected={[]} />
+        <CharacterPresetsSection session={session} nodeId={nodeId} layer={null} />
+      </> : <>
       <Field label={t('common.name')}><TextInput value={node.name} onChange={(v) => session.update(t('common.rename'), (d) => { d.nodes[nodeId].name = v; })} /></Field>
       <Field label={t('scene.number')}><TextInput value={scene.number} onChange={(v) => upd(t('scene.edit'), (s) => { s.number = v; })} /></Field>
       <Field label={t('scene.background')}><ColorInput value={scene.background} onChange={(v, trn) => upd(t('scene.edit'), (s) => { s.background = v; }, trn ? 'bg' : undefined)} /></Field>
@@ -207,6 +223,7 @@ function SceneProps({ session, nodeId, scene }: { session: ProjectSession; nodeI
           </div>
         ))}
       </Section>
+      </>}
     </div>
   );
 }

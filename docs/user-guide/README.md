@@ -11,7 +11,8 @@ Start with the [getting-started tutorial](getting-started.md), then explore the 
 | Start | [Getting started](getting-started.md) | Create a story with two routes, preview it, and export it |
 | Plan | [Story flow](story-flow.md) | Chapters, nodes, choices, conditions, jumps, and endings |
 | Plan | [Importing a script](script-import.md) | Write scenes, dialogue and choices as plain text and import them |
-| Compose | [Scenes and layers](scenes.md) | Layout, dialogue, characters, and choices |
+| Compose | [Scenes and layers](scenes.md) | Layout, dialogue, characters, choices, and scene presets |
+| Bring to life | [Characters](characters.md) | Skeletons, motions, expressions, Spine import, and the character library |
 | Animate | [Animation](animation.md) | The After Effects-style timeline: layer bars, keyframes, graph editor, parent links, motion paths, markers, waveforms, expressions, and precomposing |
 | Style | [Effects](effects.md) | Procedural effect graphs, presets, and shaders |
 | Interact | [Visual scripting](scripting.md) | Triggers, blocks, conditions, and reusable behaviors |

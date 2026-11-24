@@ -19,7 +19,7 @@ const MAP: Record<string, IconType> = {
   sliders: L.LuSlidersHorizontal, monitor: L.LuMonitor, apple: L.LuLaptop, windows: L.LuAppWindow, web: L.LuGlobe, external: L.LuExternalLink,
   power: L.LuPower, box: L.LuBox, hash: L.LuHash, text: L.LuTextCursorInput, quote: L.LuQuote, crop: L.LuCrop, anchor: L.LuAnchor, magic: L.LuWand,
   filter: L.LuFilter, curve: L.LuSpline, command: L.LuCommand, skipBack: L.LuSkipBack, star: L.LuStar,
-  bookmark: L.LuBookmark, bookmarkPlus: L.LuBookmarkPlus, library: L.LuLibrary,
+  bookmark: L.LuBookmark, bookmarkPlus: L.LuBookmarkPlus, library: L.LuLibrary, bone: L.LuBone, smile: L.LuSmile, swap: L.LuArrowLeftRight, motion: L.LuPersonStanding, rotate: L.LuRotateCw, move: L.LuMove,
   game: L.LuGamepad2, backpack: L.LuBackpack, sprite: L.LuGalleryHorizontal, gem: L.LuGem, inherit: L.LuCornerDownRight, tag: L.LuTag,
   images: L.LuImages, listOrdered: L.LuListOrdered, paused: L.LuCirclePause, stack: L.LuSquareStack,
   bot: L.LuBot, send: L.LuSend, stopwatch: L.LuTimer, graph: L.LuChartSpline, marker: L.LuMapPin, path: L.LuRoute, parent: L.LuLink2,
