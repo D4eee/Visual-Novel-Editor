@@ -17,6 +17,7 @@ import { PreviewPanel } from './preview/PreviewPanel';
 import { ExportDialog } from './export/ExportDialog';
 import { SettingsWindow } from './settings/SettingsWindow';
 import { TourHost } from './ui/Tour';
+import { CharacterStudioHost } from './character/CharacterStudio';
 import { TranslationsDialog } from './l10n/TranslationsDialog';
 import { ImportScriptDialog } from './story/ImportScript';
 import { GenerateImageDialog } from './assets/ImageGen';
@@ -102,6 +103,7 @@ export function App() {
         <ChatPanel />
       </div>
       <PresetManagerHost session={s || null} />
+      <CharacterStudioHost />
       <DialogHost />
       <TourHost />
       {st.dialog?.kind === 'export' && s && <ExportDialog session={s} onClose={() => st.open(null)} />}

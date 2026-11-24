@@ -18,7 +18,11 @@
 | Choice | 选项 | An option the player picks; each has its own output port |
 | Layer | 图层 | One element of a scene: background, character, text… |
 | Composition | 合成 | The arrangement of layers in a scene; a *reusable composition* can be placed in many scenes |
-| Portrait | 立绘 / 表情 | One expression image of a character |
+| Portrait | 立绘 | One image of a character (a pose or face) |
+| Skeleton / Bone / Part | 骨骼 / 骨头 / 部件 | A character's tree of bones with image parts, built in the Character studio or imported from Spine |
+| Motion | 动作 | A character animation: keyframes of the skeleton, or an image sequence; one motion is the idle motion |
+| Expression | 表情 | Changes to a character's parts (images, opacity, small pose changes), or a portrait for characters without a skeleton |
+| Scene preset | 场景（预设） | Elements saved to your library with their keys and interactions, added or switched as one group |
 | Timeline | 时间轴 | Where animations are edited |
 | Keyframe | 关键帧 | A value at a point in time |
 | Interpolation / easing | 插值 / 缓动 | How a value moves between keyframes |

@@ -59,6 +59,12 @@ export function sampleClip(engine: Engine, clip: AnimationClip, t: number, propD
     let rec = out.get(track.layerId);
     if (!rec) out.set(track.layerId, (rec = {}));
     rec[track.prop] = v;
+    // "Clock" values (a character's motion) also say how long ago their current key began.
+    if (def?.clock && track.keyframes.length) {
+      let k0 = track.keyframes[0].t;
+      for (const k of track.keyframes) if (k.t <= t + 1e-6) k0 = k.t;
+      rec[`${track.prop}Since`] = Math.max(0, t - k0);
+    }
   }
   // Expressions run after the keys, so they can use the keyed value (and other elements' tracks).
   if (withExpr) for (const track of withExpr) {

@@ -8,6 +8,8 @@ import { IconButton, Button, Select, TextInput, ColorInput, Section, cx } from '
 import { AssetPicker } from '../inspect/AssetPicker';
 import { openMenu } from '../ui/Menu';
 import { VariableModal, ItemModal, newItem, initialFor } from '../script/GameEditors';
+import { CharacterLibraryButton } from '../library/LibraryPanels';
+import { saveCharacterPreset } from '../library/library';
 
 export function DataPanel({ session }: { session: ProjectSession }) {
   useSession(session);
@@ -103,14 +105,14 @@ function CharactersSection({ session }: { session: ProjectSession }) {
   const upd = (id: string, fn: (c: Character) => void) => session.update(t('chars.edit'), (d) => { const c = d.characters.find((x) => x.id === id); if (c) fn(c); });
   const assetUrl = (id: string) => { const a = project.assets.find((x) => x.id === id); return a ? session.assetUrl(a) : null; };
   return (
-    <Section id="data.chars" title={<>{t('chars.title')} <span className="muted">{project.characters.length}</span></>} actions={<IconButton icon="plus" size={14} title={t('chars.add')} onClick={add} />}>
+    <Section id="data.chars" title={<>{t('chars.title')} <span className="muted">{project.characters.length}</span></>} actions={<><CharacterLibraryButton session={session} /><IconButton icon="plus" size={14} title={t('chars.add')} onClick={add} /></>}>
       {!project.characters.length && <div className="muted small pad">{t('chars.emptyText')}</div>}
       {project.characters.map((c) => (
         <div key={c.id} className={cx('char-card', open === c.id && 'open')}>
           <div className="char-head" onClick={() => setOpen(open === c.id ? null : c.id)}>
             <span className="char-dot" style={{ background: c.color }} />
             <span className="char-name">{c.name}</span>
-            <span className="muted small">{t('chars.portraits', { n: c.portraits.length })}</span>
+            <span className="muted small">{c.rig?.parts.length ? t('chars.rigged', { n: (c.motions || []).length }) : t('chars.portraits', { n: c.portraits.length })}</span>
             <Icon name={open === c.id ? 'chevronUp' : 'chevronDown'} size={14} />
           </div>
           {open === c.id && (
@@ -125,6 +127,10 @@ function CharactersSection({ session }: { session: ProjectSession }) {
                   <IconButton icon="close" size={13} title={t('common.remove')} disabled={c.portraits.length <= 1} onClick={() => upd(c.id, (x) => { x.portraits.splice(i, 1); })} />
                 </div>
               ))}
+              <div className="row-inline char-studio-row">
+                <Button small icon="bone" onClick={() => store.openStudio({ characterId: c.id })}>{t('studio.open')}</Button>
+                <Button small icon="bookmarkPlus" kind="ghost" onClick={() => saveCharacterPreset(session, c.id)}>{t('lib.saveCharacter')}</Button>
+              </div>
               <div className="row-inline">
                 <Button small icon="plus" kind="ghost" onClick={() => upd(c.id, (x) => { x.portraits.push({ id: newId('prt'), name: t('chars.portraitN', { n: x.portraits.length + 1 }), assetId: null }); })}>{t('chars.addPortrait')}</Button>
                 <span className="grow" />

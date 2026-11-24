@@ -1,12 +1,12 @@
 # API reference
 
-Module API version **1.5.0** · engine 1.1.1. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
+Module API version **1.6.0** · engine 1.2.0. Generated from [`sdk/types/index.d.ts`](../../sdk/types/index.d.ts) by `npm run docs:api` — the typings are the source of truth; use them for autocompletion with `// @ts-check`.
 
 Guides: [runtime extensions](../modding/runtime.md) · [editor extensions](../modding/editor.md) · [manifest](../modding/manifest.md).
 
 ## Contents
 
-- [Project data (subset relevant to modules)](#project-data-subset-relevant-to-modules) — `Id`, `VarValue`, `Expr`, `ModuleInstance`, `StoryNode`, `ParamDef`, `Layer`, `VariableDef`, `ItemDef`, `Character`, `Asset`, `Project`, `Issue`
+- [Project data (subset relevant to modules)](#project-data-subset-relevant-to-modules) — `Id`, `VarValue`, `Expr`, `ModuleInstance`, `StoryNode`, `ParamDef`, `Layer`, `VariableDef`, `ItemDef`, `Character`, `RigBone`, `RigAttachment`, `RigPart`, `CharacterRig`, `RigTrack`, `CharacterMotion`, `CharacterExpression`, `Asset`, `Project`, `Issue`
 - [Property schema — drives generated inspectors and animation](#property-schema-drives-generated-inspectors-and-animation) — `PropType`, `PropDef`
 - [Runtime contexts](#runtime-contexts) — `RuntimeEvent`, `VarStore`, `AudioApi`, `GameApi`, `ItemsApi`, `SceneApi`, `InputState`, `ScriptContext`, `StoryContext`, `ComponentContext`, `RenderContext`, `SizeContext`, `Block`
 - [Definitions modules register](#definitions-modules-register) — `PortDef`, `NodeRunResult`, `NodeTypeDef`, `PortTypeDef`, `LayerInstance`, `LayerTypeDef`, `PropertyExtensionDef`, `InterpolatorDef`, `BlockArgDef`, `BlockDef`, `EffectPortDef`, `EffectContext`, `EffectNodeDef`, `TransitionDef`, `ComponentDef`, `SystemInstance`, `SystemDef`, `FunctionDef`
@@ -46,6 +46,8 @@ export interface StoryNode<D = any> { id: Id; type: string; chapterId: Id; name:
 export interface ParamDef { id: Id; name: string; type: 'number' | 'string' | 'boolean'; initial: number | string | boolean }
 export interface Layer {
   id: Id; type: string; name: string; parentId: Id | null; visible: boolean; locked: boolean; props: Record<string, any>; data?: Record<string, unknown>;
+  /** Set on the group a scene preset was loaded into (API 1.6). */
+  presetGroup?: Id;
   /** Custom parameters (API 1.2). */
   params?: ParamDef[];
   /** Global page only: drawn in front of (default) or behind each page's elements (API 1.2). */
@@ -60,7 +62,18 @@ export interface Layer {
 export interface VariableDef { id: Id; name: string; type: 'number' | 'string' | 'boolean' | 'list'; initial: VarValue; scope: 'game' | 'persistent' }
 /** A collectible (API 1.2). The inventory is a list variable of item names (Project.inventoryVarId). */
 export interface ItemDef { id: Id; name: string; assetId: Id | null; description?: string }
-export interface Character { id: Id; name: string; color: string; portraits: { id: Id; name: string; assetId: Id | null }[] }
+export interface Character {
+  id: Id; name: string; color: string; portraits: { id: Id; name: string; assetId: Id | null }[];
+  /** A skeleton of image parts (API 1.6), its motions and expressions. */
+  rig?: CharacterRig; motions?: CharacterMotion[]; expressions?: CharacterExpression[]; defaultMotion?: Id | null;
+}
+export interface RigBone { id: Id; name: string; parent: Id | null; x: number; y: number; rotation: number; scaleX: number; scaleY: number; length: number }
+export interface RigAttachment { name: string; assetId: Id | null; region?: { x: number; y: number; w: number; h: number; rotated?: boolean; ox?: number; oy?: number; ow?: number; oh?: number }; x: number; y: number; rotation: number; scaleX: number; scaleY: number; width: number; height: number }
+export interface RigPart { id: Id; name: string; bone: Id | null; attachments: RigAttachment[]; attachment: string | null; opacity: number }
+export interface CharacterRig { width: number; height: number; origin: { x: number; y: number }; bones: RigBone[]; parts: RigPart[]; source?: 'editor' | 'spine' }
+export interface RigTrack { target: 'bone' | 'part'; id: Id; prop: 'x' | 'y' | 'rotation' | 'scaleX' | 'scaleY' | 'opacity' | 'attachment'; keys: { t: number; v: any; ease?: string }[] }
+export interface CharacterMotion { id: Id; name: string; kind: 'rig' | 'frames'; duration: number; loop: boolean; tracks?: RigTrack[]; frames?: Id[]; fps?: number }
+export interface CharacterExpression { id: Id; name: string; parts?: Record<Id, { attachment?: string | null; opacity?: number }>; bones?: Record<Id, { x?: number; y?: number; rotation?: number; scaleX?: number; scaleY?: number }>; portraitId?: Id | null }
 export interface Asset { id: Id; name: string; kind: 'image' | 'audio' | 'video' | 'font' | 'other'; path: string; tags: string[]; meta: Record<string, unknown> }
 export interface Project {
   id: Id; name: string; settings: { title: string; resolution: { width: number; height: number }; [k: string]: any };
@@ -80,7 +93,7 @@ export interface Issue { severity: 'error' | 'warning' | 'info'; code: string; m
 
 ```ts
 export type PropType = 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select' | 'asset' | 'character' | 'portrait'
-  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition';
+  | 'variable' | 'layer' | 'animation' | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition' | 'motion' | 'expression';
 
 export interface PropDef {
   key: string;
@@ -93,6 +106,8 @@ export interface PropDef {
   assetKind?: 'image' | 'audio' | 'video' | 'font';
   /** Show ◆ keyframe controls; numbers and colors interpolate, other types hold. */
   animatable?: boolean;
+  /** Sampling a timeline key of this prop also reports `<key>Since`: seconds since that key (API 1.6). */
+  clock?: boolean;
   group?: string;
   description?: string;
   hidden?: boolean;
@@ -359,7 +374,7 @@ export interface InterpolatorDef { id: string; label: string; ease(t: number, ke
 export interface BlockArgDef {
   id: string;
   type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line' | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message'
-    | 'item' | 'param';
+    | 'item' | 'param' | 'motion' | 'expression';
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';

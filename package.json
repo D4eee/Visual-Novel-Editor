@@ -1,7 +1,7 @@
 {
   "name": "visual-novel-editor",
   "productName": "Visual Novel Editor",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "A standalone, extensible visual novel engine: story flow graph, scene composition, timeline animation, procedural effects, visual scripting and one-click export to macOS and Windows.",
   "license": "MIT",
   "private": true,

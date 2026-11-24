@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://github.com/D4eee/Visual-Novel-Editor/releases/latest">Download</a> ·
   <a href="docs/user-guide/README.md">User guide</a> ·
-  <a href="docs/release-notes/v1.1.1.md">Release notes</a> ·
+  <a href="docs/release-notes/v1.2.0.md">Release notes</a> ·
   <a href="docs/modding/README.md">Module development</a>
 </p>
 
@@ -31,9 +31,10 @@ The editor is available for **macOS, Windows, and Linux**, with **English and Si
 | --- | --- |
 | **Story graph** | Organize chapters, connect scenes and choices, and build conditions, events, weighted random branches, waits, jumps, and endings. View one chapter or the whole story. Import a plain-text script to create scenes, dialogue, and choices at once. |
 | **Scene composition** | Arrange backgrounds, character portraits, images, text, text boxes that wrap to their size, dialogue, shapes, buttons, hotspots, audio, and video. Write a scene's lines and choices as text in its Script view. Use groups and reusable compositions to organize scenes. |
+| **Characters** | Give characters a skeleton of image parts with motions and expressions in the Character studio, or import one from Spine. Play motions from the timeline or from interactions; image sequences work too. |
 | **Dialogue design** | Place dialogue boxes freely, create speech and thought bubbles, customize typography and appearance, import fonts, and add typewriter reveals. |
 | **Timeline animation** | Animate in an After Effects-style timeline: layer bars with in and out points, grouped properties with stopwatches, a graph editor with bezier handles, markers, a work area, parent links, motion paths, expressions (follow, wiggle, loop), and precompositions you can reuse. Line motion up with audio waveforms, video, and effects. |
-| **Presets** | Apply entrance, emphasis, and exit animations; ready-made looks for text, shapes, buttons, and dialogue boxes; effect presets; and your own saved looks, from the inspector's Presets tab. |
+| **Presets** | Apply entrance, emphasis, and exit animations; ready-made looks for text, shapes, buttons, and dialogue boxes; effect presets; and your own saved looks, from the inspector's Presets tab. Save scenes and characters to a library every project shares, and switch a scene's set with one click. |
 | **Procedural effects** | Build effects with node graphs, including blur, color adjustments, distortion, noise, and custom GLSL shaders. Save, reuse, and share presets as `.vnefx` files. |
 | **Visual scripting** | Connect triggers, actions, values, and conditions with Scratch-style puzzle blocks whose shapes show how they connect. Add clickable regions, control elements and media, create reusable behaviors, and trace execution in Test mode. |
 | **Game systems** | Keep music, looping animations, and scripts running between pages. Use global elements for HUDs and inventories, animate sprites, track parameters and lists, and unlock choices with collected items. |

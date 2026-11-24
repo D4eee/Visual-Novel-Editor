@@ -17,3 +17,4 @@ export * from './inherit';
 export * from './items';
 export * from './localize';
 export * from './scriptImport';
+export * from './spine';

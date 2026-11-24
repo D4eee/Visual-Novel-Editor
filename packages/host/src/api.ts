@@ -13,6 +13,7 @@ import { TemplateStore, ELECTRON_VERSION } from './templates';
 import { exportGame, ExportOptions } from './exporter';
 import { EffectPresetStore } from './effectPresets';
 import { ElementPresetStore } from './elementPresets';
+import { LibraryStore } from './library';
 import { AiService, AiSecrets } from './ai';
 
 export interface HostConfig {
@@ -53,6 +54,7 @@ export function createHost(cfg: HostConfig) {
   const store = new ModuleStore(libraryDir, [path.join(cfg.examplesDir, 'extensions')]);
   const effectPresets = new EffectPresetStore(path.join(cfg.userDataDir, 'effect-presets'));
   const elementPresets = new ElementPresetStore(path.join(cfg.userDataDir, 'element-presets'));
+  const library = new LibraryStore(path.join(cfg.userDataDir, 'library'));
   const ai = new AiService(path.join(cfg.userDataDir, 'ai.json'), cfg.secrets);
   const images = new ImageService(path.join(cfg.userDataDir, 'images.json'), cfg.secrets);
   const templates = new TemplateStore(path.join(cfg.userDataDir, 'runtime-templates'), cfg.templateDirs || []);
@@ -191,6 +193,11 @@ export function createHost(cfg: HostConfig) {
     async 'elementPresets.list'() { return elementPresets.list(); },
     async 'elementPresets.save'({ preset }) { return elementPresets.save(preset); },
     async 'elementPresets.delete'({ id }) { await elementPresets.remove(String(id)); return true; },
+    async 'library.list'({ kind }) { return library.list(String(kind)); },
+    async 'library.save'({ kind, entry, path: p, assets }) { return library.save(String(kind), entry, p, assets || []); },
+    async 'library.load'({ kind, id, path: p, existing }) { return library.load(String(kind), String(id), p, existing || []); },
+    async 'library.rename'({ kind, id, name }) { return library.rename(String(kind), String(id), String(name)); },
+    async 'library.delete'({ kind, id }) { await library.remove(String(kind), String(id)); return true; },
     async 'ai.config'() { return ai.getPublic(); },
     async 'ai.configure'({ patch }) { return ai.update(patch); },
     async 'ai.chat'(args) { return ai.chat({ requestId: args?.requestId, system: args?.system, messages: args?.messages || [], tools: args?.tools || [], maxTokens: args?.maxTokens }); },

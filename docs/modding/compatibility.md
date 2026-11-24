@@ -45,6 +45,7 @@ Only the runtime entry (`runtime`), locales and declared assets are copied into 
 
 | API | Engine | Added |
 | --- | --- | --- |
+| 1.6.0 | 1.2.0 | Property types `motion` and `expression`, `PropDef.clock` (sampling a key also reports `<key>Since`), character rigs (`Character.rig`, `motions`, `expressions`, `defaultMotion`), `Layer.presetGroup`, the blocks `core.playMotion` / `core.setExpression`. Project format 6 |
 | 1.5.0 | 1.1.1 | The `composition` property type (a picker of the project's compositions), the built-in `core.textbox` element, `History.steps()` / `History.go(n)` |
 | 1.4.0 | 1.1.0 | `PropDef.translatable` and `BlockArgDef.translatable` (texts players read go into the translation table), `Project.localization` (translations; games play the localized copy, so modules read translated texts with no extra work), `Composition.animation` (compositions play their own animation; composition elements have `startAt`, `speed`, `playback`), `Track.expr` (track expressions). Project format 5 |
 | 1.3.0 | 1.0.0 | `BlockDef.endsScript` (C blocks that end a script, drawn without a bottom connector), `Layer.link` (parent & link — `linkMatrix`, `parentSpace` in the runtime), animation in/out points (`AnimationClip.spans`; layers outside their span read `__span: false` and are not drawn), `AnimationClip.markers` / `workArea` (editor only). Project format 4 |
@@ -52,4 +53,4 @@ Only the runtime entry (`runtime`), locales and declared assets are copied into 
 | 1.1.0 | 0.2.2 | Reporter and condition blocks (`shape: 'reporter' | 'boolean'`, `report()`), per-element blocks (`BlockDef.layerTypes`, `BlockArgDef.layerTypes`), `LayerTypeDef.hitTest`, scene sensing (`contains`, `touching`, `isVisible`, `bounds`, `timer`), `runtime.input` |
 | 1.0.0 | 0.1.0 | First public API |
 
-Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1–1.5 features should declare the matching `"api"` range (`"^1.1.0"` … `"^1.5.0"`) so older editors refuse it with a clear message instead of failing.
+Additions are backwards compatible: modules written for `^1.0.0` keep working. A module that uses 1.1–1.6 features should declare the matching `"api"` range (`"^1.1.0"` … `"^1.6.0"`) so older editors refuse it with a clear message instead of failing.

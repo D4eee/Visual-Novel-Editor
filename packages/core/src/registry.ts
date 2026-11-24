@@ -67,7 +67,7 @@ export class Registry<T extends Registrable> {
 export type PropType =
   | 'number' | 'string' | 'text' | 'boolean' | 'color' | 'select'
   | 'asset' | 'character' | 'portrait' | 'variable' | 'layer' | 'animation'
-  | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition';
+  | 'choice' | 'node' | 'font' | 'vector' | 'json' | 'expr' | 'item' | 'composition' | 'motion' | 'expression';
 
 export interface PropDef {
   key: string;
@@ -76,6 +76,11 @@ export interface PropDef {
    * properties and `string` properties named `text` are translatable without this.
    */
   translatable?: boolean;
+  /**
+   * A value that starts something when it changes (e.g. a character's motion): animation
+   * sampling also reports how long ago it was keyed, as `<key>Since` (API 1.6).
+   */
+  clock?: boolean;
   type: PropType;
   /** Label: plain text or an i18n key. */
   label: string;
@@ -225,7 +230,7 @@ export interface BlockArgDef {
   translatable?: boolean;
   type: 'number' | 'string' | 'boolean' | 'layer' | 'animation' | 'variable' | 'asset' | 'choice' | 'line'
     | 'key' | 'select' | 'expr' | 'port' | 'node' | 'character' | 'portrait' | 'behavior' | 'prop' | 'ease' | 'message'
-    | 'item' | 'param';
+    | 'item' | 'param' | 'motion' | 'expression';
   default?: any;
   options?: { value: string | number; label: string }[];
   assetKind?: 'image' | 'audio' | 'video';

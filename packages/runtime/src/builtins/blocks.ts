@@ -2,6 +2,7 @@ import type { BlockDef, Engine } from '@vne/core';
 import { truthy } from '@vne/core';
 import type { ScriptContext } from '../script';
 import { StopThread } from '../script';
+import { motionDuration } from '../rig';
 
 const KEYS = ['Space', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map((k) => `Key${k}`), ...'0123456789'.split('').map((d) => `Digit${d}`)];
 /** Element types that blocks are offered for (see BlockDef.layerTypes). '*' = every element, also audio. */
@@ -131,6 +132,24 @@ export function registerBuiltinBlocks(engine: Engine): void {
     run: (ctx: ScriptContext, a) => needScene(ctx).setProp(a.layer, 'assetId', a.asset) });
   B({ id: 'core.setPortrait', category: 'looks', shape: 'statement', layerTypes: ['core.character'], label: 'block.setPortrait', args: [{ id: 'layer', type: 'layer' }, { id: 'portrait', type: 'portrait', default: null }],
     run: (ctx: ScriptContext, a) => needScene(ctx).setProp(a.layer, 'portraitId', a.portrait) });
+  const charOf = (ctx: ScriptContext, layer: string) => {
+    const s = needScene(ctx);
+    const cid = s.getProp(layer, 'characterId');
+    return (ctx.project.characters || []).find((c: any) => c.id === cid) || null;
+  };
+  B({ id: 'core.playMotion', category: 'looks', shape: 'statement', layerTypes: ['core.character'], label: 'block.playMotion', args: [{ id: 'layer', type: 'layer' }, { id: 'motion', type: 'motion', default: null }, { id: 'wait', type: 'boolean', default: false }],
+    async run(ctx: ScriptContext, a) {
+      const s = needScene(ctx);
+      s.setProp(a.layer, 'motion', a.motion);
+      (s as any).instances?.get?.(a.layer)?.restart?.();
+      if (!a.wait) return;
+      const m = (charOf(ctx, a.layer)?.motions || []).find((x: any) => x.id === a.motion);
+      if (!m || m.loop) return;
+      const speed = Number(s.getProp(a.layer, 'motionSpeed') ?? 1) || 1;
+      await ctx.wait(motionDuration(m) / speed);
+    } });
+  B({ id: 'core.setExpression', category: 'looks', shape: 'statement', layerTypes: ['core.character'], label: 'block.setExpression', args: [{ id: 'layer', type: 'layer' }, { id: 'expression', type: 'expression', default: null }],
+    run: (ctx: ScriptContext, a) => needScene(ctx).setProp(a.layer, 'expression', a.expression) });
   B({ id: 'core.shakeScreen', category: 'looks', shape: 'statement', label: 'block.shakeScreen', args: [{ id: 'intensity', type: 'number', default: 12 }, { id: 'seconds', type: 'number', default: 0.5 }],
     async run(ctx: ScriptContext, a) { await needScene(ctx).shake(Number(a.intensity), Number(a.seconds), ctx.token); } });
   B({ id: 'core.flashScreen', category: 'looks', shape: 'statement', label: 'block.flashScreen', args: [{ id: 'color', type: 'string', default: '#ffffff' }, { id: 'seconds', type: 'number', default: 0.4 }],

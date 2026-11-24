@@ -49,6 +49,27 @@ Selecting an element shows three tabs at the top of the inspector:
 - **Animation** — entrance (*Fade in*, *Slide in from left / right*, *Rise in*, *Pop in*, *Zoom in*, *Drop in*), emphasis (*Pulse*, *Shake*, *Bounce*, *Float*, *Wobble*, *Spin*, *Flash*) and exit (*Fade out*, *Slide out*, *Shrink out*). Set the length, place the playhead, click: the animation is written as ordinary keyframes in the current animation, starting from the element's current values, so you can adjust it on the timeline. Keys of the same properties inside that time are replaced.
 - **Looks** — ready-made looks for text (Title, Subtitle, Caption, Outlined, Neon, Warm glow), shapes (Card, Glass, Outline, Accent, Shade), buttons (Primary, Ghost, Pill, Light, Danger) and free dialogue (Classic box, Speech bubble, Thought bubble, Neon box, Paper note, Text only). They change colors, fonts and shapes; position and content stay.
 - **My presets** — save the current look of an element (its style properties, effect and blend mode — not its position or content) and apply it to other elements of the same kind, in any project.
+- **Scenes** and **Characters** — your library of sets and characters (below, and [Characters](characters.md#character-library)).
+
+### Scenes in your library
+
+A *scene preset* is a set of elements you can reuse, such as a classroom, a street at night or a HUD. It keeps its animation keys and the interactions its elements start.
+
+**Save a scene:**
+
+1. Open the **Presets** tab with nothing selected (or with any element selected).
+2. Click **Save as scene…**.
+3. Tick the elements to keep and give the scene a name.
+
+Picking a group includes everything in it. The scene's images and sounds are copied into your library, so it works in other projects too.
+
+**Use a scene:**
+
+- **Add:** click a scene card. The scene goes in as one group just above the backgrounds, with its keys in the current animation and its interactions.
+  - Characters are matched by name or added.
+  - The set is scaled when the project's resolution differs.
+- **Switch:** once a scene has been added, clicking another card switches to it. The old group, its keys and its interactions are replaced in place. Use the card's ⋯ menu to *Add (keep the current one)* instead.
+- **Manage:** the ⋯ menu also renames, deletes, or saves the set again from the current scene.
 
 ## Dialogue and choices
 
