@@ -99,6 +99,14 @@ export function PropField({ def, value, onChange, ctx, label }: { def: PropDef; 
       control = <Select value={value || ''} placeholder={t('prop.portrait.default')} options={[{ value: '', label: t('prop.portrait.default') }, ...(ch?.portraits || []).map((p) => ({ value: p.id, label: p.name }))]} onChange={(v) => onChange(v || null)} disabled={!ch} />;
       break;
     }
+    case 'motion':
+    case 'expression': {
+      const ch = ctx.project.characters.find((c) => c.id === ctx.values.characterId);
+      const list: { id: string; name: string }[] = (def.type === 'motion' ? ch?.motions : ch?.expressions) || [];
+      const none = t(def.type === 'motion' ? 'prop.motion.default' : 'prop.expression.default');
+      control = <Select value={value || ''} placeholder={none} options={[{ value: '', label: none }, ...list.map((m) => ({ value: m.id, label: m.name }))]} onChange={(v) => onChange(v || null)} disabled={!ch || !list.length} />;
+      break;
+    }
     case 'variable':
       control = <Select value={value || ''} placeholder={t('common.choose')} options={[...ctx.project.variables.map((v) => ({ value: v.id, label: v.name, group: t('vars.project') })), ...(ctx.scene?.localVariables || []).map((v) => ({ value: v.id, label: v.name, group: t('vars.scene') }))]} onChange={(v) => onChange(v)} />;
       break;

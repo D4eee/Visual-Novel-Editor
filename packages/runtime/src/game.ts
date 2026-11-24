@@ -535,6 +535,12 @@ export class GameRuntime {
     for (const l of player.layers) {
       if (l.props.assetId) ids.push(l.props.assetId);
       for (const f of spriteFrames(l.props)) if (f.assetId) ids.push(f.assetId);
+      if (l.type === 'core.character') {
+        const ch = this.project.characters.find((c) => c.id === l.props.characterId);
+        for (const p of ch?.portraits || []) if (p.assetId) ids.push(p.assetId);
+        for (const part of ch?.rig?.parts || []) for (const a of part.attachments) if (a.assetId) ids.push(a.assetId);
+        for (const m of ch?.motions || []) for (const f of m.frames || []) ids.push(f);
+      }
     }
     for (const it of this.project.items) if (it.assetId) ids.push(it.assetId);
     await this.assets.preloadImages([...new Set(ids)]);

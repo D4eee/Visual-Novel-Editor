@@ -800,6 +800,15 @@ function ArgEditor({ arg, value, onChange, ctx, block }: { arg: BlockDef['args']
       const chars = ctx.project.characters.filter((c) => !charId || c.id === charId);
       return sel(chars.flatMap((c) => c.portraits.map((pt) => ({ value: pt.id, label: pt.name, group: chars.length > 1 ? c.name : undefined }))));
     }
+    case 'motion':
+    case 'expression': {
+      // Motions / expressions of the character shown by the chosen layer, or of every character.
+      const layerId = block.args.layer;
+      let charId: string | null = null;
+      for (const { scene } of scenes) { const l = scene.layers.find((x) => x.id === layerId); if (l?.type === 'core.character') { charId = l.props.characterId; break; } }
+      const chars = ctx.project.characters.filter((c) => !charId || c.id === charId);
+      return sel(chars.flatMap((c) => ((arg.type === 'motion' ? c.motions : c.expressions) || []).map((m: { id: string; name: string }) => ({ value: m.id, label: m.name, group: chars.length > 1 ? c.name : undefined }))));
+    }
     case 'behavior': return sel(ctx.project.behaviors.map((b: Behavior) => ({ value: b.id, label: b.name })));
     case 'key': case 'select': case 'ease': return sel((arg.options || []).map((o) => ({ value: String(o.value), label: t(o.label) })), '—');
     case 'message': return <MessageInput value={String(value ?? '')} onChange={onChange} project={ctx.project} />;

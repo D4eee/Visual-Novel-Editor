@@ -2,7 +2,7 @@
 
 > **中文说明：**本文写给要修改或扩展本程序的 AI（以及开发者）。读完后应能知道代码在哪里、数据怎么流动、加一个新功能要改哪些文件，以及提交前必须跑哪些检查。使用软件制作作品，请看 [USING.md](USING.md)。
 
-This document describes Visual Novel Editor **1.1.1** (project format 5, module API 1.5). It is written so that an AI coding agent can start changing the program safely within one read: where things live, how data flows, the recipes for common changes, and the checks to run before committing.
+This document describes Visual Novel Editor **1.2.0** (project format 6, module API 1.6). It is written so that an AI coding agent can start changing the program safely within one read: where things live, how data flows, the recipes for common changes, and the checks to run before committing.
 
 For how to *use* the editor to make a game, read [USING.md](USING.md). Longer background: [architecture](../architecture/README.md), [build and release](../architecture/build-and-release.md), [modding guide](../modding/README.md), [API reference](../api/README.md).
 
@@ -75,7 +75,8 @@ Path aliases: `@vne/core`, `@vne/runtime` (see `tsconfig.json`). Build output go
 | Built-in layers | `runtime/src/builtins/layers.ts` (+ `freeDialogue.ts`, `game.ts`) | background, image, character, text, **textbox**, shape, button, dialogue, choice, hotspot, video, audio, group, composition, particles, sprite, inventory, freeDialogue |
 | Built-in blocks | `runtime/src/builtins/blocks.ts`, `game.ts` | ~150 Scratch-style blocks (events, control, looks, sound, sensing, operators, variables, story, lists, sprites, items) |
 | Easing / transitions | `runtime/src/builtins/basics.ts` | interpolators `linear step easeIn easeOut easeInOut backOut elastic bounce bezier`; transitions `none fade dissolve slide` |
-| Animation | `runtime/src/animation.ts`, `runtime/src/trackExpr.ts` | `sampleClip`, `sampleTrack`, `clipEnd`, track expressions (safe parser, no JS eval) |
+| Animation | `runtime/src/animation.ts`, `runtime/src/trackExpr.ts` | `sampleClip`, `sampleTrack`, `clipEnd`, track expressions (safe parser, no JS eval). Props with `clock: true` also get `<key>Since` (seconds since the active key) |
+| Character rigs | `runtime/src/rig.ts`, `core/src/spine.ts` | `rigPose`, `boneWorlds`, `drawRig`, `hitRigPart`, `characterFrame` (which pose / frame / portrait a character shows); `importSpine`, `parseSpineAtlas` |
 | Rendering | `runtime/src/render.ts`, `runtime/src/stage.ts`, `runtime/src/editview.ts` | `drawScene`, `drawLayerList`, `hitTest`, `layerMatrix`, `createEditView` (editor canvas view) |
 | Game loop | `runtime/src/game.ts`, `runtime/src/scene.ts` | `GameRuntime` (saves, settings, backlog, voice, skip), `ScenePlayer` (one scene: dialogue, choices, scripts, animation) |
 | Player UI | `runtime/src/ui.ts`, `runtime/src/styles.ts`, `runtime/src/strings.ts` | Save/load, log, settings screens; runtime strings (en, zh-CN) |
@@ -85,6 +86,8 @@ Path aliases: `@vne/core`, `@vne/runtime` (see `tsconfig.json`). Build output go
 | Scene editor | `editor/src/scene/*` | `SceneEditor` (tabs), `CompositionCanvas`, `LayersPanel`, `Timeline`, `ScriptView`, `sceneOps.ts` (all scene mutations) |
 | Story graph | `editor/src/story/*`, `editor/src/graph/GraphCanvas.tsx` | Graph view, inspector, script import |
 | Inspector fields | `editor/src/inspect/PropEditor.tsx` | Renders a `PropDef` by its `type` |
+| Character studio | `editor/src/character/CharacterStudio.tsx` | Skeleton, motions, expressions, import (Spine, image sequences, layered images); opened with `store.openStudio({ characterId, tab })` |
+| Preset library | `host/src/library.ts`, `editor/src/library/*` | User-folder library of scene and character presets (`library.ts` save/load/merge, `LibraryPanels.tsx` UI) |
 | AI assistant | `editor/src/ai/*` | `tools.ts` (MCP-style tools), `agent.ts` (loop), `ChatPanel.tsx`, `snapshot.ts` (scene picture) |
 | i18n | `editor/src/i18n/en.ts`, `zh-CN.ts` | Every UI string, both languages |
 | Styles | `editor/src/styles.css` | One stylesheet; CSS variables for theme |
@@ -118,6 +121,15 @@ Path aliases: `@vne/core`, `@vne/runtime` (see `tsconfig.json`). Build output go
 **Global page.**
 - The node `GLOBAL_NODE_ID` ("global") holds elements drawn on every page, such as HUD and music.
 - Elements that keep running are inherited by the next page (`inherit.ts`).
+
+**Characters.**
+- `portraits` are images.
+- Optional `rig` holds `bones`, which form a tree through `parent`; rotation is in degrees, clockwise, with y down. It also holds `parts` with `attachments`, which are images (an atlas `region` is optional), plus `origin`, `width` and `height`.
+- `motions` are either `kind: 'rig'` (`tracks` of `{ target: 'bone'|'part', id, prop, keys }`) or `kind: 'frames'` (`frames`, `fps`). Bone motion values add to the rest pose (x/y/rotation) or multiply it (scale).
+- `expressions` hold per-part `{ attachment, opacity }` and per-bone offsets, or a `portraitId`. `defaultMotion` is the idle motion.
+- `core.character` layers have `motion` (type `motion`, `clock: true`), `expression`, `motionSpeed` and `display`.
+- The time a motion plays from is `motionSince` when it comes from the timeline. Otherwise it is the time since a script set the motion; the layer instance stores `{ motion, start }`, and `restart()` starts the motion again.
+- A one-shot motion falls back to `defaultMotion` when it ends (`characterFrame`).
 
 **Compositions.** Reusable layer groups (`project.compositions`), optionally with their own `animation`. They are instanced by `core.composition` layers (`startAt`, `speed`, `playback`).
 
@@ -156,7 +168,7 @@ The editor calls `call('method', args)` (`editor/src/host.ts`). In Electron this
 | Projects | `project.create`, `project.open`, `project.save`, `project.autosave`, `project.clearAutosave`, `project.trash`, `recent.list`, `recent.remove`, `examples.list`, `examples.workingCopy` |
 | Files | `fs.listDir`, `fs.mkdir`, `dialog.pickFolder`, `dialog.pickFiles`, `shell.reveal` |
 | Assets | `assets.import` (paths or `dataBase64`), `assets.missing`, `assets.relink` |
-| Presets | `elementPresets.list/save/delete`, `effectPresets.list/save/delete/import/export` |
+| Presets | `elementPresets.list/save/delete`, `effectPresets.list/save/delete/import/export`, `library.list/save/load/rename/delete` (`kind: 'scene' \| 'character'`; `save` copies the given project assets into `<userData>/library/<kind>/<id>/files`, `load` imports them into a project and returns `{ entry, assets, map }`, where `map` maps old asset ids to new ones) |
 | AI | `ai.config`, `ai.configure`, `ai.chat`, `ai.cancel` (keys stored per service origin, encrypted with safeStorage on desktop) |
 | Images | `images.config`, `images.configure`, `images.generate` (OpenAI format, Stability, Replicate) |
 | Modules | `modules.list`, `modules.install`, `modules.remove`, `modules.copyToProject` |
@@ -214,7 +226,7 @@ Only when old editors would lose data:
 
 ### Add an editor dialog
 
-Add the kind to the `dialog` union in `editor/src/state/store.ts`, render it in `App.tsx` (or `home/Dialogs.tsx` `DialogHost`), and open it with `store.open({ kind })`. Consider adding a command to the palette (`paletteCommands` in `home/Dialogs.tsx`).
+Add the kind to the `dialog` union in `editor/src/state/store.ts`, render it in `App.tsx` (or `home/Dialogs.tsx` `DialogHost`), and open it with `store.open({ kind })`. `store.confirm` / `store.prompt` replace `store.dialog`, so a window that must stay open under them gets its own store field and host (like `store.studio` / `CharacterStudioHost`). `Modal` handles stacking: only the topmost answers Esc and Tab. Consider adding a command to the palette (`paletteCommands` in `home/Dialogs.tsx`).
 
 ---
 
@@ -238,7 +250,7 @@ Add the kind to the `dialog` union in `editor/src/state/store.ts`, render it in 
 ```bash
 npm install                 # once
 node scripts/build.mjs      # or npm run build → dist/
-node --test tests/*.test.mjs          # all tests (58 in 1.1.1)
+node --test tests/*.test.mjs          # all tests (64 in 1.2.0)
 npx tsc -p tsconfig.offline.json      # type check (no network type packages needed)
 node scripts/check-i18n.mjs           # en/zh string parity
 node scripts/gen-api-docs.mjs         # regenerate docs/api/README.md after SDK changes
@@ -275,3 +287,6 @@ node dist/server.js --port 5199       # browser editor at http://127.0.0.1:5199
 | Layout of the editor window | `editor/src/App.tsx` (`SessionView`: panels tuck away on narrow windows), `styles.css` |
 | Translations | `core/src/localize.ts`, `editor/src/l10n/TranslationsDialog.tsx` |
 | Script text ↔ scene | `core/src/scriptImport.ts`, `editor/src/scene/ScriptView.tsx`, `editor/src/story/ImportScript.tsx` |
+| Character skeletons, motions | `runtime/src/rig.ts` (pose and drawing), `core.character` in `builtins/layers.ts`, `editor/src/character/CharacterStudio.tsx` |
+| Spine import | `core/src/spine.ts` (pure; tested in `tests/v1_2.test.mjs`), `ImportPanel` in `CharacterStudio.tsx` |
+| Scene / character presets | `editor/src/library/library.ts` (id remapping, character merge by name, group insertion, switching), `host/src/library.ts` |

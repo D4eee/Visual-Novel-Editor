@@ -20,6 +20,10 @@ export function createEngine(): Engine {
 
 export * from './math';
 export * from './animation';
+export { motionDuration, sampleRigTrack, motionLocalTime, rigPose, boneWorlds, attachmentMatrix, drawRig, hitRigPart, characterFrame } from './rig';
+export type { Pose, BonePose } from './rig';
+export { invert as rigInvert, apply as rigApply, local as rigLocal } from './rig';
+export type { Mat as RigMat } from './rig';
 export { compileExpr, evalExpr, EXPR_FUNCTIONS } from './trackExpr';
 export { compositionTime } from './builtins/layers';
 export * from './assets';

@@ -22,13 +22,15 @@ const imageIds = (layers: Layer[]) => {
 };
 
 /** Draw a scene at `time` (seconds into its first clip, default 0); long side at most `max` px. */
-export async function sceneImage(session: ProjectSession, nodeId: string, opts: { time?: number; max?: number } = {}): Promise<SceneImage> {
+export async function sceneImage(session: ProjectSession, nodeId: string, opts: { time?: number; max?: number; only?: Set<string>; quality?: number } = {}): Promise<SceneImage> {
   const project = session.project;
   const node = project.nodes[nodeId];
   if (!node || !hasSceneData(node)) throw new Error('Not a scene');
-  const scene = node.data as SceneData;
+  const full = node.data as SceneData;
+  // Only some elements (scene presets): leave out the rest and the inherited page context.
+  const scene: SceneData = opts.only ? { ...full, layers: full.layers.filter((l) => opts.only!.has(l.id)) } : full;
   const { width: W, height: H } = project.settings.resolution;
-  const pc = pageCtx(session, nodeId);
+  const pc = opts.only ? { inherited: [], globalBack: [], globalFront: [] } as unknown as ReturnType<typeof pageCtx> : pageCtx(session, nodeId);
   const inherited = pc.inherited.map((e) => e.layer);
   const context = {
     under: [...pc.globalBack, ...inherited.filter((l) => l.type === 'core.background')],
@@ -50,7 +52,7 @@ export async function sceneImage(session: ProjectSession, nodeId: string, opts: 
   pool.releaseAll();
   // The text box is HTML in the game; sketch it so the model sees where it sits.
   const line = sceneLines(scene)[0];
-  if (line && !scene.hideTextbox && project.settings.textbox) {
+  if (line && !opts.only && !scene.hideTextbox && project.settings.textbox) {
     const h = Math.round(H * 0.24);
     ctx.fillStyle = 'rgba(10,12,20,0.72)';
     ctx.fillRect(Math.round(W * 0.02), H - h - Math.round(H * 0.03), Math.round(W * 0.96), h);
@@ -65,5 +67,5 @@ export async function sceneImage(session: ProjectSession, nodeId: string, opts: 
   out.width = Math.round(W * k);
   out.height = Math.round(H * k);
   out.getContext('2d')!.drawImage(canvas, 0, 0, out.width, out.height);
-  return { mediaType: 'image/jpeg', data: out.toDataURL('image/jpeg', 0.82).split(',')[1], width: out.width, height: out.height };
+  return { mediaType: 'image/jpeg', data: out.toDataURL('image/jpeg', opts.quality ?? 0.82).split(',')[1], width: out.width, height: out.height };
 }

@@ -202,7 +202,9 @@ function paletteCommands(s: NonNullable<ReturnType<typeof useStore>['session']>,
     { label: t('problems.title'), icon: 'warning', keywords: 'errors warnings', run: () => s.setUI({ problemsOpen: true }) },
     { label: t('save.saveNow'), icon: 'check', shortcut: 'Mod+S', run: () => { s.save(); } },
   ];
+  for (const c of s.project.characters) list.push({ label: `${t('studio.title')}: ${c.name}`, icon: 'bone', keywords: 'character skeleton spine motion expression live2d rig', run: () => store.openStudio({ characterId: c.id }) });
   if (scene) list.push(
+    { label: t('palette.scenePresets'), icon: 'bookmark', keywords: 'scene preset library switch save', run: () => s.setSceneUI(scene, { subTab: 'composition', selectedLayers: [], inspectorTab: 'presets' }) },
     { label: t('palette.sceneScript'), icon: 'fileText', keywords: 'script dialogue text', run: () => s.setSceneUI(scene, { subTab: 'script' }) },
     { label: t('palette.sceneCanvas'), icon: 'layers', keywords: 'composition canvas', run: () => s.setSceneUI(scene, { subTab: 'composition' }) },
   );

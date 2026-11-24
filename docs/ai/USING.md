@@ -2,7 +2,7 @@
 
 > **中文说明：**本文写给要用这个软件制作作品的 AI（也适合人快速上手）。读完后应能独立完成：搭建剧情流程图、编排场景画面、写对白和选项、做动画、加音乐/音效/配音、做交互、翻译和导出。要修改程序本身，请看 [DEVELOPING.md](DEVELOPING.md)。
 
-This document describes Visual Novel Editor **1.1.1**. It tells an AI agent (or a new user) how to make a visual novel with the editor: the story graph, scenes and visuals, dialogue and choices, animation, sound, interactions, translations, testing and export. Each section gives the quickest way first, then the details.
+This document describes Visual Novel Editor **1.2.0**. It tells an AI agent (or a new user) how to make a visual novel with the editor: the story graph, scenes and visuals, dialogue and choices, animation, sound, interactions, translations, testing and export. Each section gives the quickest way first, then the details.
 
 How you can operate the editor:
 
@@ -24,7 +24,7 @@ The full manual for humans is the [user guide](../user-guide/README.md).
 - A scene contains **elements** (layers): background, images, characters, text, text boxes, shapes, buttons, hotspots, audio, video, particles, sprites, groups, compositions. It also contains one **Dialogue** element with its lines, and one **Choice** element per choice.
 - Each choice is an output of the scene node, labelled C1, C2…; connect each to where it leads. A scene without choices has one *Next* output.
 - Scenes have **animations** (timeline clips with keyframes), **interactions** (Scratch-style block scripts), and per-element **effects** (shader graphs).
-- **Variables** (number, text, true/false, list) drive conditions, choice availability and text (`{name}`). **Characters** have a name, a color and **portraits** (named expression images).
+- **Variables** (number, text, true/false, list) drive conditions, choice availability and text (`{name}`). **Characters** have a name, a color and **portraits** (named images). They can also have a **skeleton** of image parts, with **motions** and **expressions** (see §6a).
 - The **Global** page holds elements shown on every page, such as music and a HUD. Elements that keep running (looping music, looping animations, forever-scripts) carry over to the next scene automatically.
 
 ---
@@ -130,7 +130,7 @@ Open a scene. An empty scene shows quick-start cards: **Background, Character, D
 | Element | How to use it |
 | --- | --- |
 | Background | Fills the stage with an image (cover / contain / stretch) or a color |
-| Character | Pick a character; it shows the portrait of its latest dialogue line. Props: height, flip, dim |
+| Character | Pick a character; it shows the portrait of its latest dialogue line or, when the character has a skeleton or image-sequence motions, plays them. Props: height, flip, dim, **motion**, **expression**, motion speed, show (auto / portrait only) |
 | Image | Any picture, positioned freely |
 | Text | Rich text, optional wrap width, typing reveal |
 | **Text box** | A box (size, padding, color, border, radius) whose text **wraps to the box**. Align left/center/right and top/middle/bottom. Overflow: cut off, shrink to fit, or run past. Drag its handles to resize (the text re-wraps); Alt-drag scales |
@@ -153,6 +153,34 @@ Inspector:
 - The **Options** tab holds all properties; numbers can be dragged.
 - **Effects** add shader effects (blur, glow, color grading, distortion…) from presets or a node graph.
 - **Presets** apply ready animations (fade in, pop in, slide in, shake, pulse, float, fade out…) and saved looks.
+- **Presets → Scenes** keeps a library of sets shared by every project:
+  - **Save as scene…** ticks elements and saves them with their animation keys and interactions.
+  - Clicking a card adds the set as one group above the backgrounds. Once a set is in the scene, clicking another card **switches** to it.
+  - The ⋯ menu adds a set without replacing the current one.
+- **Presets → Characters** saves characters (with skeleton, motions, expressions) to the library and adds them to any project.
+
+### 6a. Characters that move (Character studio)
+
+Open it with **Data → a character → Character studio**, with **Edit skeleton, motions and expressions…** on a character element, or with the command palette.
+
+- **Skeleton tab.**
+  - Start from the portrait, from an empty skeleton, or from imports.
+  - Add bones (a child of the selected bone) and parts (images on bones).
+  - Click a joint or part to select it. Drag to move it; Shift-drag rotates it.
+  - A part can hold several images (eyes open / closed, mouths).
+- **Motions tab.**
+  - *Skeleton motions*: pick the motion and a bone or part, move the playhead, then drag the joint or type values. Keys are written at the playhead. Values add to the rest pose; scale multiplies.
+  - *Image sequences*: frames plus frames per second.
+  - Mark one motion as **idle**. One-shot motions go back to idle when they end.
+- **Expressions tab.** Each expression sets an image and opacity per part and offsets for bones, or names a portrait for characters without a skeleton.
+- **Import tab.**
+  - **Spine 3.8 / 4.x:** choose `.json` + `.atlas` + page images together. Meshes come in flat, and constraints are dropped.
+  - **Image sequences:** files sorted by name.
+  - **Layered images:** same-size layers become parts.
+- **Playing motions.**
+  - Set the element's **Motion** in the inspector.
+  - Or key **Motion** on the timeline; each key restarts the motion at that time.
+  - Or use the blocks **Play motion** (optionally wait until it ends) and **Set expression**.
 
 Draft images: Assets → **Generate images** (needs an image service key in *Settings → Image generation*). Choose *Background* (stage-shaped) or *Character sketch* (portrait), then **Add to assets** or **Use as background**.
 
@@ -232,7 +260,7 @@ The **Interactions** tab in the dock holds Scratch-style block scripts for the s
   - when a message arrives; after *n* seconds or every *n* seconds.
 - **Categories:**
   - Events, Control (wait, if, repeat, forever, stop, broadcast);
-  - Looks (show, hide, set or change or tween a property, play animation, set text or image or portrait, shake or flash the screen, glide, rotate, scale, fade);
+  - Looks (show, hide, set or change or tween a property, play animation, set text or image or portrait, **play motion**, **set expression**, shake or flash the screen, glide, rotate, scale, fade);
   - Sound, Sensing (mouse, touching, timer, keys), Operators, Variables (and lists);
   - Story (show or hide a choice, go to a line, advance, continue, go to a node);
   - Game module (sprites, collectibles, inventory).
@@ -302,12 +330,16 @@ Tips for agents:
 
 Prefer the editor, scripts or the assistant. If you must write JSON:
 
-- **Format:** `format: "vne.project"`, `formatVersion: 5`. Close the project in the editor first, and keep a backup. The editor also keeps backups in `.vne/`.
+- **Format:** `format: "vne.project"`, `formatVersion: 6`. Close the project in the editor first, and keep a backup. The editor also keeps backups in `.vne/`.
 - **Ids:** unique strings, conventionally prefixed (`nod_`, `lyr_`, `chr_`, `ast_`, `cmp_`, `trk_`…). Never reuse an id. Translations, connections and scripts point at ids.
 - **Edges:** `{ id, from: { node, port }, to: { node, port } }`. A scene's outputs are `next`, or `c:<choiceLayerId>` per choice. Most inputs are `in`.
 - **Scenes:**
   - Dialogue is the layer of type `core.dialogue` with `props.lines: [{ id, speakerId, portraitId?, text, voiceAssetId?, auto? }]`.
   - Each choice is a `core.choice` layer with `props.text` (plus `condition`, `effects`, `hidden`…).
+- **Character rigs** (`characters[].rig`):
+  - `bones` (`{ id, name, parent, x, y, rotation, scaleX, scaleY, length }`; y down, degrees clockwise) and `parts` (`{ id, name, bone, attachments: [{ name, assetId, x, y, rotation, scaleX, scaleY, width, height }], attachment, opacity }`, in drawing order).
+  - `motions`: `{ id, name, kind: 'rig', duration, loop, tracks: [{ target: 'bone'|'part', id, prop, keys: [{ t, v, ease }] }] }` or `{ kind: 'frames', frames: [assetId…], fps }`.
+  - `expressions`: `{ id, name, parts: { partId: { attachment?, opacity? } }, bones: { boneId: { x?, y?, rotation? } }, portraitId? }`; `defaultMotion` is the idle motion id.
 - **Assets** must exist under `assets/` and be listed in `project.assets` with `kind` and a relative `path`.
 - **Validate** by opening the project: the editor migrates older formats, and the problems list reports broken references.
 

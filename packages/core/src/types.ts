@@ -10,7 +10,7 @@
 export type Id = string;
 
 export const PROJECT_FORMAT = 'vne.project';
-export const PROJECT_FORMAT_VERSION = 5;
+export const PROJECT_FORMAT_VERSION = 6;
 
 export interface Project {
   format: typeof PROJECT_FORMAT;
@@ -171,6 +171,100 @@ export interface Character {
   color: string;
   portraits: Portrait[];
   description?: string;
+  /** A skeleton of image parts (built in the Character studio or imported from Spine). */
+  rig?: CharacterRig | null;
+  /** Motions (rig keyframes or image sequences), played by character elements. */
+  motions?: CharacterMotion[];
+  /** Expressions: image swaps and small pose changes of rig parts (a portrait for others). */
+  expressions?: CharacterExpression[];
+  /** The motion that plays when nothing else does (idle). */
+  defaultMotion?: Id | null;
+}
+
+/**
+ * A 2D skeleton: bones in a tree, image parts attached to bones, drawn in `parts` order.
+ * Coordinates are pixels, y down; `origin` is where (0, 0) of the skeleton sits in the
+ * width × height box (usually the feet).
+ */
+export interface CharacterRig {
+  width: number;
+  height: number;
+  origin: { x: number; y: number };
+  bones: RigBone[];
+  parts: RigPart[];
+  /** Where it came from (shown in the studio). */
+  source?: 'editor' | 'spine';
+}
+
+export interface RigBone {
+  id: Id;
+  name: string;
+  parent: Id | null;
+  x: number;
+  y: number;
+  /** Degrees, clockwise. */
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+  length: number;
+}
+
+/** One image of a part, in its bone's space, centered on (x, y). */
+export interface RigAttachment {
+  name: string;
+  assetId: Id | null;
+  /** A piece of the image (texture atlases): packed rectangle, and the original size it was trimmed from. */
+  region?: { x: number; y: number; w: number; h: number; rotated?: boolean; ox?: number; oy?: number; ow?: number; oh?: number } | null;
+  x: number;
+  y: number;
+  rotation: number;
+  scaleX: number;
+  scaleY: number;
+  width: number;
+  height: number;
+}
+
+export interface RigPart {
+  id: Id;
+  name: string;
+  bone: Id | null;
+  attachments: RigAttachment[];
+  /** The attachment shown (by name); null shows nothing. */
+  attachment: string | null;
+  opacity: number;
+}
+
+/** A keyframed value of a bone (offsets from its rest pose) or a part. */
+export interface RigTrack {
+  target: 'bone' | 'part';
+  id: Id;
+  /** bone: x, y, rotation (added), scaleX, scaleY (multiplied); part: opacity, attachment. */
+  prop: 'x' | 'y' | 'rotation' | 'scaleX' | 'scaleY' | 'opacity' | 'attachment';
+  keys: { t: number; v: any; ease?: string }[];
+}
+
+export interface CharacterMotion {
+  id: Id;
+  name: string;
+  kind: 'rig' | 'frames';
+  /** Seconds. */
+  duration: number;
+  loop: boolean;
+  tracks?: RigTrack[];
+  /** Image-sequence motions: one image per frame. */
+  frames?: Id[];
+  fps?: number;
+}
+
+export interface CharacterExpression {
+  id: Id;
+  name: string;
+  /** Rig parts: the image to show and opacity. */
+  parts?: Record<Id, { attachment?: string | null; opacity?: number }>;
+  /** Rig bones: offsets added to the pose (e.g. a head tilt). */
+  bones?: Record<Id, { x?: number; y?: number; rotation?: number; scaleX?: number; scaleY?: number }>;
+  /** Characters without a rig: the portrait this expression shows. */
+  portraitId?: Id | null;
 }
 
 export interface Portrait {
@@ -270,6 +364,8 @@ export interface Layer {
    * same group (or both at the top level).
    */
   link?: Id | null;
+  /** Set on the group a scene preset was loaded into (switching presets replaces it). */
+  presetGroup?: Id;
 }
 
 export type LayerEffect =

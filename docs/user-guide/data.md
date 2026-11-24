@@ -16,7 +16,9 @@ Variables are used in conditions, choice conditions and effects, Event nodes, sc
 
 ## Characters
 
-A character has a name, a color (used for the speaker name), a description and **portraits** — named expressions, each an image. Dialogue lines pick the speaker and portrait; character layers on stage show the portrait of their latest line.
+A character has a name, a color (used for the speaker name), a description and **portraits** — named images. Dialogue lines pick the speaker and portrait; character layers on stage show the portrait of their latest line.
+
+**Character studio** (in an open character) adds a skeleton of image parts, motions and expressions, or imports them from Spine — see [Characters](characters.md). The library button (📚) next to **+** adds a character saved in your library; **Save to library** saves one.
 
 ## Reusable behaviors and compositions
 

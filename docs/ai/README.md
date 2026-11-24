@@ -1,6 +1,6 @@
 # Docs for AI agents
 
-Two self-contained guides written so that an AI agent (or a new contributor) can get to work after one read. They describe version 1.1.1.
+Two self-contained guides written so that an AI agent (or a new contributor) can get to work after one read. They describe version 1.2.0.
 
 | Guide | Read it to… |
 | --- | --- |

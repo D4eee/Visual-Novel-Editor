@@ -5,6 +5,8 @@ import { call, hostInfo, HostInfo } from '../host';
 import { en } from '../i18n/en';
 import { zhCN } from '../i18n/zh-CN';
 
+export type StudioTab = 'rig' | 'motions' | 'expressions' | 'import';
+
 export type Dialog =
   | { kind: 'newProject' }
   | { kind: 'openProject' }
@@ -85,6 +87,13 @@ export class EditorStore {
 
   open(d: Dialog | null): void {
     this.dialog = d;
+    this.bump();
+  }
+
+  /** The Character studio (a window of its own, so confirm and prompt dialogs can open over it). */
+  studio: { characterId: string; tab?: StudioTab } | null = null;
+  openStudio(s: { characterId: string; tab?: StudioTab } | null): void {
+    this.studio = s;
     this.bump();
   }
 
